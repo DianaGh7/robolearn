@@ -158,7 +158,7 @@ class _LevelData {
 class _LevelNode extends StatelessWidget {
   final _LevelData data;
   final bool isLeft;
-  const _LevelNode({super.key, required this.data, required this.isLeft});
+  const _LevelNode({required this.data, required this.isLeft});
 
   @override
   Widget build(BuildContext context) {
