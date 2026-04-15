@@ -63,7 +63,9 @@ class _FloatingBubblesState extends State<FloatingBubbles>
 
   @override
   void dispose() {
-    for (final c in _ctrls) c.dispose();
+    for (final c in _ctrls) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -120,7 +122,9 @@ class _SparklesState extends State<Sparkles> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    for (final c in _ctrls) c.dispose();
+    for (final c in _ctrls) {
+      c.dispose();
+    }
     super.dispose();
   }
 

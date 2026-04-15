@@ -40,7 +40,7 @@ class ChildModel {
 
   // Demo data
   static final List<ChildModel> demoChildren = [
-    ChildModel(
+    const ChildModel(
       name: 'Lina',
       level: 3,
       avatarSeed: 0,
@@ -58,7 +58,7 @@ class ChildModel {
         SessionModel(date: 'Apr 1', duration: '20 min', passed: true),
       ],
     ),
-    ChildModel(
+    const ChildModel(
       name: 'Adam',
       level: 2,
       avatarSeed: 1,
@@ -75,7 +75,7 @@ class ChildModel {
         SessionModel(date: 'Apr 1', duration: '10 min', passed: false),
       ],
     ),
-    ChildModel(
+    const ChildModel(
       name: 'Sara',
       level: 1,
       avatarSeed: 2,

@@ -106,13 +106,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     ),
                   ),
                   const SizedBox(height: 14),
-                  InfoCard(
+                  const InfoCard(
                     title: 'How It Works',
                     icon: Icons.settings_outlined,
                     color: AppTheme.skyBlue,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: const [
+                      children: [
                         _Step(
                             icon: Icons.send_rounded,
                             label: 'Send',
@@ -132,7 +132,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     ),
                   ),
                   const SizedBox(height: 14),
-                  InfoCard(
+                  const InfoCard(
                     title: 'Who is RoboLearn For?',
                     icon: Icons.people_outline_rounded,
                     color: AppTheme.orange,
@@ -141,7 +141,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         child: _AudienceBox(
                           icon: Icons.child_care_rounded,
                           title: 'For Children',
-                          points: const [
+                          points: [
                             '• Learn coding by playing',
                             '• No complicated code',
                             '• Fun challenges & levels',
@@ -149,12 +149,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           color: AppTheme.tealPrimary,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Expanded(
                         child: _AudienceBox(
                           icon: Icons.supervisor_account_rounded,
                           title: 'For Parents',
-                          points: const [
+                          points: [
                             '• Track child progress',
                             '• Manage accounts safely',
                             '• Encourage learning at home',
