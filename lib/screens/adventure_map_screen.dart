@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
+import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import 'challenge_screen.dart';
 
 class AdventureMapScreen extends StatelessWidget {
   final ChildModel child;
@@ -99,6 +101,7 @@ class AdventureMapScreen extends StatelessWidget {
                   children: _levels.asMap().entries.map((e) => _LevelNode(
                     data: e.value,
                     isLeft: e.key.isEven,
+                    child: child,
                   )).toList(),
                 ),
               ),
@@ -158,6 +161,12 @@ class _LevelData {
 class _LevelNode extends StatelessWidget {
   final _LevelData data;
   final bool isLeft;
+  final ChildModel child;
+  const _LevelNode({
+    required this.data,
+    required this.isLeft,
+    required this.child,
+  });
   const _LevelNode({required this.data, required this.isLeft});
 
   @override
@@ -178,16 +187,30 @@ class _LevelNode extends StatelessWidget {
               : SystemMouseCursors.basic,
           child: GestureDetector(
             onTap: data.unlocked
-                ? () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(
-                  'Level ${data.number}: ${data.title} — Coming soon!',
-                  style: GoogleFonts.nunito()),
-              backgroundColor: AppTheme.tealPrimary,
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ))
+                ? () {
+                  if (data.number == 1) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChallengeScreen(
+                          child: child,
+                          challenge: Challenge.demoChallenge[0],
+                        ),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(
+                          'Level ${data.number}: ${data.title} — Coming soon!',
+                          style: GoogleFonts.nunito()),
+                      backgroundColor: AppTheme.tealPrimary,
+                      duration: const Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ));
+                  }
+                }
                 : null,
             child: Container(
               width: 90, height: 90,
