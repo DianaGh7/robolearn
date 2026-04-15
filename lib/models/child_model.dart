@@ -13,6 +13,7 @@ class ChildModel {
   final String gender;         // 'girl' | 'boy'
   final String joinDate;
   final List<SessionModel> recentSessions;
+  final String? imageUrl;
 
   const ChildModel({
     required this.name,
@@ -27,6 +28,7 @@ class ChildModel {
     required this.gender,
     required this.joinDate,
     required this.recentSessions,
+    this.imageUrl,
   });
 
   // Avatar palette
@@ -57,6 +59,7 @@ class ChildModel {
         SessionModel(date: 'Apr 2', duration: '12 min', passed: false),
         SessionModel(date: 'Apr 1', duration: '20 min', passed: true),
       ],
+      imageUrl: null,
     ),
     const ChildModel(
       name: 'Adam',
@@ -74,6 +77,7 @@ class ChildModel {
         SessionModel(date: 'Apr 3', duration: '15 min', passed: true),
         SessionModel(date: 'Apr 1', duration: '10 min', passed: false),
       ],
+      imageUrl: null,
     ),
     const ChildModel(
       name: 'Sara',
@@ -90,6 +94,7 @@ class ChildModel {
       recentSessions: [
         SessionModel(date: 'Apr 2', duration: '9 min', passed: true),
       ],
+      imageUrl: null,
     ),
   ];
 }
