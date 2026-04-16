@@ -75,17 +75,19 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         children: [
                           Text('Welcome to',
                               style: GoogleFonts.nunito(
-                                  fontSize: 14,
+                                  fontSize: 15,
                                   color: AppTheme.tealMid,
                                   fontWeight: FontWeight.w600)),
                           Text('RoboLearn',
                               style: GoogleFonts.nunito(
-                                  fontSize: 26,
+                                  fontSize: 28,
                                   fontWeight: FontWeight.w900,
                                   color: AppTheme.tealDark)),
-                          Text('Learn coding in a fun and smart way!',
+                          Text('Learn coding with your robot, step by step.',
                               style: GoogleFonts.nunito(
-                                  fontSize: 12, color: AppTheme.tealMid)),
+                                  fontSize: 13,
+                                  height: 1.4,
+                                  color: AppTheme.tealMid)),
                         ]),
                   ]),
                   const SizedBox(height: 22),
@@ -94,15 +96,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     icon: Icons.info_outline_rounded,
                     color: AppTheme.tealPrimary,
                     child: Text(
-                      'RoboLearn is an educational system designed for children '
-                          'to learn programming basics by playing, building, and '
-                          'controlling a friendly robot. Kids arrange code blocks, '
-                          'send them to the robot via Bluetooth, and instantly see '
-                          'the result in real life!',
+                      'RoboLearn helps kids learn programming basics by building '
+                          'simple code blocks and controlling a real robot.',
                       style: GoogleFonts.nunito(
-                          fontSize: 14,
+                          fontSize: 15,
                           color: const Color(0xFF2A5A58),
-                          height: 1.5),
+                          height: 1.6),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -116,58 +115,43 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         _Step(
                             icon: Icons.send_rounded,
                             label: 'Send',
-                            desc: 'Arrange code blocks & send to robot',
+                            desc: 'Build blocks and send',
                             color: AppTheme.tealPrimary),
                         _Step(
                             icon: Icons.play_circle_fill_rounded,
                             label: 'Execute',
-                            desc: 'Robot performs the action in real time',
+                            desc: 'Robot runs instantly',
                             color: AppTheme.skyBlue),
                         _Step(
                             icon: Icons.school_rounded,
                             label: 'Learn',
-                            desc: 'Kids learn from mistakes step by step',
+                            desc: 'Improve with each try',
                             color: AppTheme.orange),
                       ],
                     ),
                   ),
                   const SizedBox(height: 14),
-                  const InfoCard(
-                    title: 'Who is RoboLearn For?',
+                  InfoCard(
+                    title: 'Why families choose RoboLearn',
                     icon: Icons.people_outline_rounded,
                     color: AppTheme.orange,
-                    child: Row(children: [
-                      Expanded(
-                        child: _AudienceBox(
-                          icon: Icons.child_care_rounded,
-                          title: 'For Children',
-                          points: [
-                            '• Learn coding by playing',
-                            '• No complicated code',
-                            '• Fun challenges & levels',
-                          ],
-                          color: AppTheme.tealPrimary,
-                        ),
-                      ),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: _AudienceBox(
-                          icon: Icons.supervisor_account_rounded,
-                          title: 'For Parents',
-                          points: [
-                            '• Track child progress',
-                            '• Manage accounts safely',
-                            '• Encourage learning at home',
-                          ],
-                          color: AppTheme.orange,
-                        ),
-                      ),
-                    ]),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _FeatureLine(
+                            text: 'Fun and simple for children',
+                            color: AppTheme.tealPrimary),
+                        const SizedBox(height: 8),
+                        _FeatureLine(
+                            text: 'Safe and easy to monitor for parents',
+                            color: AppTheme.orange),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 28),
-                  Text('Ready to start the fun? 🚀',
+                  const SizedBox(height: 26),
+                  Text('Ready to start? 🚀',
                       style: GoogleFonts.nunito(
-                          fontSize: 16,
+                          fontSize: 17,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.tealDark)),
                   const SizedBox(height: 14),
@@ -197,72 +181,57 @@ class _Step extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 88,
+      width: 92,
       child: Column(children: [
         Container(
-          width: 48, height: 48,
+          width: 50, height: 50,
           decoration: BoxDecoration(
               color: color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(14)),
           child: Icon(icon, color: color, size: 26),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(label,
             style: GoogleFonts.nunito(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: AppTheme.tealDark)),
-        const SizedBox(height: 4),
+        const SizedBox(height: 5),
         Text(desc,
             style: GoogleFonts.nunito(
-                fontSize: 10, color: const Color(0xFF5A9A95)),
+                fontSize: 11,
+                height: 1.35,
+                color: const Color(0xFF5A9A95)),
             textAlign: TextAlign.center),
       ]),
     );
   }
 }
 
-class _AudienceBox extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final List<String> points;
+class _FeatureLine extends StatelessWidget {
+  final String text;
   final Color color;
-  const _AudienceBox({
-    required this.icon,
-    required this.title,
-    required this.points,
-    required this.color,
-  });
+  const _FeatureLine({required this.text, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(title,
-                style: GoogleFonts.nunito(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.tealDark)),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.check_circle_rounded, color: color, size: 18),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              height: 1.4,
+              color: const Color(0xFF4A7A75),
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ]),
-        const SizedBox(height: 8),
-        ...points.map((p) => Padding(
-          padding: const EdgeInsets.only(bottom: 3),
-          child: Text(p,
-              style: GoogleFonts.nunito(
-                  fontSize: 11, color: const Color(0xFF4A7A75))),
-        )),
-      ]),
+        ),
+      ],
     );
   }
 }

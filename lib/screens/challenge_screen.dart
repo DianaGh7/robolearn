@@ -3,6 +3,14 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
+import '../widgets/shared_widgets.dart';
+
+enum RobotConnectionStatus {
+  disconnected,
+  connecting,
+  connected,
+  executing,
+}
 
 class ChallengeScreen extends StatefulWidget {
   final ChildModel child;
@@ -26,6 +34,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
   bool _showSuccessToast = false;
   bool _showFailToast = false;
   int? _activeBlockIndex;
+  RobotConnectionStatus _connectionStatus = RobotConnectionStatus.disconnected;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
@@ -131,6 +140,10 @@ class _ChallengeScreenState extends State<ChallengeScreen>
 
   Future<void> _executeCode() async {
     if (isExecuting) return;
+    if (_connectionStatus != RobotConnectionStatus.connected) {
+      _showFailNotification();
+      return;
+    }
     if (!_hasValidStartEndOrder) {
       _showFailNotification();
       return;
@@ -141,6 +154,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
 
     setState(() {
       isExecuting = true;
+      _connectionStatus = RobotConnectionStatus.executing;
       currentRobotState = initialRobotState;
       _activeBlockIndex = null;
     });
@@ -181,11 +195,37 @@ class _ChallengeScreenState extends State<ChallengeScreen>
 
     setState(() {
       isExecuting = false;
+      _connectionStatus = RobotConnectionStatus.connected;
     });
     if (success) {
       _showSuccessNotification();
     } else {
       _showFailNotification();
+    }
+  }
+
+  Future<void> _handleRobotAction() async {
+    if (_connectionStatus == RobotConnectionStatus.disconnected) {
+      setState(() => _connectionStatus = RobotConnectionStatus.connecting);
+      await Future.delayed(const Duration(milliseconds: 900));
+      if (!mounted) return;
+      setState(() => _connectionStatus = RobotConnectionStatus.connected);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Robot connected successfully.',
+            style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: AppTheme.tealDark,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
+    if (_connectionStatus == RobotConnectionStatus.connected) {
+      await _executeCode();
     }
   }
 
@@ -213,7 +253,8 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                   child: widget.child,
                   challenge: widget.challenge,
                   isExecuting: isExecuting,
-                  onRunPressed: _executeCode,
+                  connectionStatus: _connectionStatus,
+                  onRobotActionPressed: _handleRobotAction,
                 ),
 
                 Expanded(
@@ -316,13 +357,15 @@ class _HeaderBar extends StatelessWidget {
   final ChildModel child;
   final Challenge challenge;
   final bool isExecuting;
-  final VoidCallback onRunPressed;
+  final RobotConnectionStatus connectionStatus;
+  final VoidCallback onRobotActionPressed;
 
   const _HeaderBar({
     required this.child,
     required this.challenge,
     required this.isExecuting,
-    required this.onRunPressed,
+    required this.connectionStatus,
+    required this.onRobotActionPressed,
   });
 
   @override
@@ -351,19 +394,37 @@ class _HeaderBar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              'Challenge ${challenge.number} · ${challenge.title}',
-              style: GoogleFonts.nunito(
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                color: AppTheme.tealDark,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Challenge ${challenge.number}',
+                  style: GoogleFonts.nunito(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.tealMid,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  challenge.title,
+                  style: GoogleFonts.nunito(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.tealDark,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
+          _RobotStatusBadge(status: connectionStatus),
           const SizedBox(width: 6),
-          _RunMiniButton(
-            isExecuting: isExecuting,
-            onPressed: onRunPressed,
+          _RobotActionMiniButton(
+            status: connectionStatus,
+            onPressed: onRobotActionPressed,
           ),
           const SizedBox(width: 6),
           Text(
@@ -375,15 +436,29 @@ class _HeaderBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: AppTheme.tealPrimary.withOpacity(0.15),
-            backgroundImage:
-                child.imageUrl != null ? NetworkImage(child.imageUrl!) : null,
-            child: child.imageUrl == null
-                ? const Icon(Icons.person_rounded,
-                    color: AppTheme.tealDark, size: 16)
-                : null,
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFFFFF), Color(0xFFF2FFFB)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border.all(color: Colors.white, width: 1.8),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.tealPrimary.withOpacity(0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(2.5),
+            child: ClipOval(
+              child: AvatarFace(seed: child.avatarSeed),
+            ),
           ),
         ],
       ),
@@ -391,34 +466,55 @@ class _HeaderBar extends StatelessWidget {
   }
 }
 
-class _RunMiniButton extends StatelessWidget {
-  final bool isExecuting;
+class _RobotActionMiniButton extends StatelessWidget {
+  final RobotConnectionStatus status;
   final VoidCallback onPressed;
 
-  const _RunMiniButton({required this.isExecuting, required this.onPressed});
+  const _RobotActionMiniButton({
+    required this.status,
+    required this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final busy = status == RobotConnectionStatus.connecting ||
+        status == RobotConnectionStatus.executing;
+    final isDisconnected = status == RobotConnectionStatus.disconnected;
+    final icon = isDisconnected
+        ? Icons.bluetooth_searching_rounded
+        : busy
+            ? Icons.hourglass_top_rounded
+            : Icons.play_arrow_rounded;
+    final label = isDisconnected
+        ? 'Connect'
+        : busy
+            ? 'Running'
+            : 'Run';
+
     return GestureDetector(
-      onTap: isExecuting ? null : onPressed,
+      onTap: busy ? null : onPressed,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
-          color: isExecuting ? const Color(0xFF9CCFC5) : AppTheme.tealPrimary,
+          color: busy
+              ? const Color(0xFF9CCFC5)
+              : isDisconnected
+                  ? const Color(0xFF5EA1D8)
+                  : AppTheme.tealPrimary,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              isExecuting ? Icons.hourglass_top_rounded : Icons.play_arrow_rounded,
+              icon,
               color: Colors.white,
               size: 13,
             ),
             const SizedBox(width: 4),
             Text(
-              isExecuting ? 'Running' : 'Run',
+              label,
               style: GoogleFonts.nunito(
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
@@ -429,6 +525,53 @@ class _RunMiniButton extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _RobotStatusBadge extends StatelessWidget {
+  final RobotConnectionStatus status;
+  const _RobotStatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final data = _statusData(status);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: data.$1.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: data.$1.withOpacity(0.34)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(data.$2, size: 13, color: data.$1),
+          const SizedBox(width: 5),
+          Text(
+            data.$3,
+            style: GoogleFonts.nunito(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: data.$1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  (Color, IconData, String) _statusData(RobotConnectionStatus status) {
+    switch (status) {
+      case RobotConnectionStatus.disconnected:
+        return (const Color(0xFFD84343), Icons.bluetooth_disabled_rounded, 'Offline');
+      case RobotConnectionStatus.connecting:
+        return (const Color(0xFFE7A63D), Icons.bluetooth_searching_rounded, 'Connecting');
+      case RobotConnectionStatus.connected:
+        return (const Color(0xFF2A9D7D), Icons.bluetooth_connected_rounded, 'Connected');
+      case RobotConnectionStatus.executing:
+        return (const Color(0xFF4D8ED8), Icons.smart_toy_rounded, 'Executing');
+    }
   }
 }
 

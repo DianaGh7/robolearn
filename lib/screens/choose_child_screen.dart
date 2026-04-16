@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'adventure_map_screen.dart';
 import 'parent_dashboard_screen.dart';
+import 'login_screen.dart';
 
 class ChooseChildScreen extends StatefulWidget {
   const ChooseChildScreen({super.key});
@@ -57,6 +58,54 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     ));
   }
 
+  Future<void> _showSettingsMenu() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ListTile(
+            leading: const Icon(Icons.logout_rounded, color: Color(0xFFD84E4E)),
+            title: Text(
+              'Log out',
+              style: GoogleFonts.nunito(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFFD84E4E),
+              ),
+            ),
+            onTap: () => Navigator.pop(context, 'logout'),
+          ),
+        );
+      },
+    );
+
+    if (selected == 'logout' && mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const LoginScreen(),
+          transitionsBuilder: (_, anim, __, child) =>
+              FadeTransition(opacity: anim, child: child),
+          transitionDuration: const Duration(milliseconds: 350),
+        ),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -69,6 +118,37 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
           bottom: 0, left: 0, right: 0,
           child: SizedBox(
               height: 120, child: CustomPaint(painter: CloudPainter())),
+        ),
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8, right: 16),
+              child: GestureDetector(
+                onTap: _showSettingsMenu,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.82),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.teal.withOpacity(0.12),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.settings_outlined,
+                    color: AppTheme.tealMid,
+                    size: 21,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
         SafeArea(
           child: FadeTransition(
@@ -262,16 +342,46 @@ class _ChildCardState extends State<_ChildCard>
                   Container(
                     height: 90,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.25),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.28),
+                          Colors.white.withOpacity(0.15),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       borderRadius: const BorderRadius.only(
                         topLeft:  Radius.circular(18),
                         topRight: Radius.circular(18),
                       ),
                     ),
                     child: Center(
-                      child: SizedBox(
-                        width: 72, height: 72,
-                        child: AvatarFace(seed: widget.data.avatarSeed),
+                      child: Container(
+                        width: 74,
+                        height: 74,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFFFFFF), Color(0xFFF6FFFD)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.95),
+                            width: 2.4,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.10),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(5),
+                        child: ClipOval(
+                          child: AvatarFace(seed: widget.data.avatarSeed),
+                        ),
                       ),
                     ),
                   ),
