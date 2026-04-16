@@ -5,10 +5,59 @@ import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'challenge_screen.dart';
+import 'login_screen.dart';
 
 class AdventureMapScreen extends StatelessWidget {
   final ChildModel child;
   const AdventureMapScreen({super.key, required this.child});
+
+  Future<void> _showSettingsMenu(BuildContext context) async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ListTile(
+            leading: const Icon(Icons.logout_rounded, color: Color(0xFFD84E4E)),
+            title: Text(
+              'Log out',
+              style: GoogleFonts.nunito(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFFD84E4E),
+              ),
+            ),
+            onTap: () => Navigator.pop(context, 'logout'),
+          ),
+        );
+      },
+    );
+
+    if (selected == 'logout' && context.mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const LoginScreen(),
+          transitionsBuilder: (_, anim, __, child) =>
+              FadeTransition(opacity: anim, child: child),
+          transitionDuration: const Duration(milliseconds: 350),
+        ),
+        (route) => false,
+      );
+    }
+  }
 
   static const List<_LevelData> _levels = [
     _LevelData(number: 1, title: 'Move Forward',  unlocked: true),
@@ -81,7 +130,28 @@ class AdventureMapScreen extends StatelessWidget {
                           fontSize: 12, color: AppTheme.tealMid)),
                 ]),
                 const Spacer(),
-                const Icon(Icons.settings_outlined, color: AppTheme.tealMid),
+                GestureDetector(
+                  onTap: () => _showSettingsMenu(context),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.82),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.teal.withOpacity(0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.settings_outlined,
+                      color: AppTheme.tealMid,
+                    ),
+                  ),
+                ),
               ]),
             ),
 
