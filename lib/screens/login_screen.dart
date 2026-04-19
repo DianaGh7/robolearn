@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
@@ -21,6 +22,8 @@ class _LoginScreenState extends State<LoginScreen>
   // ── State ──────────────────────────────────────────────────────────────────
   bool _isPasswordVisible = false;
   bool _isFormValid       = false;
+  bool _isLoading         = false;
+  final _resetEmailCtrl   = TextEditingController();
 
   // ── Animation ──────────────────────────────────────────────────────────────
   late final AnimationController _animCtrl;
@@ -54,19 +57,60 @@ class _LoginScreenState extends State<LoginScreen>
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _resetEmailCtrl.dispose();
     _animCtrl.dispose();
     super.dispose();
   }
 
   // ── Navigation helpers ─────────────────────────────────────────────────────
-  void _onLogin() {
-    // TODO: connect to real auth — for now go straight to Choose Child
-    Navigator.of(context).pushReplacement(PageRouteBuilder(
-      pageBuilder: (_, __, ___) => const ChooseChildScreen(),
-      transitionsBuilder: (_, anim, __, child) =>
-          FadeTransition(opacity: anim, child: child),
-      transitionDuration: const Duration(milliseconds: 500),
-    ));
+  String _authErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-email':
+        return 'The email address format is invalid.';
+      case 'user-disabled':
+        return 'This account has been disabled.';
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Incorrect email or password.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please try again later.';
+      case 'network-request-failed':
+        return 'Network error. Check your connection and retry.';
+      default:
+        return 'Authentication failed. Please try again.';
+    }
+  }
+
+  Future<void> _onLogin() async {
+    setState(() => _isLoading = true);
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailCtrl.text.trim(),
+        password: _passwordCtrl.text,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const ChooseChildScreen(),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 500),
+      ));
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_authErrorMessage(e), style: GoogleFonts.nunito()),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _goToSignUp() {
@@ -79,6 +123,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _onForgotPassword() {
+    _resetEmailCtrl.text = _emailCtrl.text.trim();
     showDialog(
       context: context,
       barrierColor: Colors.black26,
@@ -96,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen>
           _ThemedField(
             hint: 'Your email',
             icon: Icons.mail_outline_rounded,
-            controller: TextEditingController(),
+            controller: _resetEmailCtrl,
             keyboardType: TextInputType.emailAddress,
           ),
         ]),
@@ -113,16 +158,33 @@ class _LoginScreenState extends State<LoginScreen>
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14)),
             ),
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('Reset link sent! Check your inbox.',
-                    style: GoogleFonts.nunito()),
-                backgroundColor: AppTheme.tealPrimary,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ));
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final email = _resetEmailCtrl.text.trim();
+              try {
+                await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                if (!context.mounted) return;
+                Navigator.pop(context);
+                messenger.showSnackBar(SnackBar(
+                  content: Text('Reset link sent! Check your inbox.',
+                      style: GoogleFonts.nunito()),
+                  backgroundColor: AppTheme.tealPrimary,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ));
+              } on FirebaseAuthException catch (e) {
+                if (!context.mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(_authErrorMessage(e), style: GoogleFonts.nunito()),
+                    backgroundColor: Colors.red.shade700,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+              }
             },
             child: Text('Send Link',
                 style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
@@ -226,9 +288,13 @@ class _LoginScreenState extends State<LoginScreen>
                     _GradientButton(
                       label: 'Sign In',
                       icon: Icons.login_rounded,
-                      enabled: _isFormValid,
+                      enabled: _isFormValid && !_isLoading,
                       onPressed: _onLogin,
                     ),
+                    if (_isLoading) ...[
+                      const SizedBox(height: 12),
+                      const CircularProgressIndicator(),
+                    ],
 
                     const SizedBox(height: 20),
 
