@@ -30,9 +30,16 @@ class _SplashScreenState extends State<SplashScreen>
         CurvedAnimation(parent: _ctrl, curve: const Interval(0, 0.5)));
     _ctrl.forward();
 
-    Timer(const Duration(seconds: 3), () {
+    Timer(const Duration(seconds: 3), () async {
       if (!mounted) return;
-      final hasUser = FirebaseAuth.instance.currentUser != null;
+      final restoredUser = await FirebaseAuth.instance
+          .authStateChanges()
+          .first
+          .timeout(const Duration(seconds: 2), onTimeout: () {
+        return FirebaseAuth.instance.currentUser;
+      });
+      if (!mounted) return;
+      final hasUser = restoredUser != null;
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (_, __, ___) =>

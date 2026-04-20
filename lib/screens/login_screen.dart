@@ -85,8 +85,9 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _onLogin() async {
     setState(() => _isLoading = true);
     try {
+      final email = _emailCtrl.text.trim().toLowerCase();
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailCtrl.text.trim(),
+        email: email,
         password: _passwordCtrl.text,
       );
       if (!mounted) return;
@@ -160,13 +161,21 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(context);
-              final email = _resetEmailCtrl.text.trim();
+              final email = _resetEmailCtrl.text.trim().toLowerCase();
               try {
+                if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(email)) {
+                  throw FirebaseAuthException(
+                    code: 'invalid-email',
+                    message: 'The email address format is invalid.',
+                  );
+                }
+
                 await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
                 if (!context.mounted) return;
                 Navigator.pop(context);
                 messenger.showSnackBar(SnackBar(
-                  content: Text('Reset link sent! Check your inbox.',
+                  content: Text(
+                      'If this email exists, a reset link has been sent.',
                       style: GoogleFonts.nunito()),
                   backgroundColor: AppTheme.tealPrimary,
                   behavior: SnackBarBehavior.floating,
