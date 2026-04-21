@@ -50,9 +50,9 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
       return;
     }
     Navigator.of(context).push(PageRouteBuilder(
-      pageBuilder: (_, __, ___) => AdventureMapScreen(
+      pageBuilder: (_, _, _) => AdventureMapScreen(
           child: ChildModel.demoChildren[_selectedIndex!]),
-      transitionsBuilder: (_, anim, __, child) =>
+      transitionsBuilder: (_, anim, _, child) =>
           FadeTransition(opacity: anim, child: child),
       transitionDuration: const Duration(milliseconds: 500),
     ));
@@ -96,8 +96,8 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     if (selected == 'logout' && mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const LoginScreen(),
-          transitionsBuilder: (_, anim, __, child) =>
+          pageBuilder: (_, _, _) => const LoginScreen(),
+          transitionsBuilder: (_, anim, _, child) =>
               FadeTransition(opacity: anim, child: child),
           transitionDuration: const Duration(milliseconds: 350),
         ),
@@ -207,9 +207,9 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
                     child: GestureDetector(
                       onTap: () => Navigator.of(context).push(
                         PageRouteBuilder(
-                          pageBuilder: (_, __, ___) =>
+                          pageBuilder: (_, _, _) =>
                           const ParentDashboardScreen(),
-                          transitionsBuilder: (_, anim, __, child) =>
+                          transitionsBuilder: (_, anim, _, child) =>
                               FadeTransition(opacity: anim, child: child),
                           transitionDuration:
                           const Duration(milliseconds: 500),

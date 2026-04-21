@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 enum CodeBlockType {
   start,
   moveForward,
+  moveBackward,
   turnLeft,
   turnRight,
   end,
@@ -24,6 +25,7 @@ class CodeBlock {
   static const Map<CodeBlockType, String> typeLabels = {
     CodeBlockType.start: 'Start',
     CodeBlockType.moveForward: 'Move Forward',
+    CodeBlockType.moveBackward: 'Move Backward',
     CodeBlockType.turnLeft: 'Turn Left',
     CodeBlockType.turnRight: 'Turn Right',
     CodeBlockType.end: 'End',
@@ -32,6 +34,7 @@ class CodeBlock {
   static const Map<CodeBlockType, Color> typeColors = {
     CodeBlockType.start: Color(0xFF4CAF50),     // Green
     CodeBlockType.moveForward: Color(0xFF2196F3), // Blue
+    CodeBlockType.moveBackward: Color(0xFF00BCD4), // Cyan
     CodeBlockType.turnLeft: Color(0xFFFF9800),    // Orange
     CodeBlockType.turnRight: Color(0xFFFF5722),   // Red
     CodeBlockType.end: Color(0xFF9C27B0),     // Purple
@@ -82,6 +85,19 @@ class RobotState {
     }
   }
 
+  RobotState moveBackward() {
+    switch (direction) {
+      case Direction.up:
+        return copyWith(y: y + 1);
+      case Direction.down:
+        return copyWith(y: y - 1);
+      case Direction.left:
+        return copyWith(x: x + 1);
+      case Direction.right:
+        return copyWith(x: x - 1);
+    }
+  }
+
   RobotState turnLeft() {
     const directions = [Direction.up, Direction.left, Direction.down, Direction.right];
     final currentIndex = directions.indexOf(direction);
@@ -129,6 +145,18 @@ class Challenge {
       gridHeight: 5,
       availableBlocks: [
         CodeBlockType.moveForward,
+      ],
+    ),
+    const Challenge(
+      number: 2,
+      title: 'Move Backward',
+      instruction: 'Try to move your robot one block backward',
+      initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
+      targetRobotState: RobotState(x: 2, y: 3, direction: Direction.up),
+      gridWidth: 5,
+      gridHeight: 5,
+      availableBlocks: [
+        CodeBlockType.moveBackward,
       ],
     ),
   ];

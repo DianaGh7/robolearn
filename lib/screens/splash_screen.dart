@@ -42,9 +42,9 @@ class _SplashScreenState extends State<SplashScreen>
       final hasUser = restoredUser != null;
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) =>
+          pageBuilder: (_, _, _) =>
               hasUser ? const ChooseChildScreen() : const WelcomeScreen(),
-          transitionsBuilder: (_, anim, __, child) =>
+          transitionsBuilder: (_, anim, _, child) =>
               FadeTransition(opacity: anim, child: child),
           transitionDuration: const Duration(milliseconds: 600),
         ),

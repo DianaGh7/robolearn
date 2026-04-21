@@ -156,8 +156,8 @@ class _SignUpScreenState extends State<SignUpScreen>
       );
       if (!mounted) return;
       Navigator.of(context).pushReplacement(PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const ChooseChildScreen(),
-        transitionsBuilder: (_, anim, __, child) =>
+        pageBuilder: (_, _, _) => const ChooseChildScreen(),
+        transitionsBuilder: (_, anim, _, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 500),
       ));

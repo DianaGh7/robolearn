@@ -34,8 +34,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   void _goToLogin() {
     Navigator.of(context).push(PageRouteBuilder(
-      pageBuilder: (_, __, ___) => const LoginScreen(),
-      transitionsBuilder: (_, anim, __, child) =>
+      pageBuilder: (_, _, _) => const LoginScreen(),
+      transitionsBuilder: (_, anim, _, child) =>
           FadeTransition(opacity: anim, child: child),
       transitionDuration: const Duration(milliseconds: 500),
     ));

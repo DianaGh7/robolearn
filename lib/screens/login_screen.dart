@@ -92,8 +92,8 @@ class _LoginScreenState extends State<LoginScreen>
       );
       if (!mounted) return;
       Navigator.of(context).pushReplacement(PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const ChooseChildScreen(),
-        transitionsBuilder: (_, anim, __, child) =>
+        pageBuilder: (_, _, _) => const ChooseChildScreen(),
+        transitionsBuilder: (_, anim, _, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 500),
       ));
@@ -116,8 +116,8 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _goToSignUp() {
     Navigator.of(context).push(PageRouteBuilder(
-      pageBuilder: (_, __, ___) => const SignUpScreen(),
-      transitionsBuilder: (_, anim, __, child) =>
+      pageBuilder: (_, _, _) => const SignUpScreen(),
+      transitionsBuilder: (_, anim, _, child) =>
           FadeTransition(opacity: anim, child: child),
       transitionDuration: const Duration(milliseconds: 400),
     ));

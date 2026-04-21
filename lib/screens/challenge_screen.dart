@@ -172,6 +172,9 @@ class _ChallengeScreenState extends State<ChallengeScreen>
           case CodeBlockType.moveForward:
             currentRobotState = currentRobotState.moveForward();
             break;
+          case CodeBlockType.moveBackward:
+            currentRobotState = currentRobotState.moveBackward();
+            break;
           case CodeBlockType.turnLeft:
             currentRobotState = currentRobotState.turnLeft();
             break;
@@ -337,7 +340,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                   child: SafeArea(
                     bottom: false,
                     child: _showSuccessToast
-                        ? const _SuccessBanner()
+                        ? _SuccessBanner(child: widget.child, challenge: widget.challenge)
                         : const _FailBanner(),
                   ),
                 ),
@@ -1224,6 +1227,8 @@ IconData _blockIcon(CodeBlockType type) {
       return Icons.play_arrow_rounded;
     case CodeBlockType.moveForward:
       return Icons.arrow_upward_rounded;
+    case CodeBlockType.moveBackward:
+      return Icons.arrow_downward_rounded;
     case CodeBlockType.turnLeft:
       return Icons.rotate_left_rounded;
     case CodeBlockType.turnRight:
@@ -1299,7 +1304,10 @@ class _RunButton extends StatelessWidget {
 // Success Banner
 // ─────────────────────────────────────────────────────
 class _SuccessBanner extends StatelessWidget {
-  const _SuccessBanner();
+  final ChildModel child;
+  final Challenge challenge;
+
+  const _SuccessBanner({required this.child, required this.challenge});
 
   @override
   Widget build(BuildContext context) {
@@ -1344,6 +1352,41 @@ class _SuccessBanner extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          ElevatedButton(
+            onPressed: () {
+              // Navigate to next challenge
+              final nextChallenge = Challenge.demoChallenge.firstWhere(
+                (c) => c.number == challenge.number + 1,
+                orElse: () => challenge, // Stay on same if no next
+              );
+              if (nextChallenge != challenge) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChallengeScreen(
+                      child: child,
+                      challenge: nextChallenge,
+                    ),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4CAF50),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              'Next',
+              style: GoogleFonts.nunito(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
