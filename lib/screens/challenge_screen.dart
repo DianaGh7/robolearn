@@ -4,6 +4,7 @@ import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import '../services/streak_service.dart';
 
 enum RobotConnectionStatus {
   disconnected,
@@ -175,6 +176,12 @@ class _ChallengeScreenState extends State<ChallengeScreen>
           case CodeBlockType.moveBackward:
             currentRobotState = currentRobotState.moveBackward();
             break;
+          case CodeBlockType.moveLeft:
+            currentRobotState = currentRobotState.moveLeft();
+            break;
+          case CodeBlockType.moveRight:
+            currentRobotState = currentRobotState.moveRight();
+            break;
           case CodeBlockType.turnLeft:
             currentRobotState = currentRobotState.turnLeft();
             break;
@@ -201,6 +208,9 @@ class _ChallengeScreenState extends State<ChallengeScreen>
       _connectionStatus = RobotConnectionStatus.connected;
     });
     if (success) {
+      // Register streak completion
+      final streakService = StreakService();
+      await streakService.registerLevelCompletion();
       _showSuccessNotification();
     } else {
       _showFailNotification();
@@ -395,6 +405,8 @@ class _HeaderBar extends StatelessWidget {
                   color: AppTheme.tealDark, size: 16),
             ),
           ),
+          const SizedBox(width: 8),
+          _StreakBadge(),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1035,19 +1047,6 @@ class _CodeBlocksArea extends StatelessWidget {
       ),
     );
   }
-
-  IconData _blockIcon(CodeBlockType type) {
-    switch (type) {
-      case CodeBlockType.moveForward:
-        return Icons.arrow_upward_rounded;
-      case CodeBlockType.turnLeft:
-        return Icons.rotate_left_rounded;
-      case CodeBlockType.turnRight:
-        return Icons.rotate_right_rounded;
-      default:
-        return Icons.widgets_rounded;
-    }
-  }
 }
 
 class _CodeBlockWidget extends StatelessWidget {
@@ -1229,6 +1228,10 @@ IconData _blockIcon(CodeBlockType type) {
       return Icons.arrow_upward_rounded;
     case CodeBlockType.moveBackward:
       return Icons.arrow_downward_rounded;
+    case CodeBlockType.moveLeft:
+      return Icons.arrow_back_rounded;
+    case CodeBlockType.moveRight:
+      return Icons.arrow_forward_rounded;
     case CodeBlockType.turnLeft:
       return Icons.rotate_left_rounded;
     case CodeBlockType.turnRight:
@@ -1239,157 +1242,147 @@ IconData _blockIcon(CodeBlockType type) {
 }
 
 // ─────────────────────────────────────────────────────
-// Run Button
-// ─────────────────────────────────────────────────────
-class _RunButton extends StatelessWidget {
-  final bool isExecuting;
-  final VoidCallback onPressed;
-
-  const _RunButton({required this.isExecuting, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isExecuting ? null : onPressed,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 54,
-        decoration: BoxDecoration(
-          gradient: isExecuting
-              ? const LinearGradient(
-                  colors: [Color(0xFF90CBC0), Color(0xFF90CBC0)])
-              : const LinearGradient(
-                  colors: [Color(0xFF26A995), Color(0xFF19907C)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: isExecuting
-              ? []
-              : [
-                  BoxShadow(
-                    color: const Color(0xFF26A995).withOpacity(0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  )
-                ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isExecuting
-                  ? Icons.hourglass_top_rounded
-                  : Icons.play_circle_filled_rounded,
-              color: Colors.white,
-              size: 24,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              isExecuting ? 'Running…' : 'Run Code',
-              style: GoogleFonts.nunito(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────
 // Success Banner
 // ─────────────────────────────────────────────────────
-class _SuccessBanner extends StatelessWidget {
+class _SuccessBanner extends StatefulWidget {
   final ChildModel child;
   final Challenge challenge;
 
   const _SuccessBanner({required this.child, required this.challenge});
 
   @override
+  State<_SuccessBanner> createState() => _SuccessBannerState();
+}
+
+class _SuccessBannerState extends State<_SuccessBanner>
+    with TickerProviderStateMixin {
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+  int _currentStreak = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
+    );
+    _scaleController.forward();
+    
+    // Get updated streak
+    final streakService = StreakService();
+    _currentStreak = streakService.currentStreak;
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
+    final streakMessage = _currentStreak > 0
+        ? '🔥 Streak: $_currentStreak!'
+        : 'Excellent work! Keep it up 🌟';
+
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
+          ),
+          border: Border.all(color: const Color(0xFF4CAF50), width: 2),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF4CAF50).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        border: Border.all(color: const Color(0xFF4CAF50), width: 2),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: Color(0xFF4CAF50),
-              shape: BoxShape.circle,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFF4CAF50),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_rounded,
+                  color: Colors.white, size: 22),
             ),
-            child: const Icon(Icons.check_rounded,
-                color: Colors.white, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Challenge Completed!',
-                  style: GoogleFonts.nunito(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF2E7D32),
-                  ),
-                ),
-                Text(
-                  'Great job! Keep it up 🎉',
-                  style: GoogleFonts.nunito(
-                    fontSize: 12,
-                    color: const Color(0xFF388E3C),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          ElevatedButton(
-            onPressed: () {
-              // Navigate to next challenge
-              final nextChallenge = Challenge.demoChallenge.firstWhere(
-                (c) => c.number == challenge.number + 1,
-                orElse: () => challenge, // Stay on same if no next
-              );
-              if (nextChallenge != challenge) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChallengeScreen(
-                      child: child,
-                      challenge: nextChallenge,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Challenge Completed! 🎉',
+                    style: GoogleFonts.nunito(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF2E7D32),
                     ),
                   ),
+                  Text(
+                    streakMessage,
+                    style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      color: const Color(0xFF388E3C),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton(
+              onPressed: () {
+                // Navigate to next challenge or back to adventure map
+                final challenges = Challenge.demoChallenge;
+                final nextChallenge = challenges.firstWhere(
+                  (c) => c.number == widget.challenge.number + 1,
+                  orElse: () => challenges.last,
                 );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4CAF50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                if (nextChallenge.number != widget.challenge.number) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChallengeScreen(
+                        child: widget.child,
+                        challenge: nextChallenge,
+                      ),
+                    ),
+                  );
+                } else {
+                  // No more challenges, return to adventure map
+                  Navigator.pop(context);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4CAF50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+              child: Text(
+                'Next',
+                style: GoogleFonts.nunito(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
               ),
             ),
-            child: Text(
-              'Next',
-              style: GoogleFonts.nunito(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1441,6 +1434,65 @@ class _FailBanner extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// Streak Badge
+// ─────────────────────────────────────────────────────
+class _StreakBadge extends StatefulWidget {
+  const _StreakBadge();
+
+  @override
+  State<_StreakBadge> createState() => _StreakBadgeState();
+}
+
+class _StreakBadgeState extends State<_StreakBadge> {
+  late StreakService _streakService;
+  int _streak = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _streakService = StreakService();
+    _streak = _streakService.currentStreak;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_streak == 0) {
+      return const SizedBox.shrink(); // Don't show if no streak
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF6B6B).withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFFF6B6B).withOpacity(0.4),
+          width: 1.2,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            '🔥',
+            style: TextStyle(fontSize: 14),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Streak: $_streak',
+            style: GoogleFonts.nunito(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFFFF6B6B),
             ),
           ),
         ],
