@@ -130,6 +130,7 @@ class RobotState {
 // Challenge definition
 class Challenge {
   final int number;
+  final int levelNumber;
   final String title;
   final String instruction;
   final RobotState initialRobotState;
@@ -140,6 +141,7 @@ class Challenge {
 
   const Challenge({
     required this.number,
+    required this.levelNumber,
     required this.title,
     required this.instruction,
     required this.initialRobotState,
@@ -153,6 +155,7 @@ class Challenge {
   static final List<Challenge> demoChallenge = [
     const Challenge(
       number: 1,
+      levelNumber: 1,
       title: 'Move Forward',
       instruction: 'Try to move your robot one block forward',
       initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
@@ -165,6 +168,7 @@ class Challenge {
     ),
     const Challenge(
       number: 2,
+      levelNumber: 1,
       title: 'Move Backward',
       instruction: 'Try to move your robot one block backward',
       initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
@@ -177,6 +181,7 @@ class Challenge {
     ),
     const Challenge(
       number: 3,
+      levelNumber: 1,
       title: 'Move Right',
       instruction: 'Move your robot to the right',
       initialRobotState: RobotState(x: 0, y: 2, direction: Direction.right),
@@ -189,6 +194,7 @@ class Challenge {
     ),
     const Challenge(
       number: 4,
+      levelNumber: 1,
       title: 'Move Right - Multiple',
       instruction: 'Move your robot 3 blocks to the right',
       initialRobotState: RobotState(x: 0, y: 2, direction: Direction.right),
@@ -201,6 +207,7 @@ class Challenge {
     ),
     const Challenge(
       number: 5,
+      levelNumber: 1,
       title: 'Move Left',
       instruction: 'Move your robot to the left',
       initialRobotState: RobotState(x: 4, y: 2, direction: Direction.left),
@@ -213,6 +220,7 @@ class Challenge {
     ),
     const Challenge(
       number: 6,
+      levelNumber: 1,
       title: 'Move Left - Multiple',
       instruction: 'Move your robot 2 blocks to the left',
       initialRobotState: RobotState(x: 4, y: 2, direction: Direction.left),

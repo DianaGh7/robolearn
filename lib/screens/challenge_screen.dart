@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
@@ -30,6 +31,7 @@ class ChallengeScreen extends StatefulWidget {
 class _ChallengeScreenState extends State<ChallengeScreen>
     with TickerProviderStateMixin {
   List<CodeBlock> arrangedBlocks = [];
+  late ChildModel _progressChild;
   late RobotState currentRobotState;
   bool isExecuting = false;
   bool _showSuccessToast = false;
@@ -43,6 +45,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
   @override
   void initState() {
     super.initState();
+    _progressChild = widget.child;
     currentRobotState = widget.challenge.initialRobotState;
     arrangedBlocks = [];
 
@@ -52,6 +55,40 @@ class _ChallengeScreenState extends State<ChallengeScreen>
     )..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.95, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  ChildModel _markChallengeCompleted() {
+    final Set<int> completedSet = {..._progressChild.completedChallengeIds};
+    completedSet.add(widget.challenge.number);
+
+    final List<Challenge> levelChallenges = Challenge.demoChallenge
+        .where((challenge) => challenge.levelNumber == widget.challenge.levelNumber)
+        .toList()
+      ..sort((a, b) => a.number.compareTo(b.number));
+    int reachedIndex = 0;
+    for (int i = 0; i < levelChallenges.length; i++) {
+      if (levelChallenges[i].number == widget.challenge.number) {
+        reachedIndex = i + 1;
+        break;
+      }
+    }
+
+    final Map<int, int> progressMap =
+        Map<int, int>.from(_progressChild.subLevelProgressByLevel);
+    final int oldProgress = progressMap[widget.challenge.levelNumber] ?? 0;
+    final int maxProgress =
+        levelChallenges.isEmpty ? oldProgress + 1 : levelChallenges.length;
+    // Move progress forward one step on every successful sub-level run.
+    final int steppedProgress = (oldProgress + 1).clamp(0, maxProgress);
+    progressMap[widget.challenge.levelNumber] = math.max(
+      steppedProgress,
+      reachedIndex,
+    );
+
+    return _progressChild.copyWith(
+      completedChallengeIds: completedSet.toList()..sort(),
+      subLevelProgressByLevel: progressMap,
     );
   }
 
@@ -211,6 +248,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
       // Register streak completion
       final streakService = StreakService();
       await streakService.registerLevelCompletion();
+      _progressChild = _markChallengeCompleted();
       _showSuccessNotification();
     } else {
       _showFailNotification();
@@ -263,11 +301,12 @@ class _ChallengeScreenState extends State<ChallengeScreen>
               children: [
                 // ── Header ───────────────────────────────────
                 _HeaderBar(
-                  child: widget.child,
+                  child: _progressChild,
                   challenge: widget.challenge,
                   isExecuting: isExecuting,
                   connectionStatus: _connectionStatus,
                   onRobotActionPressed: _handleRobotAction,
+                  onBackPressed: () => Navigator.pop(context, _progressChild),
                 ),
 
                 Expanded(
@@ -350,7 +389,10 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                   child: SafeArea(
                     bottom: false,
                     child: _showSuccessToast
-                        ? _SuccessBanner(child: widget.child, challenge: widget.challenge)
+                        ? _SuccessBanner(
+                            child: _progressChild,
+                            challenge: widget.challenge,
+                          )
                         : const _FailBanner(),
                   ),
                 ),
@@ -372,6 +414,7 @@ class _HeaderBar extends StatelessWidget {
   final bool isExecuting;
   final RobotConnectionStatus connectionStatus;
   final VoidCallback onRobotActionPressed;
+  final VoidCallback onBackPressed;
 
   const _HeaderBar({
     required this.child,
@@ -379,6 +422,7 @@ class _HeaderBar extends StatelessWidget {
     required this.isExecuting,
     required this.connectionStatus,
     required this.onRobotActionPressed,
+    required this.onBackPressed,
   });
 
   @override
@@ -394,7 +438,7 @@ class _HeaderBar extends StatelessWidget {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: onBackPressed,
             child: Container(
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
@@ -1343,7 +1387,7 @@ class _SuccessBannerState extends State<_SuccessBanner>
             ),
             const SizedBox(width: 12),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 // Navigate to next challenge or back to adventure map
                 final challenges = Challenge.demoChallenge;
                 final nextChallenge = challenges.firstWhere(
@@ -1351,7 +1395,7 @@ class _SuccessBannerState extends State<_SuccessBanner>
                   orElse: () => challenges.last,
                 );
                 if (nextChallenge.number != widget.challenge.number) {
-                  Navigator.pushReplacement(
+                  final ChildModel? updatedChild = await Navigator.push<ChildModel>(
                     context,
                     MaterialPageRoute(
                       builder: (context) => ChallengeScreen(
@@ -1360,9 +1404,11 @@ class _SuccessBannerState extends State<_SuccessBanner>
                       ),
                     ),
                   );
+                  if (!context.mounted) return;
+                  Navigator.pop(context, updatedChild ?? widget.child);
                 } else {
                   // No more challenges, return to adventure map
-                  Navigator.pop(context);
+                  Navigator.pop(context, widget.child);
                 }
               },
               style: ElevatedButton.styleFrom(

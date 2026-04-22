@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
-import '../services/streak_service.dart';
 import 'challenge_screen.dart';
 import 'login_screen.dart';
 
@@ -61,30 +61,19 @@ class AdventureMapScreen extends StatelessWidget {
   }
 
   static const List<_LevelData> _levels = [
-    _LevelData(number: 1, title: 'Move Forward',  unlocked: true),
+    _LevelData(number: 1, title: 'Move Forward', unlocked: true),
     _LevelData(number: 2, title: 'Move Backward', unlocked: true),
-    _LevelData(number: 3, title: 'Move Right',    unlocked: true),
+    _LevelData(number: 3, title: 'Move Right', unlocked: true),
     _LevelData(number: 4, title: 'Move Right x3', unlocked: true),
-    _LevelData(number: 5, title: 'Move Left',     unlocked: true),
-    _LevelData(number: 6, title: 'Move Left x2',  unlocked: true),
+    _LevelData(number: 5, title: 'Move Left', unlocked: true),
+    _LevelData(number: 6, title: 'Move Left x2', unlocked: true),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(children: [
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFFB8F0E8), Color(0xFF90E0C4), Color(0xFFAEE8F8)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-        ),
-        const FloatingBubbles(),
-
-        SafeArea(
+      body: AppBackground(
+        child: SafeArea(
           child: Column(children: [
             // ── Top bar ───────────────────────────────────────────────────
             Padding(
@@ -165,17 +154,6 @@ class AdventureMapScreen extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            // ── Progress Segments ──────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _ProgressSegmentsBar(
-                completedChallengeIds: child.completedChallengeIds,
-                totalChallenges: Challenge.demoChallenge.length,
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
             // ── Level nodes ───────────────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
@@ -228,7 +206,7 @@ class AdventureMapScreen extends StatelessWidget {
             ),
           ]),
         ),
-      ]),
+      ),
     );
   }
 }
@@ -237,8 +215,12 @@ class _LevelData {
   final int number;
   final String title;
   final bool unlocked;
+  final int subLevelCount;
   const _LevelData(
-      {required this.number, required this.title, required this.unlocked});
+      {required this.number,
+      required this.title,
+      required this.unlocked,
+      this.subLevelCount = 6});
 }
 
 class _LevelNode extends StatelessWidget {
@@ -253,8 +235,35 @@ class _LevelNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color =
-    data.unlocked ? AppTheme.tealPrimary : Colors.grey.shade400;
+    final List<Challenge> levelChallenges = Challenge.demoChallenge
+        .where((challenge) => challenge.levelNumber == data.number)
+        .toList()
+      ..sort((a, b) => a.number.compareTo(b.number));
+    final int totalSubLevels =
+        levelChallenges.isEmpty ? data.subLevelCount : levelChallenges.length;
+
+    int inferredProgress = 0;
+    for (int i = 0; i < levelChallenges.length; i++) {
+      if (child.completedChallengeIds.contains(levelChallenges[i].number)) {
+        inferredProgress = math.max(inferredProgress, i + 1);
+      }
+    }
+
+    final int savedProgress = child.subLevelProgressByLevel[data.number] ?? 0;
+    final int completedSubLevels =
+        math.max(savedProgress, inferredProgress).clamp(0, totalSubLevels);
+    final bool isCompleted = completedSubLevels >= totalSubLevels;
+    const List<Color> levelColors = [
+      Color(0xFF4DD0C4),
+      Color(0xFF7E8DF1),
+      Color(0xFFF29E4C),
+      Color(0xFFE573B9),
+      Color(0xFF66BB6A),
+      Color(0xFF64B5F6),
+    ];
+    final Color nodeColor = levelColors[(data.number - 1) % levelColors.length];
+    const Color completedDashColor = Color(0xFF9A6B2F); // dark blonde
+    const Color pendingDashColor = Color(0xFFB0BEC5); // secondary
 
     return Padding(
       padding: EdgeInsets.only(
@@ -270,16 +279,30 @@ class _LevelNode extends StatelessWidget {
           child: GestureDetector(
             onTap: data.unlocked
                 ? () {
-                  if (data.number == 1) {
-                    Navigator.push(
+                  if (levelChallenges.isNotEmpty) {
+                    final int startIndex = completedSubLevels.clamp(
+                      0,
+                      levelChallenges.length - 1,
+                    );
+                    final Challenge selectedChallenge = levelChallenges[startIndex];
+                    Navigator.push<ChildModel>(
                       context,
                       MaterialPageRoute(
                         builder: (context) => ChallengeScreen(
                           child: child,
-                          challenge: Challenge.demoChallenge[0],
+                          challenge: selectedChallenge,
                         ),
                       ),
-                    );
+                    ).then((updatedChild) {
+                      if (updatedChild == null || !context.mounted) return;
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              AdventureMapScreen(child: updatedChild),
+                        ),
+                      );
+                    });
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text(
@@ -295,36 +318,64 @@ class _LevelNode extends StatelessWidget {
                 }
                 : null,
             child: Container(
-              width: 90, height: 90,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color,
-                boxShadow: [
-                  BoxShadow(
-                      color: color.withOpacity(0.5),
-                      blurRadius: 16, spreadRadius: 2)
-                ],
-                border: Border.all(color: Colors.white, width: 4),
-              ),
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                        data.unlocked
-                            ? Icons.star_rounded
-                            : Icons.lock_rounded,
-                        color: Colors.white, size: 22),
-                    Text('Level',
-                        style: GoogleFonts.nunito(
+              width: 98,
+              height: 98,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(
+                    size: const Size(98, 98),
+                    painter: _DashedCirclePainter(
+                      completedColor: completedDashColor,
+                      pendingColor: pendingDashColor,
+                      totalDashes: totalSubLevels,
+                      completedDashes: completedSubLevels,
+                    ),
+                  ),
+                  Container(
+                    width: 82,
+                    height: 82,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: nodeColor,
+                      boxShadow: [
+                        BoxShadow(
+                          color: nodeColor.withOpacity(0.45),
+                          blurRadius: 16,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                      border: Border.all(color: Colors.white, width: 3),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isCompleted ? Icons.check_rounded : Icons.star_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                        Text(
+                          'Level',
+                          style: GoogleFonts.nunito(
                             fontSize: 11,
                             color: Colors.white,
-                            fontWeight: FontWeight.w600)),
-                    Text('${data.number}',
-                        style: GoogleFonts.nunito(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          '${data.number}',
+                          style: GoogleFonts.nunito(
                             fontSize: 20,
                             color: Colors.white,
-                            fontWeight: FontWeight.w900)),
-                  ]),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -339,202 +390,52 @@ class _LevelNode extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────
-// Progress Segments Bar
-// ─────────────────────────────────────────────────────
-class _ProgressSegmentsBar extends StatelessWidget {
-  final List<int> completedChallengeIds;
-  final int totalChallenges;
-
-  const _ProgressSegmentsBar({
-    required this.completedChallengeIds,
-    required this.totalChallenges,
+class _DashedCirclePainter extends CustomPainter {
+  final Color completedColor;
+  final Color pendingColor;
+  final int totalDashes;
+  final int completedDashes;
+  const _DashedCirclePainter({
+    required this.completedColor,
+    required this.pendingColor,
+    required this.totalDashes,
+    required this.completedDashes,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.88),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.teal.withOpacity(0.12),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Progress',
-                style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.tealDark,
-                ),
-              ),
-              _StreakDisplay(),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: List.generate(
-              totalChallenges,
-              (index) => _ProgressSegment(
-                challengeNumber: index + 1,
-                isCompleted: completedChallengeIds.contains(index + 1),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
 
-class _ProgressSegment extends StatefulWidget {
-  final int challengeNumber;
-  final bool isCompleted;
+    final Offset center = size.center(Offset.zero);
+    final double radius = (size.width / 2) - 3;
+    final int dashCount = totalDashes.clamp(3, 40);
+    const double gapFactor = 0.45;
+    final double fullDashSweep = (2 * math.pi) / dashCount;
+    final double dashSweep = fullDashSweep * (1 - gapFactor);
+    final int doneCount = completedDashes.clamp(0, dashCount);
 
-  const _ProgressSegment({
-    required this.challengeNumber,
-    required this.isCompleted,
-  });
-
-  @override
-  State<_ProgressSegment> createState() => _ProgressSegmentState();
-}
-
-class _ProgressSegmentState extends State<_ProgressSegment>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-
-    if (widget.isCompleted) {
-      _controller.forward();
+    for (int i = 0; i < dashCount; i++) {
+      paint.color = i < doneCount ? completedColor : pendingColor;
+      final double start = i * fullDashSweep;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        start,
+        dashSweep,
+        false,
+        paint,
+      );
     }
   }
 
   @override
-  void didUpdateWidget(_ProgressSegment oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isCompleted && !oldWidget.isCompleted) {
-      _controller.forward();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-    );
-
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: widget.isCompleted
-              ? const Color(0xFF2A9D7D)
-              : Colors.grey.shade300,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: widget.isCompleted
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF2A9D7D).withOpacity(0.4),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : [],
-        ),
-        child: Center(
-          child: widget.isCompleted
-              ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
-              : Text(
-                  '${widget.challengeNumber}',
-                  style: GoogleFonts.nunito(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────
-// Streak Display for Adventure Map
-// ─────────────────────────────────────────────────────
-class _StreakDisplay extends StatefulWidget {
-  const _StreakDisplay();
-
-  @override
-  State<_StreakDisplay> createState() => _StreakDisplayState();
-}
-
-class _StreakDisplayState extends State<_StreakDisplay> {
-  late StreakService _streakService;
-  int _streak = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _streakService = StreakService();
-    _streak = _streakService.currentStreak;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_streak == 0) {
-      return const SizedBox.shrink();
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Text(
-          '🔥',
-          style: TextStyle(fontSize: 16),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          'Streak: $_streak',
-          style: GoogleFonts.nunito(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFFFF6B6B),
-          ),
-        ),
-      ],
-    );
+  bool shouldRepaint(covariant _DashedCirclePainter oldDelegate) {
+    return oldDelegate.completedColor != completedColor ||
+        oldDelegate.pendingColor != pendingColor ||
+        oldDelegate.totalDashes != totalDashes ||
+        oldDelegate.completedDashes != completedDashes;
   }
 }
 

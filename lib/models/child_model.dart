@@ -15,6 +15,7 @@ class ChildModel {
   final String joinDate;
   final List<SessionModel> recentSessions;
   final List<int> completedChallengeIds;  // List of completed challenge numbers
+  final Map<int, int> subLevelProgressByLevel; // levelNumber -> completed sub-levels
   final String? imageUrl;
 
   const ChildModel({
@@ -31,6 +32,7 @@ class ChildModel {
     required this.joinDate,
     required this.recentSessions,
     this.completedChallengeIds = const [],
+    this.subLevelProgressByLevel = const {},
     this.imageUrl,
   });
 
@@ -49,6 +51,7 @@ class ChildModel {
     String? joinDate,
     List<SessionModel>? recentSessions,
     List<int>? completedChallengeIds,
+    Map<int, int>? subLevelProgressByLevel,
     String? imageUrl,
   }) {
     return ChildModel(
@@ -65,6 +68,8 @@ class ChildModel {
       joinDate: joinDate ?? this.joinDate,
       recentSessions: recentSessions ?? this.recentSessions,
       completedChallengeIds: completedChallengeIds ?? this.completedChallengeIds,
+      subLevelProgressByLevel:
+          subLevelProgressByLevel ?? this.subLevelProgressByLevel,
       imageUrl: imageUrl ?? this.imageUrl,
     );
   }
@@ -84,6 +89,9 @@ class ChildModel {
       'gender': gender,
       'joinDate': joinDate,
       'completedChallengeIds': completedChallengeIds,
+      'subLevelProgressByLevel': subLevelProgressByLevel.map(
+        (key, value) => MapEntry(key.toString(), value),
+      ),
       'imageUrl': imageUrl,
     };
   }
@@ -105,6 +113,10 @@ class ChildModel {
       recentSessions: const [],
       completedChallengeIds:
           List<int>.from(json['completedChallengeIds'] ?? []),
+      subLevelProgressByLevel:
+          (json['subLevelProgressByLevel'] as Map<String, dynamic>? ?? {})
+              .map((k, v) => MapEntry(int.tryParse(k) ?? 0, (v as num).toInt()))
+            ..remove(0),
       imageUrl: json['imageUrl'],
     );
   }
@@ -138,6 +150,7 @@ class ChildModel {
         SessionModel(date: 'Apr 1', duration: '20 min', passed: true),
       ],
       completedChallengeIds: [1, 2, 3],
+      subLevelProgressByLevel: {1: 3},
       imageUrl: null,
     ),
     const ChildModel(
@@ -157,6 +170,7 @@ class ChildModel {
         SessionModel(date: 'Apr 1', duration: '10 min', passed: false),
       ],
       completedChallengeIds: [1, 2],
+      subLevelProgressByLevel: {1: 2},
       imageUrl: null,
     ),
     const ChildModel(
@@ -175,6 +189,7 @@ class ChildModel {
         SessionModel(date: 'Apr 2', duration: '9 min', passed: true),
       ],
       completedChallengeIds: [1],
+      subLevelProgressByLevel: {1: 1},
       imageUrl: null,
     ),
   ];
