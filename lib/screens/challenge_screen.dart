@@ -376,9 +376,9 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                           190.0,
                           250.0,
                         );
-                        final codeAreaHeight = (totalHeight * 0.48).clamp(
-                          280.0,
-                          380.0,
+                        final codeAreaHeight = (totalHeight * 0.62).clamp(
+                          360.0,
+                          560.0,
                         );
 
                         return SingleChildScrollView(
@@ -525,11 +525,11 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                     // Next button
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: (_challengeSuccessfullyCompleted || _progressChild.completedChallengeIds.contains(widget.challenge.number))
+                        onPressed: _challengeSuccessfullyCompleted
                             ? _goToNextChallenge
                             : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: (_challengeSuccessfullyCompleted || _progressChild.completedChallengeIds.contains(widget.challenge.number))
+                          backgroundColor: _challengeSuccessfullyCompleted
                               ? const Color(0xFF4CAF50)
                               : Colors.grey.shade300,
                           disabledBackgroundColor: Colors.grey.shade300,
@@ -547,7 +547,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                               style: GoogleFonts.nunito(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
-                                color: (_challengeSuccessfullyCompleted || _progressChild.completedChallengeIds.contains(widget.challenge.number))
+                                color: _challengeSuccessfullyCompleted
                                     ? Colors.white
                                     : Colors.grey.shade600,
                               ),
@@ -555,7 +555,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                             const SizedBox(width: 6),
                             Icon(
                               Icons.arrow_forward_rounded,
-                              color: (_challengeSuccessfullyCompleted || _progressChild.completedChallengeIds.contains(widget.challenge.number))
+                              color: _challengeSuccessfullyCompleted
                                   ? Colors.white
                                   : Colors.grey.shade600,
                               size: 18,
@@ -1124,7 +1124,7 @@ class _CodeBlocksArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.92),
         borderRadius: BorderRadius.circular(14),
@@ -1164,7 +1164,7 @@ class _CodeBlocksArea extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
 
           Expanded(
             child: Container(
@@ -1175,7 +1175,7 @@ class _CodeBlocksArea extends StatelessWidget {
               ),
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
                 child: Column(
                   children: List.generate(arrangedBlocks.length + 1, (index) {
                     if (index == arrangedBlocks.length) {
@@ -1247,7 +1247,7 @@ class _CodeBlocksArea extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 4),
+          const SizedBox(height: 14),
 
           Text(
             'Tap or drag blocks to build your solution:',
@@ -1257,7 +1257,7 @@ class _CodeBlocksArea extends StatelessWidget {
               color: Colors.grey.shade600,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
 
           Wrap(
             spacing: 8,
@@ -1702,7 +1702,7 @@ class _StreakBadgeState extends State<_StreakBadge> {
           const Text('🔥', style: TextStyle(fontSize: 14)),
           const SizedBox(width: 4),
           Text(
-            '$_streak',
+            'Streak: $_streak',
             style: GoogleFonts.nunito(
               fontSize: 12,
               fontWeight: FontWeight.w800,
