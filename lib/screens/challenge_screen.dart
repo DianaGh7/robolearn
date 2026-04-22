@@ -7,12 +7,7 @@ import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../services/streak_service.dart';
 
-enum RobotConnectionStatus {
-  disconnected,
-  connecting,
-  connected,
-  executing,
-}
+enum RobotConnectionStatus { disconnected, connecting, connected, executing }
 
 class ChallengeScreen extends StatefulWidget {
   final ChildModel child;
@@ -36,6 +31,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
   bool isExecuting = false;
   bool _showSuccessToast = false;
   bool _showFailToast = false;
+  bool _challengeSuccessfullyCompleted = false;
   int? _activeBlockIndex;
   RobotConnectionStatus _connectionStatus = RobotConnectionStatus.disconnected;
 
@@ -62,10 +58,14 @@ class _ChallengeScreenState extends State<ChallengeScreen>
     final Set<int> completedSet = {..._progressChild.completedChallengeIds};
     completedSet.add(widget.challenge.number);
 
-    final List<Challenge> levelChallenges = Challenge.demoChallenge
-        .where((challenge) => challenge.levelNumber == widget.challenge.levelNumber)
-        .toList()
-      ..sort((a, b) => a.number.compareTo(b.number));
+    final List<Challenge> levelChallenges =
+        Challenge.demoChallenge
+            .where(
+              (challenge) =>
+                  challenge.levelNumber == widget.challenge.levelNumber,
+            )
+            .toList()
+          ..sort((a, b) => a.number.compareTo(b.number));
     int reachedIndex = 0;
     for (int i = 0; i < levelChallenges.length; i++) {
       if (levelChallenges[i].number == widget.challenge.number) {
@@ -74,11 +74,13 @@ class _ChallengeScreenState extends State<ChallengeScreen>
       }
     }
 
-    final Map<int, int> progressMap =
-        Map<int, int>.from(_progressChild.subLevelProgressByLevel);
+    final Map<int, int> progressMap = Map<int, int>.from(
+      _progressChild.subLevelProgressByLevel,
+    );
     final int oldProgress = progressMap[widget.challenge.levelNumber] ?? 0;
-    final int maxProgress =
-        levelChallenges.isEmpty ? oldProgress + 1 : levelChallenges.length;
+    final int maxProgress = levelChallenges.isEmpty
+        ? oldProgress + 1
+        : levelChallenges.length;
     // Move progress forward one step on every successful sub-level run.
     final int steppedProgress = (oldProgress + 1).clamp(0, maxProgress);
     progressMap[widget.challenge.levelNumber] = math.max(
@@ -199,7 +201,8 @@ class _ChallengeScreenState extends State<ChallengeScreen>
 
     for (int i = 0; i < arrangedBlocks.length; i++) {
       final block = arrangedBlocks[i];
-      if (block.type == CodeBlockType.start || block.type == CodeBlockType.end) {
+      if (block.type == CodeBlockType.start ||
+          block.type == CodeBlockType.end) {
         continue;
       }
       setState(() => _activeBlockIndex = i);
@@ -235,7 +238,8 @@ class _ChallengeScreenState extends State<ChallengeScreen>
     if (!mounted) return;
     setState(() => _activeBlockIndex = null);
 
-    final reachedTarget = currentRobotState.x == targetRobotState.x &&
+    final reachedTarget =
+        currentRobotState.x == targetRobotState.x &&
         currentRobotState.y == targetRobotState.y &&
         currentRobotState.direction == targetRobotState.direction;
     final success = reachedTarget && _hasValidStartEndOrder;
@@ -249,9 +253,53 @@ class _ChallengeScreenState extends State<ChallengeScreen>
       final streakService = StreakService();
       await streakService.registerLevelCompletion();
       _progressChild = _markChallengeCompleted();
+      setState(() => _challengeSuccessfullyCompleted = true);
       _showSuccessNotification();
     } else {
       _showFailNotification();
+    }
+  }
+
+  Future<void> _goToPreviousChallenge() async {
+    final challenges = Challenge.demoChallenge;
+    final previousChallenge = challenges.firstWhere(
+      (c) => c.number == widget.challenge.number - 1,
+      orElse: () => challenges.first,
+    );
+    if (previousChallenge.number != widget.challenge.number) {
+      final ChildModel? updatedChild = await Navigator.push<ChildModel>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChallengeScreen(
+            child: _progressChild,
+            challenge: previousChallenge,
+          ),
+        ),
+      );
+      if (!context.mounted) return;
+      Navigator.pop(context, updatedChild ?? _progressChild);
+    }
+  }
+
+  Future<void> _goToNextChallenge() async {
+    final challenges = Challenge.demoChallenge;
+    final nextChallenge = challenges.firstWhere(
+      (c) => c.number == widget.challenge.number + 1,
+      orElse: () => challenges.last,
+    );
+    if (nextChallenge.number != widget.challenge.number) {
+      final ChildModel? updatedChild = await Navigator.push<ChildModel>(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              ChallengeScreen(child: _progressChild, challenge: nextChallenge),
+        ),
+      );
+      if (!context.mounted) return;
+      Navigator.pop(context, updatedChild ?? _progressChild);
+    } else {
+      // No more challenges, return to adventure map
+      Navigator.pop(context, _progressChild);
     }
   }
 
@@ -269,7 +317,9 @@ class _ChallengeScreenState extends State<ChallengeScreen>
           ),
           backgroundColor: AppTheme.tealDark,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
@@ -289,7 +339,11 @@ class _ChallengeScreenState extends State<ChallengeScreen>
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFFD4F5EE), Color(0xFFB0ECD9), Color(0xFFCAF0FC)],
+                colors: [
+                  Color(0xFFD4F5EE),
+                  Color(0xFFB0ECD9),
+                  Color(0xFFCAF0FC),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -311,14 +365,21 @@ class _ChallengeScreenState extends State<ChallengeScreen>
 
                 Expanded(
                   child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final totalHeight = constraints.maxHeight;
-                        final gridSize = (totalHeight * 0.30).clamp(190.0, 250.0);
-                        final codeAreaHeight =
-                            (totalHeight * 0.62).clamp(360.0, 560.0);
+                        final gridSize = (totalHeight * 0.30).clamp(
+                          190.0,
+                          250.0,
+                        );
+                        final codeAreaHeight = (totalHeight * 0.48).clamp(
+                          280.0,
+                          380.0,
+                        );
 
                         return SingleChildScrollView(
                           child: ConstrainedBox(
@@ -327,7 +388,8 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _InstructionCard(
-                                    instruction: widget.challenge.instruction),
+                                  instruction: widget.challenge.instruction,
+                                ),
                                 const SizedBox(height: 6),
                                 SizedBox(
                                   height: gridSize,
@@ -399,6 +461,114 @@ class _ChallengeScreenState extends State<ChallengeScreen>
               ),
             ),
           ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.95),
+                border: Border(
+                  top: BorderSide(color: Colors.grey.shade200, width: 1),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Row(
+                  children: [
+                    // Previous button
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: widget.challenge.number > 1
+                            ? _goToPreviousChallenge
+                            : null,
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: widget.challenge.number > 1
+                                ? const Color(0xFF9E9E9E)
+                                : Colors.grey.shade300,
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.arrow_back_rounded,
+                              color: widget.challenge.number > 1
+                                  ? const Color(0xFF616161)
+                                  : Colors.grey.shade400,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Previous',
+                              style: GoogleFonts.nunito(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: widget.challenge.number > 1
+                                    ? const Color(0xFF616161)
+                                    : Colors.grey.shade400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Next button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: (_challengeSuccessfullyCompleted || _progressChild.completedChallengeIds.contains(widget.challenge.number))
+                            ? _goToNextChallenge
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: (_challengeSuccessfullyCompleted || _progressChild.completedChallengeIds.contains(widget.challenge.number))
+                              ? const Color(0xFF4CAF50)
+                              : Colors.grey.shade300,
+                          disabledBackgroundColor: Colors.grey.shade300,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Next',
+                              style: GoogleFonts.nunito(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: (_challengeSuccessfullyCompleted || _progressChild.completedChallengeIds.contains(widget.challenge.number))
+                                    ? Colors.white
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              color: (_challengeSuccessfullyCompleted || _progressChild.completedChallengeIds.contains(widget.challenge.number))
+                                  ? Colors.white
+                                  : Colors.grey.shade600,
+                              size: 18,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -445,8 +615,11 @@ class _HeaderBar extends StatelessWidget {
                 color: AppTheme.tealPrimary.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: AppTheme.tealDark, size: 16),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: AppTheme.tealDark,
+                size: 16,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -515,9 +688,7 @@ class _HeaderBar extends StatelessWidget {
               ],
             ),
             padding: const EdgeInsets.all(2.5),
-            child: ClipOval(
-              child: AvatarFace(seed: child.avatarSeed),
-            ),
+            child: ClipOval(child: AvatarFace(seed: child.avatarSeed)),
           ),
         ],
       ),
@@ -529,26 +700,24 @@ class _RobotActionMiniButton extends StatelessWidget {
   final RobotConnectionStatus status;
   final VoidCallback onPressed;
 
-  const _RobotActionMiniButton({
-    required this.status,
-    required this.onPressed,
-  });
+  const _RobotActionMiniButton({required this.status, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
-    final busy = status == RobotConnectionStatus.connecting ||
+    final busy =
+        status == RobotConnectionStatus.connecting ||
         status == RobotConnectionStatus.executing;
     final isDisconnected = status == RobotConnectionStatus.disconnected;
     final icon = isDisconnected
         ? Icons.bluetooth_searching_rounded
         : busy
-            ? Icons.hourglass_top_rounded
-            : Icons.play_arrow_rounded;
+        ? Icons.hourglass_top_rounded
+        : Icons.play_arrow_rounded;
     final label = isDisconnected
         ? 'Connect'
         : busy
-            ? 'Running'
-            : 'Run';
+        ? 'Running'
+        : 'Run';
 
     return GestureDetector(
       onTap: busy ? null : onPressed,
@@ -559,18 +728,14 @@ class _RobotActionMiniButton extends StatelessWidget {
           color: busy
               ? const Color(0xFF9CCFC5)
               : isDisconnected
-                  ? const Color(0xFF5EA1D8)
-                  : AppTheme.tealPrimary,
+              ? const Color(0xFF5EA1D8)
+              : AppTheme.tealPrimary,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 13,
-            ),
+            Icon(icon, color: Colors.white, size: 13),
             const SizedBox(width: 4),
             Text(
               label,
@@ -623,11 +788,23 @@ class _RobotStatusBadge extends StatelessWidget {
   (Color, IconData, String) _statusData(RobotConnectionStatus status) {
     switch (status) {
       case RobotConnectionStatus.disconnected:
-        return (const Color(0xFFD84343), Icons.bluetooth_disabled_rounded, 'Offline');
+        return (
+          const Color(0xFFD84343),
+          Icons.bluetooth_disabled_rounded,
+          'Offline',
+        );
       case RobotConnectionStatus.connecting:
-        return (const Color(0xFFE7A63D), Icons.bluetooth_searching_rounded, 'Connecting');
+        return (
+          const Color(0xFFE7A63D),
+          Icons.bluetooth_searching_rounded,
+          'Connecting',
+        );
       case RobotConnectionStatus.connected:
-        return (const Color(0xFF2A9D7D), Icons.bluetooth_connected_rounded, 'Connected');
+        return (
+          const Color(0xFF2A9D7D),
+          Icons.bluetooth_connected_rounded,
+          'Connected',
+        );
       case RobotConnectionStatus.executing:
         return (const Color(0xFF4D8ED8), Icons.smart_toy_rounded, 'Executing');
     }
@@ -721,8 +898,11 @@ class _RobotGridWidget extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.grid_view_rounded,
-                  size: 16, color: AppTheme.tealPrimary),
+              const Icon(
+                Icons.grid_view_rounded,
+                size: 16,
+                color: AppTheme.tealPrimary,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Grid',
@@ -749,7 +929,8 @@ class _RobotGridWidget extends StatelessWidget {
                 final cellWidth =
                     (availableWidth - ((gridWidth - 1) * spacing)) / gridWidth;
                 final cellHeight =
-                    (availableHeight - ((gridHeight - 1) * spacing)) / gridHeight;
+                    (availableHeight - ((gridHeight - 1) * spacing)) /
+                    gridHeight;
                 final childAspectRatio = cellWidth / cellHeight;
 
                 return GridView.builder(
@@ -767,7 +948,8 @@ class _RobotGridWidget extends StatelessWidget {
                     final y = index ~/ gridWidth;
                     final isRobot =
                         currentRobotState.x == x && currentRobotState.y == y;
-                    final isTarget = targetRobotState.x == x &&
+                    final isTarget =
+                        targetRobotState.x == x &&
                         targetRobotState.y == y &&
                         !isRobot;
 
@@ -779,8 +961,9 @@ class _RobotGridWidget extends StatelessWidget {
                           child: _GridCell(
                             isRobot: isRobot,
                             isTarget: isTarget,
-                            robotDirection:
-                                isRobot ? currentRobotState.direction : null,
+                            robotDirection: isRobot
+                                ? currentRobotState.direction
+                                : null,
                           ),
                         ),
                       );
@@ -788,7 +971,9 @@ class _RobotGridWidget extends StatelessWidget {
                     return _GridCell(
                       isRobot: isRobot,
                       isTarget: isTarget,
-                      robotDirection: isRobot ? currentRobotState.direction : null,
+                      robotDirection: isRobot
+                          ? currentRobotState.direction
+                          : null,
                     );
                   },
                 );
@@ -870,15 +1055,15 @@ class _GridCell extends StatelessWidget {
         border: isTarget
             ? Border.all(color: Colors.amber.shade700, width: 2)
             : isRobot
-                ? Border.all(
-                    color: AppTheme.tealDark.withOpacity(0.4), width: 1.5)
-                : null,
+            ? Border.all(color: AppTheme.tealDark.withOpacity(0.4), width: 1.5)
+            : null,
         boxShadow: isRobot
             ? [
                 BoxShadow(
-                    color: AppTheme.tealPrimary.withOpacity(0.35),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2))
+                  color: AppTheme.tealPrimary.withOpacity(0.35),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
               ]
             : null,
       ),
@@ -891,16 +1076,23 @@ class _GridCell extends StatelessWidget {
                     Opacity(opacity: v, child: child),
                 child: Transform.rotate(
                   angle: _rotationAngle,
-                  child: const Icon(Icons.android_rounded,
-                      color: Colors.white, size: 20),
+                  child: const Icon(
+                    Icons.android_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
               ),
             )
           : isTarget
-              ? const Center(
-                  child: Icon(Icons.flag_rounded,
-                      color: Color(0xFF7B5800), size: 16))
-              : null,
+          ? const Center(
+              child: Icon(
+                Icons.flag_rounded,
+                color: Color(0xFF7B5800),
+                size: 16,
+              ),
+            )
+          : null,
     );
   }
 }
@@ -932,7 +1124,7 @@ class _CodeBlocksArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.92),
         borderRadius: BorderRadius.circular(14),
@@ -947,8 +1139,11 @@ class _CodeBlocksArea extends StatelessWidget {
           // Header
           Row(
             children: [
-              const Icon(Icons.code_rounded,
-                  size: 14, color: AppTheme.tealPrimary),
+              const Icon(
+                Icons.code_rounded,
+                size: 14,
+                color: AppTheme.tealPrimary,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Your Code',
@@ -969,7 +1164,7 @@ class _CodeBlocksArea extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
 
           Expanded(
             child: Container(
@@ -980,7 +1175,7 @@ class _CodeBlocksArea extends StatelessWidget {
               ),
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
                 child: Column(
                   children: List.generate(arrangedBlocks.length + 1, (index) {
                     if (index == arrangedBlocks.length) {
@@ -1028,15 +1223,18 @@ class _CodeBlocksArea extends StatelessWidget {
                             opacity: 0.25,
                             child: _CodeBlockWidget(
                               block: block,
-                              onRemove:
-                                  isExecuting ? null : () => onRemoveBlock(index),
+                              onRemove: isExecuting
+                                  ? null
+                                  : () => onRemoveBlock(index),
                               isExecuting: isExecuting,
                               isHighlighted: isActive,
                             ),
                           ),
                           child: _CodeBlockWidget(
                             block: block,
-                            onRemove: isExecuting ? null : () => onRemoveBlock(index),
+                            onRemove: isExecuting
+                                ? null
+                                : () => onRemoveBlock(index),
                             isExecuting: isExecuting,
                             isHighlighted: isActive,
                           ),
@@ -1049,7 +1247,7 @@ class _CodeBlocksArea extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 4),
 
           Text(
             'Tap or drag blocks to build your solution:',
@@ -1059,7 +1257,7 @@ class _CodeBlocksArea extends StatelessWidget {
               color: Colors.grey.shade600,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
           Wrap(
             spacing: 8,
@@ -1073,7 +1271,10 @@ class _CodeBlocksArea extends StatelessWidget {
                 feedback: Material(
                   color: Colors.transparent,
                   child: _PaletteChip(
-                      blockType: blockType, color: color, elevated: true),
+                    blockType: blockType,
+                    color: color,
+                    elevated: true,
+                  ),
                 ),
                 childWhenDragging: Opacity(opacity: 0.3, child: chip),
                 child: GestureDetector(
@@ -1114,13 +1315,15 @@ class _CodeBlockWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: block.color,
         borderRadius: BorderRadius.circular(10),
-        border: isHighlighted ? Border.all(color: Colors.white, width: 2.4) : null,
+        border: isHighlighted
+            ? Border.all(color: Colors.white, width: 2.4)
+            : null,
         boxShadow: [
           BoxShadow(
             color: block.color.withOpacity(0.3),
             blurRadius: isHighlighted ? 10 : 6,
             offset: const Offset(0, 2),
-          )
+          ),
         ],
       ),
       child: Row(
@@ -1151,8 +1354,11 @@ class _CodeBlockWidget extends StatelessWidget {
                   color: Colors.white.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(5),
                 ),
-                child:
-                    const Icon(Icons.close_rounded, color: Colors.white, size: 14),
+                child: const Icon(
+                  Icons.close_rounded,
+                  color: Colors.white,
+                  size: 14,
+                ),
               ),
             ),
         ],
@@ -1190,8 +1396,8 @@ class _DropSlotState extends State<_DropSlot> {
       builder: (context, candidateData, rejectedData) {
         return AnimatedContainer(
           duration: const Duration(milliseconds: 120),
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          height: _isHovering ? 20 : 10,
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+          height: _isHovering ? 20 : 6,
           decoration: BoxDecoration(
             color: _isHovering
                 ? AppTheme.tealPrimary.withOpacity(0.18)
@@ -1315,7 +1521,7 @@ class _SuccessBannerState extends State<_SuccessBanner>
       CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
     );
     _scaleController.forward();
-    
+
     // Get updated streak
     final streakService = StreakService();
     _currentStreak = streakService.currentStreak;
@@ -1359,8 +1565,11 @@ class _SuccessBannerState extends State<_SuccessBanner>
                 color: Color(0xFF4CAF50),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_rounded,
-                  color: Colors.white, size: 22),
+              child: const Icon(
+                Icons.check_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1383,48 +1592,6 @@ class _SuccessBannerState extends State<_SuccessBanner>
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            ElevatedButton(
-              onPressed: () async {
-                // Navigate to next challenge or back to adventure map
-                final challenges = Challenge.demoChallenge;
-                final nextChallenge = challenges.firstWhere(
-                  (c) => c.number == widget.challenge.number + 1,
-                  orElse: () => challenges.last,
-                );
-                if (nextChallenge.number != widget.challenge.number) {
-                  final ChildModel? updatedChild = await Navigator.push<ChildModel>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChallengeScreen(
-                        child: widget.child,
-                        challenge: nextChallenge,
-                      ),
-                    ),
-                  );
-                  if (!context.mounted) return;
-                  Navigator.pop(context, updatedChild ?? widget.child);
-                } else {
-                  // No more challenges, return to adventure map
-                  Navigator.pop(context, widget.child);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4CAF50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              ),
-              child: Text(
-                'Next',
-                style: GoogleFonts.nunito(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
               ),
             ),
           ],
@@ -1456,7 +1623,11 @@ class _FailBanner extends StatelessWidget {
               color: Color(0xFFE53935),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
+            child: const Icon(
+              Icons.close_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1514,7 +1685,7 @@ class _StreakBadgeState extends State<_StreakBadge> {
     if (_streak == 0) {
       return const SizedBox.shrink(); // Don't show if no streak
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -1528,13 +1699,10 @@ class _StreakBadgeState extends State<_StreakBadge> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            '🔥',
-            style: TextStyle(fontSize: 14),
-          ),
+          const Text('🔥', style: TextStyle(fontSize: 14)),
           const SizedBox(width: 4),
           Text(
-            'Streak: $_streak',
+            '$_streak',
             style: GoogleFonts.nunito(
               fontSize: 12,
               fontWeight: FontWeight.w800,

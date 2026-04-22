@@ -83,7 +83,7 @@ class AdventureMapScreen extends StatelessWidget {
                 MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
-                    onTap: () => Navigator.pop(context),
+                    onTap: () => Navigator.pop(context, child),
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(

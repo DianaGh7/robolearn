@@ -18,6 +18,7 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     with SingleTickerProviderStateMixin {
   int? _selectedIndex;
   late final AnimationController _ctrl;
+  late List<ChildModel> _children;
 
   @override
   void initState() {
@@ -25,6 +26,7 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     _ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
     _ctrl.forward();
+    _children = List.from(ChildModel.demoChildren);
   }
 
   @override
@@ -51,11 +53,17 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     }
     Navigator.of(context).push(PageRouteBuilder(
       pageBuilder: (_, _, _) => AdventureMapScreen(
-          child: ChildModel.demoChildren[_selectedIndex!]),
+          child: _children[_selectedIndex!]),
       transitionsBuilder: (_, anim, _, child) =>
           FadeTransition(opacity: anim, child: child),
       transitionDuration: const Duration(milliseconds: 500),
-    ));
+    )).then((updatedChild) {
+      if (updatedChild != null && updatedChild is ChildModel) {
+        setState(() {
+          _children[_selectedIndex!] = updatedChild;
+        });
+      }
+    });
   }
 
   Future<void> _showSettingsMenu() async {
@@ -175,9 +183,9 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
-                  ChildModel.demoChildren.length,
+                  _children.length,
                       (i) => _ChildCard(
-                    data: ChildModel.demoChildren[i],
+                    data: _children[i],
                     isSelected: _selectedIndex == i,
                     onTap: () => _onChildTap(i),
                   ),
