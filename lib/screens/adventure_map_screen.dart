@@ -4,6 +4,7 @@ import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import '../services/streak_service.dart';
 import 'challenge_screen.dart';
 import 'login_screen.dart';
 
@@ -61,10 +62,11 @@ class AdventureMapScreen extends StatelessWidget {
 
   static const List<_LevelData> _levels = [
     _LevelData(number: 1, title: 'Move Forward',  unlocked: true),
-    _LevelData(number: 2, title: 'Turn Right',     unlocked: true),
-    _LevelData(number: 3, title: 'Turn Left',      unlocked: true),
-    _LevelData(number: 4, title: 'Loops',          unlocked: false),
-    _LevelData(number: 5, title: 'If Conditions',  unlocked: false),
+    _LevelData(number: 2, title: 'Move Backward', unlocked: true),
+    _LevelData(number: 3, title: 'Move Right',    unlocked: true),
+    _LevelData(number: 4, title: 'Move Right x3', unlocked: true),
+    _LevelData(number: 5, title: 'Move Left',     unlocked: true),
+    _LevelData(number: 6, title: 'Move Left x2',  unlocked: true),
   ];
 
   @override
@@ -160,6 +162,17 @@ class AdventureMapScreen extends StatelessWidget {
                     fontSize: 13,
                     color: AppTheme.tealMid,
                     fontWeight: FontWeight.w600)),
+
+            const SizedBox(height: 12),
+
+            // ── Progress Segments ──────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _ProgressSegmentsBar(
+                completedChallengeIds: child.completedChallengeIds,
+                totalChallenges: Challenge.demoChallenge.length,
+              ),
+            ),
 
             const SizedBox(height: 10),
 
@@ -322,6 +335,205 @@ class _LevelNode extends StatelessWidget {
                 color: AppTheme.tealDark,
                 fontWeight: FontWeight.w700)),
       ]),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// Progress Segments Bar
+// ─────────────────────────────────────────────────────
+class _ProgressSegmentsBar extends StatelessWidget {
+  final List<int> completedChallengeIds;
+  final int totalChallenges;
+
+  const _ProgressSegmentsBar({
+    required this.completedChallengeIds,
+    required this.totalChallenges,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.88),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.teal.withOpacity(0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Progress',
+                style: GoogleFonts.nunito(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.tealDark,
+                ),
+              ),
+              _StreakDisplay(),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: List.generate(
+              totalChallenges,
+              (index) => _ProgressSegment(
+                challengeNumber: index + 1,
+                isCompleted: completedChallengeIds.contains(index + 1),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProgressSegment extends StatefulWidget {
+  final int challengeNumber;
+  final bool isCompleted;
+
+  const _ProgressSegment({
+    required this.challengeNumber,
+    required this.isCompleted,
+  });
+
+  @override
+  State<_ProgressSegment> createState() => _ProgressSegmentState();
+}
+
+class _ProgressSegmentState extends State<_ProgressSegment>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    if (widget.isCompleted) {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(_ProgressSegment oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isCompleted && !oldWidget.isCompleted) {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    );
+
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: widget.isCompleted
+              ? const Color(0xFF2A9D7D)
+              : Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: widget.isCompleted
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF2A9D7D).withOpacity(0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
+        ),
+        child: Center(
+          child: widget.isCompleted
+              ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+              : Text(
+                  '${widget.challengeNumber}',
+                  style: GoogleFonts.nunito(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// Streak Display for Adventure Map
+// ─────────────────────────────────────────────────────
+class _StreakDisplay extends StatefulWidget {
+  const _StreakDisplay();
+
+  @override
+  State<_StreakDisplay> createState() => _StreakDisplayState();
+}
+
+class _StreakDisplayState extends State<_StreakDisplay> {
+  late StreakService _streakService;
+  int _streak = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _streakService = StreakService();
+    _streak = _streakService.currentStreak;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_streak == 0) {
+      return const SizedBox.shrink();
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text(
+          '🔥',
+          style: TextStyle(fontSize: 16),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          'Streak: $_streak',
+          style: GoogleFonts.nunito(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFFFF6B6B),
+          ),
+        ),
+      ],
     );
   }
 }
