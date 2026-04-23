@@ -643,25 +643,26 @@ class _HeaderBar extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    '#${challenge.number}',
+                    '${challenge.number}. ',
                     style: GoogleFonts.nunito(
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: FontWeight.w900,
                       color: AppTheme.tealMid,
                     ),
                   ),
+                  Expanded(
+                    child: Text(
+                      challenge.title,
+                      style: GoogleFonts.nunito(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.tealDark,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
-              ),
-              const SizedBox(height: 1),
-              Text(
-                challenge.title,
-                style: GoogleFonts.nunito(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.tealDark,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

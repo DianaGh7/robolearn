@@ -1,8 +1,7 @@
-# Challenge Header UI Updates
+1. Challenge Header UI Updates
+Status: [ ] In Progress
 
-## Status: [ ] In Progress
-
-### Steps:
+Steps:
 - [ ] Step 1: Edit lib/screens/challenge_screen.dart per plan
   - Change 'Challenge ${challenge.number}' → '#${challenge.number}'
   - Move _StreakBadge after Spacer(), before _RobotStatusBadge  
