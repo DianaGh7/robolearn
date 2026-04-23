@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ChildModel {
+  /// Firestore document id under `parents/{uid}/children/{childId}`.
+  final String? childId;
   final String name;
   final int level;
   final int avatarSeed;
@@ -17,8 +20,10 @@ class ChildModel {
   final List<int> completedChallengeIds;  // List of completed challenge numbers
   final Map<int, int> subLevelProgressByLevel; // levelNumber -> completed sub-levels
   final String? imageUrl;
+  final String? streakLastPlayedDateIso; // yyyy-mm-ddT00:00:00.000
 
   const ChildModel({
+    this.childId,
     required this.name,
     required this.level,
     required this.avatarSeed,
@@ -34,10 +39,28 @@ class ChildModel {
     this.completedChallengeIds = const [],
     this.subLevelProgressByLevel = const {},
     this.imageUrl,
+    this.streakLastPlayedDateIso,
   });
+
+  Map<String, dynamic> toFirestore({bool includeTimestamps = true}) {
+    final data = toJson();
+    if (includeTimestamps) {
+      data['updatedAt'] = FieldValue.serverTimestamp();
+      data['createdAt'] = FieldValue.serverTimestamp();
+    }
+    return data;
+  }
+
+  factory ChildModel.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final model = ChildModel.fromJson(doc.data() ?? const <String, dynamic>{});
+    return model.copyWith(childId: doc.id);
+  }
 
   /// Create a copy with updated fields
   ChildModel copyWith({
+    String? childId,
     String? name,
     int? level,
     int? avatarSeed,
@@ -53,8 +76,10 @@ class ChildModel {
     List<int>? completedChallengeIds,
     Map<int, int>? subLevelProgressByLevel,
     String? imageUrl,
+    String? streakLastPlayedDateIso,
   }) {
     return ChildModel(
+      childId: childId ?? this.childId,
       name: name ?? this.name,
       level: level ?? this.level,
       avatarSeed: avatarSeed ?? this.avatarSeed,
@@ -71,6 +96,8 @@ class ChildModel {
       subLevelProgressByLevel:
           subLevelProgressByLevel ?? this.subLevelProgressByLevel,
       imageUrl: imageUrl ?? this.imageUrl,
+      streakLastPlayedDateIso:
+          streakLastPlayedDateIso ?? this.streakLastPlayedDateIso,
     );
   }
 
@@ -84,6 +111,7 @@ class ChildModel {
       'totalLevels': totalLevels,
       'attempts': attempts,
       'streak': streak,
+      'streakLastPlayedDate': streakLastPlayedDateIso,
       'progress': progress,
       'age': age,
       'gender': gender,
@@ -106,6 +134,7 @@ class ChildModel {
       totalLevels: json['totalLevels'] ?? 5,
       attempts: json['attempts'] ?? 0,
       streak: json['streak'] ?? 0,
+      streakLastPlayedDateIso: json['streakLastPlayedDate'],
       progress: (json['progress'] ?? 0.0).toDouble(),
       age: json['age'] ?? 0,
       gender: json['gender'] ?? 'unknown',
@@ -214,8 +243,7 @@ class ChildModel {
     
     // Simple parsing (in production, use jsonDecode)
     try {
-      final completedStr =
-          prefs.getStringList('completed_challenges') ?? [];
+      prefs.getStringList('completed_challenges') ?? [];
       
       // For now, return a reconstructed model
       // In production, you'd parse the JSON properly

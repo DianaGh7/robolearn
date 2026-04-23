@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'choose_child_screen.dart';
+import '../services/parent_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -154,6 +155,15 @@ class _SignUpScreenState extends State<SignUpScreen>
       await credential.user?.updateDisplayName(
         '${_firstNameCtrl.text.trim()} ${_lastNameCtrl.text.trim()}',
       );
+
+      final user = credential.user;
+      if (user != null) {
+        await ParentService().upsertParentProfile(
+          uid: user.uid,
+          email: user.email ?? _emailCtrl.text.trim().toLowerCase(),
+          displayName: user.displayName,
+        );
+      }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(PageRouteBuilder(
         pageBuilder: (_, _, _) => const ChooseChildScreen(),

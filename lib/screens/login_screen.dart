@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'signup_screen.dart';
 import 'choose_child_screen.dart';
+import '../services/parent_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -86,10 +87,19 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _isLoading = true);
     try {
       final email = _emailCtrl.text.trim().toLowerCase();
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: _passwordCtrl.text,
       );
+
+      final user = credential.user;
+      if (user != null) {
+        await ParentService().upsertParentProfile(
+          uid: user.uid,
+          email: user.email ?? email,
+          displayName: user.displayName,
+        );
+      }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(PageRouteBuilder(
         pageBuilder: (_, _, _) => const ChooseChildScreen(),

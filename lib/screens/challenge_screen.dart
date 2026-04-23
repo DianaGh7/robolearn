@@ -5,7 +5,7 @@ import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
-import '../services/streak_service.dart';
+import '../services/child_progress_service.dart';
 
 enum RobotConnectionStatus { disconnected, connecting, connected, executing }
 
@@ -37,6 +37,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
+  final ChildProgressService _progressService = ChildProgressService();
 
   @override
   void initState() {
@@ -249,10 +250,22 @@ class _ChallengeScreenState extends State<ChallengeScreen>
       _connectionStatus = RobotConnectionStatus.connected;
     });
     if (success) {
-      // Register streak completion
-      final streakService = StreakService();
-      await streakService.registerLevelCompletion();
-      _progressChild = _markChallengeCompleted();
+      // Persist progress + streak (per child) to Firestore when possible.
+      final childId = _progressChild.childId;
+      if (childId != null) {
+        try {
+          _progressChild = await _progressService.registerChallengeSuccess(
+            childId: childId,
+            child: _progressChild,
+            challenge: widget.challenge,
+          );
+        } catch (_) {
+          // If Firestore fails, still advance locally.
+          _progressChild = _markChallengeCompleted();
+        }
+      } else {
+        _progressChild = _markChallengeCompleted();
+      }
       setState(() => _challengeSuccessfullyCompleted = true);
       _showSuccessNotification();
     } else {
@@ -623,7 +636,7 @@ class _HeaderBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          _StreakBadge(),
+          _StreakBadge(streak: child.streak),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1522,9 +1535,7 @@ class _SuccessBannerState extends State<_SuccessBanner>
     );
     _scaleController.forward();
 
-    // Get updated streak
-    final streakService = StreakService();
-    _currentStreak = streakService.currentStreak;
+    _currentStreak = widget.child.streak;
   }
 
   @override
@@ -1663,26 +1674,17 @@ class _FailBanner extends StatelessWidget {
 // Streak Badge
 // ─────────────────────────────────────────────────────
 class _StreakBadge extends StatefulWidget {
-  const _StreakBadge();
+  final int streak;
+  const _StreakBadge({required this.streak});
 
   @override
   State<_StreakBadge> createState() => _StreakBadgeState();
 }
 
 class _StreakBadgeState extends State<_StreakBadge> {
-  late StreakService _streakService;
-  int _streak = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _streakService = StreakService();
-    _streak = _streakService.currentStreak;
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_streak == 0) {
+    if (widget.streak == 0) {
       return const SizedBox.shrink(); // Don't show if no streak
     }
 
@@ -1702,7 +1704,7 @@ class _StreakBadgeState extends State<_StreakBadge> {
           const Text('🔥', style: TextStyle(fontSize: 14)),
           const SizedBox(width: 4),
           Text(
-            'Streak: $_streak',
+            'Streak: ${widget.streak}',
             style: GoogleFonts.nunito(
               fontSize: 12,
               fontWeight: FontWeight.w800,

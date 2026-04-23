@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/child_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'adventure_map_screen.dart';
 import 'parent_dashboard_screen.dart';
 import 'login_screen.dart';
+import '../services/child_firestore_service.dart';
 
 class ChooseChildScreen extends StatefulWidget {
   const ChooseChildScreen({super.key});
@@ -18,6 +20,9 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     with SingleTickerProviderStateMixin {
   int? _selectedIndex;
   late final AnimationController _ctrl;
+  final ChildFirestoreService _childService = ChildFirestoreService();
+  List<ChildModel> _children = [];
+  bool _loadingChildren = true;
 
   @override
   void initState() {
@@ -25,6 +30,43 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     _ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
     _ctrl.forward();
+    _loadChildren();
+  }
+
+  Future<void> _loadChildren() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        setState(() {
+          _children = [];
+          _loadingChildren = false;
+        });
+        return;
+      }
+
+      final kids = await _childService.listChildren(uid: uid);
+      setState(() {
+        _children = kids;
+        _loadingChildren = false;
+      });
+    } catch (e) {
+      setState(() {
+        _children = [];
+        _loadingChildren = false;
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not load children: $e',
+            style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
   }
 
   @override
@@ -51,7 +93,7 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     }
     Navigator.of(context).push(PageRouteBuilder(
       pageBuilder: (_, _, _) => AdventureMapScreen(
-          child: ChildModel.demoChildren[_selectedIndex!]),
+          child: _children[_selectedIndex!]),
       transitionsBuilder: (_, anim, _, child) =>
           FadeTransition(opacity: anim, child: child),
       transitionDuration: const Duration(milliseconds: 500),
@@ -172,17 +214,72 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
               const SizedBox(height: 32),
 
               // ── Child cards row ───────────────────────────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  ChildModel.demoChildren.length,
-                      (i) => _ChildCard(
-                    data: ChildModel.demoChildren[i],
-                    isSelected: _selectedIndex == i,
-                    onTap: () => _onChildTap(i),
+              if (_loadingChildren)
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: CircularProgressIndicator(),
+                )
+              else if (_children.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.78),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.06),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              'No child profiles yet',
+                              style: GoogleFonts.nunito(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.tealDark,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Open Parents Area to add a child profile.\nThen come back here to start playing.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.nunito(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.tealMid,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    _children.length,
+                    (i) => _ChildCard(
+                      data: _children[i],
+                      isSelected: _selectedIndex == i,
+                      onTap: () => _onChildTap(i),
+                    ),
                   ),
                 ),
-              ),
 
               const SizedBox(height: 40),
 
@@ -205,16 +302,20 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: GestureDetector(
-                      onTap: () => Navigator.of(context).push(
-                        PageRouteBuilder(
-                          pageBuilder: (_, _, _) =>
-                          const ParentDashboardScreen(),
-                          transitionsBuilder: (_, anim, _, child) =>
-                              FadeTransition(opacity: anim, child: child),
-                          transitionDuration:
-                          const Duration(milliseconds: 500),
-                        ),
-                      ),
+                      onTap: () async {
+                        await Navigator.of(context).push(
+                          PageRouteBuilder(
+                            pageBuilder: (_, _, _) =>
+                                const ParentDashboardScreen(),
+                            transitionsBuilder: (_, anim, _, child) =>
+                                FadeTransition(opacity: anim, child: child),
+                            transitionDuration:
+                                const Duration(milliseconds: 500),
+                          ),
+                        );
+                        if (!mounted) return;
+                        await _loadChildren();
+                      },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 8),
