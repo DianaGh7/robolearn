@@ -1,23 +1,22 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
+import '../widgets/shared_widgets.dart';
+import '../services/child_progress_service.dart';
+
+enum RobotConnectionStatus { disconnected, connecting, connected, executing }
 
 class ChallengeScreen extends StatefulWidget {
   final ChildModel child;
   final Challenge challenge;
-  final int streakCount;
-  final int successCount;
-  final int failCount;
 
   const ChallengeScreen({
     super.key,
     required this.child,
     required this.challenge,
-    this.streakCount = 0,
-    this.successCount = 0,
-    this.failCount = 0,
   });
 
   @override
@@ -26,43 +25,26 @@ class ChallengeScreen extends StatefulWidget {
 
 class _ChallengeScreenState extends State<ChallengeScreen>
     with TickerProviderStateMixin {
-  late List<CodeBlock> arrangedBlocks = [];
+  List<CodeBlock> arrangedBlocks = [];
+  late ChildModel _progressChild;
   late RobotState currentRobotState;
   bool isExecuting = false;
-  bool isCompleted = false;
-  List<RobotState> executionSteps = [];
-  int currentStep = 0;
+  bool _showSuccessToast = false;
+  bool _showFailToast = false;
+  bool _challengeSuccessfullyCompleted = false;
+  int? _activeBlockIndex;
+  RobotConnectionStatus _connectionStatus = RobotConnectionStatus.disconnected;
 
-  late int _streak;
-  late int _successCount;
-  late int _failCount;
-
-  late AnimationController _successController;
   late AnimationController _pulseController;
-  late Animation<double> _successScale;
   late Animation<double> _pulseAnim;
+  final ChildProgressService _progressService = ChildProgressService();
 
   @override
   void initState() {
     super.initState();
-    _streak = widget.streakCount;
-    _successCount = widget.successCount;
-    _failCount = widget.failCount;
-
+    _progressChild = widget.child;
     currentRobotState = widget.challenge.initialRobotState;
-    arrangedBlocks = [
-      CodeBlock.fromType(CodeBlockType.start),
-      CodeBlock.fromType(CodeBlockType.end),
-    ];
-
-    _successController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-    _successScale = CurvedAnimation(
-      parent: _successController,
-      curve: Curves.elasticOut,
-    );
+    arrangedBlocks = [];
 
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
@@ -73,59 +55,173 @@ class _ChallengeScreenState extends State<ChallengeScreen>
     );
   }
 
+  ChildModel _markChallengeCompleted() {
+    final Set<int> completedSet = {..._progressChild.completedChallengeIds};
+    completedSet.add(widget.challenge.number);
+
+    final List<Challenge> levelChallenges =
+        Challenge.demoChallenge
+            .where(
+              (challenge) =>
+                  challenge.levelNumber == widget.challenge.levelNumber,
+            )
+            .toList()
+          ..sort((a, b) => a.number.compareTo(b.number));
+    int reachedIndex = 0;
+    for (int i = 0; i < levelChallenges.length; i++) {
+      if (levelChallenges[i].number == widget.challenge.number) {
+        reachedIndex = i + 1;
+        break;
+      }
+    }
+
+    final Map<int, int> progressMap = Map<int, int>.from(
+      _progressChild.subLevelProgressByLevel,
+    );
+    final int oldProgress = progressMap[widget.challenge.levelNumber] ?? 0;
+    final int maxProgress = levelChallenges.isEmpty
+        ? oldProgress + 1
+        : levelChallenges.length;
+    // Move progress forward one step on every successful sub-level run.
+    final int steppedProgress = (oldProgress + 1).clamp(0, maxProgress);
+    progressMap[widget.challenge.levelNumber] = math.max(
+      steppedProgress,
+      reachedIndex,
+    );
+
+    return _progressChild.copyWith(
+      completedChallengeIds: completedSet.toList()..sort(),
+      subLevelProgressByLevel: progressMap,
+    );
+  }
+
   @override
   void dispose() {
-    _successController.dispose();
     _pulseController.dispose();
     super.dispose();
   }
 
   void _addBlock(CodeBlockType type) {
+    if (isExecuting) return;
     setState(() {
-      arrangedBlocks.insert(
-          arrangedBlocks.length - 1, CodeBlock.fromType(type));
+      arrangedBlocks.add(CodeBlock.fromType(type));
     });
   }
 
   void _removeBlock(int index) {
+    if (isExecuting || index < 0 || index >= arrangedBlocks.length) return;
     setState(() {
-      if (arrangedBlocks[index].type != CodeBlockType.start &&
-          arrangedBlocks[index].type != CodeBlockType.end) {
-        arrangedBlocks.removeAt(index);
-      }
+      arrangedBlocks.removeAt(index);
     });
   }
 
-  void _moveBlock(int oldIndex, int newIndex) {
+  void _insertBlockAt(CodeBlockType type, int index) {
+    if (isExecuting) return;
     setState(() {
-      if (oldIndex != newIndex) {
-        if (arrangedBlocks[oldIndex].type == CodeBlockType.start ||
-            arrangedBlocks[oldIndex].type == CodeBlockType.end) {
-          return;
-        }
-        if (newIndex == 0 || newIndex >= arrangedBlocks.length) return;
-        final block = arrangedBlocks.removeAt(oldIndex);
-        arrangedBlocks.insert(newIndex, block);
-      }
+      final targetIndex = index.clamp(0, arrangedBlocks.length);
+      arrangedBlocks.insert(targetIndex, CodeBlock.fromType(type));
     });
+  }
+
+  void _moveBlock(int fromIndex, int toIndex) {
+    if (isExecuting ||
+        fromIndex == toIndex ||
+        fromIndex < 0 ||
+        fromIndex >= arrangedBlocks.length ||
+        toIndex < 0 ||
+        toIndex > arrangedBlocks.length) {
+      return;
+    }
+
+    setState(() {
+      final block = arrangedBlocks.removeAt(fromIndex);
+      final adjustedTarget = fromIndex < toIndex ? toIndex - 1 : toIndex;
+      arrangedBlocks.insert(adjustedTarget, block);
+    });
+  }
+
+  List<CodeBlockType> get _availableBlocks {
+    final blocks = <CodeBlockType>[
+      ...widget.challenge.availableBlocks,
+      CodeBlockType.start,
+      CodeBlockType.end,
+    ];
+    return blocks.toSet().toList();
+  }
+
+  void _showSuccessNotification() {
+    if (!mounted) return;
+    setState(() {
+      _showFailToast = false;
+      _showSuccessToast = true;
+    });
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      setState(() => _showSuccessToast = false);
+    });
+  }
+
+  void _showFailNotification() {
+    if (!mounted) return;
+    setState(() {
+      _showSuccessToast = false;
+      _showFailToast = true;
+    });
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      setState(() => _showFailToast = false);
+    });
+  }
+
+  bool get _hasValidStartEndOrder {
+    if (arrangedBlocks.length < 2) return false;
+    return arrangedBlocks.first.type == CodeBlockType.start &&
+        arrangedBlocks.last.type == CodeBlockType.end;
   }
 
   Future<void> _executeCode() async {
+    if (isExecuting) return;
+    if (_connectionStatus != RobotConnectionStatus.connected) {
+      _showFailNotification();
+      return;
+    }
+    if (!_hasValidStartEndOrder) {
+      _showFailNotification();
+      return;
+    }
+
+    final initialRobotState = widget.challenge.initialRobotState;
+    final targetRobotState = widget.challenge.targetRobotState;
+
     setState(() {
       isExecuting = true;
-      isCompleted = false;
-      currentRobotState = widget.challenge.initialRobotState;
-      executionSteps = [currentRobotState];
-      currentStep = 0;
+      _connectionStatus = RobotConnectionStatus.executing;
+      currentRobotState = initialRobotState;
+      _activeBlockIndex = null;
     });
 
-    for (int i = 1; i < arrangedBlocks.length - 1; i++) {
+    for (int i = 0; i < arrangedBlocks.length; i++) {
       final block = arrangedBlocks[i];
+      if (block.type == CodeBlockType.start ||
+          block.type == CodeBlockType.end) {
+        continue;
+      }
+      setState(() => _activeBlockIndex = i);
       await Future.delayed(const Duration(milliseconds: 800));
+      if (!mounted) return;
       setState(() {
         switch (block.type) {
           case CodeBlockType.moveForward:
             currentRobotState = currentRobotState.moveForward();
+            break;
+          case CodeBlockType.moveBackward:
+            currentRobotState = currentRobotState.moveBackward();
+            break;
+          case CodeBlockType.moveLeft:
+            currentRobotState = currentRobotState.moveLeft();
+            break;
+          case CodeBlockType.moveRight:
+            currentRobotState = currentRobotState.moveRight();
             break;
           case CodeBlockType.turnLeft:
             currentRobotState = currentRobotState.turnLeft();
@@ -136,31 +232,115 @@ class _ChallengeScreenState extends State<ChallengeScreen>
           default:
             break;
         }
-        executionSteps.add(currentRobotState);
-        currentStep++;
       });
     }
 
     await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+    setState(() => _activeBlockIndex = null);
 
-    final success =
-        currentRobotState.x == widget.challenge.targetRobotState.x &&
-            currentRobotState.y == widget.challenge.targetRobotState.y &&
-            currentRobotState.direction ==
-                widget.challenge.targetRobotState.direction;
+    final reachedTarget =
+        currentRobotState.x == targetRobotState.x &&
+        currentRobotState.y == targetRobotState.y &&
+        currentRobotState.direction == targetRobotState.direction;
+    final success = reachedTarget && _hasValidStartEndOrder;
 
     setState(() {
       isExecuting = false;
-      if (success) {
-        isCompleted = true;
-        _streak++;
-        _successCount++;
-        _successController.forward(from: 0);
-      } else {
-        _streak = 0;
-        _failCount++;
-      }
+      _connectionStatus = RobotConnectionStatus.connected;
     });
+    if (success) {
+      // Persist progress + streak (per child) to Firestore when possible.
+      final childId = _progressChild.childId;
+      if (childId != null) {
+        try {
+          _progressChild = await _progressService.registerChallengeSuccess(
+            childId: childId,
+            child: _progressChild,
+            challenge: widget.challenge,
+          );
+        } catch (_) {
+          // If Firestore fails, still advance locally.
+          _progressChild = _markChallengeCompleted();
+        }
+      } else {
+        _progressChild = _markChallengeCompleted();
+      }
+      setState(() => _challengeSuccessfullyCompleted = true);
+      _showSuccessNotification();
+    } else {
+      _showFailNotification();
+    }
+  }
+
+  Future<void> _goToPreviousChallenge() async {
+    final challenges = Challenge.demoChallenge;
+    final previousChallenge = challenges.firstWhere(
+      (c) => c.number == widget.challenge.number - 1,
+      orElse: () => challenges.first,
+    );
+    if (previousChallenge.number != widget.challenge.number) {
+      final ChildModel? updatedChild = await Navigator.push<ChildModel>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChallengeScreen(
+            child: _progressChild,
+            challenge: previousChallenge,
+          ),
+        ),
+      );
+      if (!context.mounted) return;
+      Navigator.pop(context, updatedChild ?? _progressChild);
+    }
+  }
+
+  Future<void> _goToNextChallenge() async {
+    final challenges = Challenge.demoChallenge;
+    final nextChallenge = challenges.firstWhere(
+      (c) => c.number == widget.challenge.number + 1,
+      orElse: () => challenges.last,
+    );
+    if (nextChallenge.number != widget.challenge.number) {
+      final ChildModel? updatedChild = await Navigator.push<ChildModel>(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              ChallengeScreen(child: _progressChild, challenge: nextChallenge),
+        ),
+      );
+      if (!context.mounted) return;
+      Navigator.pop(context, updatedChild ?? _progressChild);
+    } else {
+      // No more challenges, return to adventure map
+      Navigator.pop(context, _progressChild);
+    }
+  }
+
+  Future<void> _handleRobotAction() async {
+    if (_connectionStatus == RobotConnectionStatus.disconnected) {
+      setState(() => _connectionStatus = RobotConnectionStatus.connecting);
+      await Future.delayed(const Duration(milliseconds: 900));
+      if (!mounted) return;
+      setState(() => _connectionStatus = RobotConnectionStatus.connected);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Robot connected successfully.',
+            style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: AppTheme.tealDark,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (_connectionStatus == RobotConnectionStatus.connected) {
+      await _executeCode();
+    }
   }
 
   @override
@@ -172,7 +352,11 @@ class _ChallengeScreenState extends State<ChallengeScreen>
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFFD4F5EE), Color(0xFFB0ECD9), Color(0xFFCAF0FC)],
+                colors: [
+                  Color(0xFFD4F5EE),
+                  Color(0xFFB0ECD9),
+                  Color(0xFFCAF0FC),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -184,70 +368,218 @@ class _ChallengeScreenState extends State<ChallengeScreen>
               children: [
                 // ── Header ───────────────────────────────────
                 _HeaderBar(
-                  child: widget.child,
+                  child: _progressChild,
                   challenge: widget.challenge,
-                  streak: _streak,
-                  successCount: _successCount,
-                  failCount: _failCount,
+                  isExecuting: isExecuting,
+                  connectionStatus: _connectionStatus,
+                  onRobotActionPressed: _handleRobotAction,
+                  onBackPressed: () => Navigator.pop(context, _progressChild),
                 ),
 
-                // ── Scrollable content ────────────────────────
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // ── Instruction card ────────────────
-                        _InstructionCard(instruction: widget.challenge.instruction),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final totalHeight = constraints.maxHeight;
+                        final gridSize = (totalHeight * 0.30).clamp(
+                          190.0,
+                          250.0,
+                        );
+                        final codeAreaHeight = (totalHeight * 0.62).clamp(
+                          360.0,
+                          560.0,
+                        );
 
-                        const SizedBox(height: 14),
-
-                        // ── Grid ────────────────────────────
-                        _RobotGridWidget(
-                          gridWidth: widget.challenge.gridWidth,
-                          gridHeight: widget.challenge.gridHeight,
-                          currentRobotState: currentRobotState,
-                          targetRobotState: widget.challenge.targetRobotState,
-                          pulseAnim: _pulseAnim,
-                        ),
-
-                        const SizedBox(height: 14),
-
-                        // ── Code area ────────────────────────
-                        _CodeBlocksArea(
-                          arrangedBlocks: arrangedBlocks,
-                          onRemoveBlock: _removeBlock,
-                          onMoveBlock: _moveBlock,
-                          availableBlocks: widget.challenge.availableBlocks,
-                          onAddBlock: _addBlock,
-                          isExecuting: isExecuting,
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // ── Run button ────────────────────────
-                        _RunButton(
-                          isExecuting: isExecuting,
-                          onPressed: _executeCode,
-                        ),
-
-                        // ── Success banner ───────────────────
-                        if (isCompleted) ...[
-                          const SizedBox(height: 14),
-                          ScaleTransition(
-                            scale: _successScale,
-                            child: const _SuccessBanner(),
+                        return SingleChildScrollView(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minHeight: totalHeight),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _InstructionCard(
+                                  instruction: widget.challenge.instruction,
+                                ),
+                                const SizedBox(height: 6),
+                                SizedBox(
+                                  height: gridSize,
+                                  child: Center(
+                                    child: FractionallySizedBox(
+                                      widthFactor: 0.74,
+                                      child: _RobotGridWidget(
+                                        gridWidth: widget.challenge.gridWidth,
+                                        gridHeight: widget.challenge.gridHeight,
+                                        currentRobotState: currentRobotState,
+                                        targetRobotState:
+                                            widget.challenge.targetRobotState,
+                                        pulseAnim: _pulseAnim,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                SizedBox(
+                                  height: codeAreaHeight,
+                                  child: _CodeBlocksArea(
+                                    arrangedBlocks: arrangedBlocks,
+                                    onRemoveBlock: _removeBlock,
+                                    onMoveBlock: _moveBlock,
+                                    onInsertBlockAt: _insertBlockAt,
+                                    availableBlocks: _availableBlocks,
+                                    onAddBlock: _addBlock,
+                                    isExecuting: isExecuting,
+                                    activeBlockIndex: _activeBlockIndex,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                              ],
+                            ),
                           ),
-                        ],
-
-                        const SizedBox(height: 24),
-                      ],
+                        );
+                      },
                     ),
                   ),
                 ),
               ],
+            ),
+          ),
+          Positioned(
+            top: 16,
+            left: 16,
+            right: 16,
+            child: IgnorePointer(
+              ignoring: !_showSuccessToast && !_showFailToast,
+              child: AnimatedSlide(
+                offset: (_showSuccessToast || _showFailToast)
+                    ? Offset.zero
+                    : const Offset(0, -1),
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOut,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  opacity: (_showSuccessToast || _showFailToast) ? 1 : 0,
+                  child: SafeArea(
+                    bottom: false,
+                    child: _showSuccessToast
+                        ? _SuccessBanner(
+                            child: _progressChild,
+                            challenge: widget.challenge,
+                          )
+                        : const _FailBanner(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.95),
+                border: Border(
+                  top: BorderSide(color: Colors.grey.shade200, width: 1),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Row(
+                  children: [
+                    // Previous button
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: widget.challenge.number > 1
+                            ? _goToPreviousChallenge
+                            : null,
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: widget.challenge.number > 1
+                                ? const Color(0xFF9E9E9E)
+                                : Colors.grey.shade300,
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.arrow_back_rounded,
+                              color: widget.challenge.number > 1
+                                  ? const Color(0xFF616161)
+                                  : Colors.grey.shade400,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Previous',
+                              style: GoogleFonts.nunito(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: widget.challenge.number > 1
+                                    ? const Color(0xFF616161)
+                                    : Colors.grey.shade400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Next button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _challengeSuccessfullyCompleted
+                            ? _goToNextChallenge
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _challengeSuccessfullyCompleted
+                              ? const Color(0xFF4CAF50)
+                              : Colors.grey.shade300,
+                          disabledBackgroundColor: Colors.grey.shade300,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Next',
+                              style: GoogleFonts.nunito(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: _challengeSuccessfullyCompleted
+                                    ? Colors.white
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              color: _challengeSuccessfullyCompleted
+                                  ? Colors.white
+                                  : Colors.grey.shade600,
+                              size: 18,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -262,135 +594,114 @@ class _ChallengeScreenState extends State<ChallengeScreen>
 class _HeaderBar extends StatelessWidget {
   final ChildModel child;
   final Challenge challenge;
-  final int streak;
-  final int successCount;
-  final int failCount;
+  final bool isExecuting;
+  final RobotConnectionStatus connectionStatus;
+  final VoidCallback onRobotActionPressed;
+  final VoidCallback onBackPressed;
 
   const _HeaderBar({
     required this.child,
     required this.challenge,
-    required this.streak,
-    required this.successCount,
-    required this.failCount,
+    required this.isExecuting,
+    required this.connectionStatus,
+    required this.onRobotActionPressed,
+    required this.onBackPressed,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.75),
+        color: Colors.white.withOpacity(0.85),
         border: Border(
           bottom: BorderSide(color: Colors.teal.withOpacity(0.12), width: 1),
         ),
       ),
-      child: Column(
+      child: Row(
         children: [
-          // ── Row 1: back + challenge title + child avatar ──
-          Row(
-            children: [
-              // Back button
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.tealPrimary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.arrow_back_ios_new_rounded,
-                      color: AppTheme.tealDark, size: 18),
-                ),
+          GestureDetector(
+            onTap: onBackPressed,
+            child: Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: AppTheme.tealPrimary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              const SizedBox(width: 10),
-
-              // Challenge info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Challenge ${challenge.number} · ${challenge.title}',
-                      style: GoogleFonts.nunito(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.tealDark,
-                      ),
-                    ),
-                  ],
-                ),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: AppTheme.tealDark,
+                size: 16,
               ),
-
-              // Child avatar + name
-              Row(
-                children: [
-                  Text(
-                    child.name,
-                    style: GoogleFonts.nunito(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.tealMid,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: AppTheme.tealPrimary.withOpacity(0.15),
-                    child: Text(
-                      child.name.isNotEmpty
-                          ? child.name[0].toUpperCase()
-                          : '?',
-                      style: GoogleFonts.nunito(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.tealDark,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
-
-          const SizedBox(height: 10),
-
-          // ── Row 2: stats chips ────────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _StatChip(
-                icon: Icons.local_fire_department_rounded,
-                label: 'Streak',
-                value: '$streak',
-                iconColor: streak > 0
-                    ? const Color(0xFFFF7043)
-                    : Colors.grey.shade400,
-                valueColor: streak > 0
-                    ? const Color(0xFFFF7043)
-                    : Colors.grey.shade500,
+          const SizedBox(width: 8),
+          _StreakBadge(streak: child.streak),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Challenge ${challenge.number}',
+                  style: GoogleFonts.nunito(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.tealMid,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  challenge.title,
+                  style: GoogleFonts.nunito(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.tealDark,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          _RobotStatusBadge(status: connectionStatus),
+          const SizedBox(width: 6),
+          _RobotActionMiniButton(
+            status: connectionStatus,
+            onPressed: onRobotActionPressed,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            child.name,
+            style: GoogleFonts.nunito(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.tealMid,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFFFFF), Color(0xFFF2FFFB)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              _StatChip(
-                icon: Icons.check_circle_rounded,
-                label: 'Correct',
-                value: '$successCount',
-                iconColor: const Color(0xFF4CAF50),
-                valueColor: const Color(0xFF388E3C),
-              ),
-              _StatChip(
-                icon: Icons.cancel_rounded,
-                label: 'Wrong',
-                value: '$failCount',
-                iconColor: const Color(0xFFEF5350),
-                valueColor: const Color(0xFFC62828),
-              ),
-              _StatChip(
-                icon: Icons.bar_chart_rounded,
-                label: 'Total',
-                value: '${successCount + failCount}',
-                iconColor: AppTheme.tealPrimary,
-                valueColor: AppTheme.tealDark,
-              ),
-            ],
+              border: Border.all(color: Colors.white, width: 1.8),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.tealPrimary.withOpacity(0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(2.5),
+            child: ClipOval(child: AvatarFace(seed: child.avatarSeed)),
           ),
         ],
       ),
@@ -398,59 +709,118 @@ class _HeaderBar extends StatelessWidget {
   }
 }
 
-class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color iconColor;
-  final Color valueColor;
+class _RobotActionMiniButton extends StatelessWidget {
+  final RobotConnectionStatus status;
+  final VoidCallback onPressed;
 
-  const _StatChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.iconColor,
-    required this.valueColor,
-  });
+  const _RobotActionMiniButton({required this.status, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    final busy =
+        status == RobotConnectionStatus.connecting ||
+        status == RobotConnectionStatus.executing;
+    final isDisconnected = status == RobotConnectionStatus.disconnected;
+    final icon = isDisconnected
+        ? Icons.bluetooth_searching_rounded
+        : busy
+        ? Icons.hourglass_top_rounded
+        : Icons.play_arrow_rounded;
+    final label = isDisconnected
+        ? 'Connect'
+        : busy
+        ? 'Running'
+        : 'Run';
+
+    return GestureDetector(
+      onTap: busy ? null : onPressed,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: busy
+              ? const Color(0xFF9CCFC5)
+              : isDisconnected
+              ? const Color(0xFF5EA1D8)
+              : AppTheme.tealPrimary,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 13),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: GoogleFonts.nunito(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RobotStatusBadge extends StatelessWidget {
+  final RobotConnectionStatus status;
+  const _RobotStatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final data = _statusData(status);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: iconColor.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: iconColor.withOpacity(0.2), width: 1),
+        color: data.$1.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: data.$1.withOpacity(0.34)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: iconColor, size: 15),
-          const SizedBox(width: 4),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.nunito(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade500,
-                ),
-              ),
-              Text(
-                value,
-                style: GoogleFonts.nunito(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: valueColor,
-                ),
-              ),
-            ],
+          Icon(data.$2, size: 13, color: data.$1),
+          const SizedBox(width: 5),
+          Text(
+            data.$3,
+            style: GoogleFonts.nunito(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: data.$1,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  (Color, IconData, String) _statusData(RobotConnectionStatus status) {
+    switch (status) {
+      case RobotConnectionStatus.disconnected:
+        return (
+          const Color(0xFFD84343),
+          Icons.bluetooth_disabled_rounded,
+          'Offline',
+        );
+      case RobotConnectionStatus.connecting:
+        return (
+          const Color(0xFFE7A63D),
+          Icons.bluetooth_searching_rounded,
+          'Connecting',
+        );
+      case RobotConnectionStatus.connected:
+        return (
+          const Color(0xFF2A9D7D),
+          Icons.bluetooth_connected_rounded,
+          'Connected',
+        );
+      case RobotConnectionStatus.executing:
+        return (const Color(0xFF4D8ED8), Icons.smart_toy_rounded, 'Executing');
+    }
   }
 }
 
@@ -464,7 +834,7 @@ class _InstructionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.92),
         borderRadius: BorderRadius.circular(14),
@@ -490,28 +860,14 @@ class _InstructionCard extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Your Task',
-                  style: GoogleFonts.nunito(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.tealPrimary,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  instruction,
-                  style: GoogleFonts.nunito(
-                    fontSize: 14,
-                    color: Colors.black87,
-                    height: 1.45,
-                  ),
-                ),
-              ],
+            child: Text(
+              instruction,
+              style: GoogleFonts.nunito(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+                height: 1.45,
+              ),
             ),
           ),
         ],
@@ -555,14 +911,17 @@ class _RobotGridWidget extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.grid_view_rounded,
-                  size: 14, color: AppTheme.tealPrimary),
+              const Icon(
+                Icons.grid_view_rounded,
+                size: 16,
+                color: AppTheme.tealPrimary,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Grid',
                 style: GoogleFonts.nunito(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark,
                 ),
               ),
@@ -573,45 +932,66 @@ class _RobotGridWidget extends StatelessWidget {
               _LegendDot(color: Colors.amber.shade400, label: 'Target'),
             ],
           ),
-          const SizedBox(height: 10),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: gridWidth,
-              mainAxisSpacing: 5,
-              crossAxisSpacing: 5,
-            ),
-            itemCount: gridWidth * gridHeight,
-            itemBuilder: (context, index) {
-              final x = index % gridWidth;
-              final y = index ~/ gridWidth;
-              final isRobot =
-                  currentRobotState.x == x && currentRobotState.y == y;
-              final isTarget = targetRobotState.x == x &&
-                  targetRobotState.y == y &&
-                  !isRobot;
+          const SizedBox(height: 8),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final availableWidth = constraints.maxWidth;
+                final availableHeight = constraints.maxHeight;
+                const spacing = 6.0;
+                final cellWidth =
+                    (availableWidth - ((gridWidth - 1) * spacing)) / gridWidth;
+                final cellHeight =
+                    (availableHeight - ((gridHeight - 1) * spacing)) /
+                    gridHeight;
+                final childAspectRatio = cellWidth / cellHeight;
 
-              if (isTarget) {
-                return AnimatedBuilder(
-                  animation: pulseAnim,
-                  builder: (context, child) => Transform.scale(
-                    scale: pulseAnim.value,
-                    child: _GridCell(
+                return GridView.builder(
+                  padding: EdgeInsets.zero,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: gridWidth,
+                    mainAxisSpacing: spacing,
+                    crossAxisSpacing: spacing,
+                    childAspectRatio: childAspectRatio,
+                  ),
+                  itemCount: gridWidth * gridHeight,
+                  itemBuilder: (context, index) {
+                    final x = index % gridWidth;
+                    final y = index ~/ gridWidth;
+                    final isRobot =
+                        currentRobotState.x == x && currentRobotState.y == y;
+                    final isTarget =
+                        targetRobotState.x == x &&
+                        targetRobotState.y == y &&
+                        !isRobot;
+
+                    if (isTarget) {
+                      return AnimatedBuilder(
+                        animation: pulseAnim,
+                        builder: (context, child) => Transform.scale(
+                          scale: pulseAnim.value,
+                          child: _GridCell(
+                            isRobot: isRobot,
+                            isTarget: isTarget,
+                            robotDirection: isRobot
+                                ? currentRobotState.direction
+                                : null,
+                          ),
+                        ),
+                      );
+                    }
+                    return _GridCell(
                       isRobot: isRobot,
                       isTarget: isTarget,
-                      robotDirection:
-                          isRobot ? currentRobotState.direction : null,
-                    ),
-                  ),
+                      robotDirection: isRobot
+                          ? currentRobotState.direction
+                          : null,
+                    );
+                  },
                 );
-              }
-              return _GridCell(
-                isRobot: isRobot,
-                isTarget: isTarget,
-                robotDirection: isRobot ? currentRobotState.direction : null,
-              );
-            },
+              },
+            ),
           ),
         ],
       ),
@@ -637,7 +1017,8 @@ class _LegendDot extends StatelessWidget {
         Text(
           label,
           style: GoogleFonts.nunito(
-            fontSize: 10,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
             color: Colors.grey.shade600,
           ),
         ),
@@ -657,6 +1038,21 @@ class _GridCell extends StatelessWidget {
     this.robotDirection,
   });
 
+  double get _rotationAngle {
+    switch (robotDirection) {
+      case Direction.up:
+        return 0;
+      case Direction.right:
+        return 3.14159 / 2;
+      case Direction.down:
+        return 3.14159;
+      case Direction.left:
+        return 3 * 3.14159 / 2;
+      default:
+        return 0;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     Color bg = const Color(0xFFF0F4F3);
@@ -672,15 +1068,15 @@ class _GridCell extends StatelessWidget {
         border: isTarget
             ? Border.all(color: Colors.amber.shade700, width: 2)
             : isRobot
-                ? Border.all(
-                    color: AppTheme.tealDark.withOpacity(0.4), width: 1.5)
-                : null,
+            ? Border.all(color: AppTheme.tealDark.withOpacity(0.4), width: 1.5)
+            : null,
         boxShadow: isRobot
             ? [
                 BoxShadow(
-                    color: AppTheme.tealPrimary.withOpacity(0.35),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2))
+                  color: AppTheme.tealPrimary.withOpacity(0.35),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
               ]
             : null,
       ),
@@ -692,23 +1088,24 @@ class _GridCell extends StatelessWidget {
                 builder: (context, v, child) =>
                     Opacity(opacity: v, child: child),
                 child: Transform.rotate(
-                  angle: robotDirection == Direction.up
-                      ? 0
-                      : robotDirection == Direction.right
-                          ? 3.14159 / 2
-                          : robotDirection == Direction.down
-                              ? 3.14159
-                              : 3 * 3.14159 / 2,
-                  child: const Icon(Icons.navigation_rounded,
-                      color: Colors.white, size: 20),
+                  angle: _rotationAngle,
+                  child: const Icon(
+                    Icons.android_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
               ),
             )
           : isTarget
-              ? const Center(
-                  child: Icon(Icons.flag_rounded,
-                      color: Color(0xFF7B5800), size: 16))
-              : null,
+          ? const Center(
+              child: Icon(
+                Icons.flag_rounded,
+                color: Color(0xFF7B5800),
+                size: 16,
+              ),
+            )
+          : null,
     );
   }
 }
@@ -720,17 +1117,21 @@ class _CodeBlocksArea extends StatelessWidget {
   final List<CodeBlock> arrangedBlocks;
   final Function(int) onRemoveBlock;
   final Function(int, int) onMoveBlock;
+  final Function(CodeBlockType, int) onInsertBlockAt;
   final List<CodeBlockType> availableBlocks;
   final Function(CodeBlockType) onAddBlock;
   final bool isExecuting;
+  final int? activeBlockIndex;
 
   const _CodeBlocksArea({
     required this.arrangedBlocks,
     required this.onRemoveBlock,
     required this.onMoveBlock,
+    required this.onInsertBlockAt,
     required this.availableBlocks,
     required this.onAddBlock,
     required this.isExecuting,
+    required this.activeBlockIndex,
   });
 
   @override
@@ -751,22 +1152,26 @@ class _CodeBlocksArea extends StatelessWidget {
           // Header
           Row(
             children: [
-              const Icon(Icons.code_rounded,
-                  size: 14, color: AppTheme.tealPrimary),
+              const Icon(
+                Icons.code_rounded,
+                size: 14,
+                color: AppTheme.tealPrimary,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Your Code',
                 style: GoogleFonts.nunito(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
                   color: AppTheme.tealDark,
                 ),
               ),
               const Spacer(),
               Text(
-                '${arrangedBlocks.length - 2} block${arrangedBlocks.length - 2 != 1 ? 's' : ''}',
+                '${arrangedBlocks.length} block${arrangedBlocks.length != 1 ? 's' : ''}',
                 style: GoogleFonts.nunito(
-                  fontSize: 11,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                   color: AppTheme.tealMid,
                 ),
               ),
@@ -774,81 +1179,123 @@ class _CodeBlocksArea extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          // Sequence
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5FAF9),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-            child: Column(
-              children: List.generate(arrangedBlocks.length, (index) {
-                final block = arrangedBlocks[index];
-                final isFixed = block.type == CodeBlockType.start ||
-                    block.type == CodeBlockType.end;
-                return _CodeBlockWidget(
-                  block: block,
-                  onRemove:
-                      !isFixed ? () => onRemoveBlock(index) : null,
-                  isFixed: isFixed,
-                  isExecuting: isExecuting,
-                );
-              }),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5FAF9),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                child: Column(
+                  children: List.generate(arrangedBlocks.length + 1, (index) {
+                    if (index == arrangedBlocks.length) {
+                      return _DropSlot(
+                        isExecuting: isExecuting,
+                        onAccept: (data) {
+                          if (data.fromIndex != null) {
+                            onMoveBlock(data.fromIndex!, index);
+                          } else if (data.type != null) {
+                            onInsertBlockAt(data.type!, index);
+                          }
+                        },
+                      );
+                    }
+
+                    final block = arrangedBlocks[index];
+                    final isActive = activeBlockIndex == index;
+                    return Column(
+                      children: [
+                        _DropSlot(
+                          isExecuting: isExecuting,
+                          onAccept: (data) {
+                            if (data.fromIndex != null) {
+                              onMoveBlock(data.fromIndex!, index);
+                            } else if (data.type != null) {
+                              onInsertBlockAt(data.type!, index);
+                            }
+                          },
+                        ),
+                        Draggable<_DraggedBlockData>(
+                          data: _DraggedBlockData(fromIndex: index),
+                          maxSimultaneousDrags: isExecuting ? 0 : 1,
+                          feedback: Material(
+                            color: Colors.transparent,
+                            child: SizedBox(
+                              width: MediaQuery.of(context).size.width - 72,
+                              child: _CodeBlockWidget(
+                                block: block,
+                                isExecuting: true,
+                                isHighlighted: isActive,
+                              ),
+                            ),
+                          ),
+                          childWhenDragging: Opacity(
+                            opacity: 0.25,
+                            child: _CodeBlockWidget(
+                              block: block,
+                              onRemove: isExecuting
+                                  ? null
+                                  : () => onRemoveBlock(index),
+                              isExecuting: isExecuting,
+                              isHighlighted: isActive,
+                            ),
+                          ),
+                          child: _CodeBlockWidget(
+                            block: block,
+                            onRemove: isExecuting
+                                ? null
+                                : () => onRemoveBlock(index),
+                            isExecuting: isExecuting,
+                            isHighlighted: isActive,
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ),
+              ),
             ),
           ),
 
           const SizedBox(height: 14),
 
-          // Available blocks label
           Text(
-            'Tap to add a block:',
+            'Tap or drag blocks to build your solution:',
             style: GoogleFonts.nunito(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
               color: Colors.grey.shade600,
             ),
           ),
           const SizedBox(height: 8),
 
-          // Available blocks
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: availableBlocks.map((blockType) {
               final color = CodeBlock.typeColors[blockType]!;
-              return GestureDetector(
-                onTap: isExecuting ? null : () => onAddBlock(blockType),
-                child: AnimatedOpacity(
-                  opacity: isExecuting ? 0.45 : 1,
-                  duration: const Duration(milliseconds: 200),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.12),
-                      border: Border.all(color: color.withOpacity(0.5), width: 1.5),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _blockIcon(blockType),
-                          size: 13,
-                          color: color,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          CodeBlock.typeLabels[blockType]!,
-                          style: GoogleFonts.nunito(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: color,
-                          ),
-                        ),
-                      ],
-                    ),
+              final chip = _PaletteChip(blockType: blockType, color: color);
+              return Draggable<_DraggedBlockData>(
+                data: _DraggedBlockData(type: blockType),
+                maxSimultaneousDrags: isExecuting ? 0 : 1,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: _PaletteChip(
+                    blockType: blockType,
+                    color: color,
+                    elevated: true,
+                  ),
+                ),
+                childWhenDragging: Opacity(opacity: 0.3, child: chip),
+                child: GestureDetector(
+                  onTap: isExecuting ? null : () => onAddBlock(blockType),
+                  child: AnimatedOpacity(
+                    opacity: isExecuting ? 0.45 : 1,
+                    duration: const Duration(milliseconds: 200),
+                    child: chip,
                   ),
                 ),
               );
@@ -858,186 +1305,304 @@ class _CodeBlocksArea extends StatelessWidget {
       ),
     );
   }
-
-  IconData _blockIcon(CodeBlockType type) {
-    switch (type) {
-      case CodeBlockType.moveForward:
-        return Icons.arrow_upward_rounded;
-      case CodeBlockType.turnLeft:
-        return Icons.rotate_left_rounded;
-      case CodeBlockType.turnRight:
-        return Icons.rotate_right_rounded;
-      default:
-        return Icons.widgets_rounded;
-    }
-  }
 }
 
 class _CodeBlockWidget extends StatelessWidget {
   final CodeBlock block;
   final VoidCallback? onRemove;
-  final bool isFixed;
   final bool isExecuting;
+  final bool isHighlighted;
 
   const _CodeBlockWidget({
     required this.block,
     this.onRemove,
-    required this.isFixed,
     required this.isExecuting,
+    this.isHighlighted = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        if (block.type != CodeBlockType.start)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Icon(Icons.keyboard_arrow_down_rounded,
-                color: Colors.grey.shade300, size: 18),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: block.color,
+        borderRadius: BorderRadius.circular(10),
+        border: isHighlighted
+            ? Border.all(color: Colors.white, width: 2.4)
+            : null,
+        boxShadow: [
+          BoxShadow(
+            color: block.color.withOpacity(0.3),
+            blurRadius: isHighlighted ? 10 : 6,
+            offset: const Offset(0, 2),
           ),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            color: isFixed
-                ? block.color.withOpacity(0.85)
-                : block.color,
-            borderRadius: BorderRadius.circular(9),
-            boxShadow: [
-              BoxShadow(
-                color: block.color.withOpacity(0.25),
-                blurRadius: 5,
-                offset: const Offset(0, 2),
-              )
-            ],
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _blockIcon(block.type),
+            color: Colors.white.withOpacity(0.9),
+            size: 16,
           ),
-          child: Row(
-            children: [
-              Icon(
-                _blockIcon(block.type),
-                color: Colors.white.withOpacity(0.85),
-                size: 14,
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              block.label,
+              style: GoogleFonts.nunito(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  block.label,
-                  style: GoogleFonts.nunito(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+            ),
+          ),
+          if (!isExecuting)
+            GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                margin: const EdgeInsets.only(left: 6),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: const Icon(
+                  Icons.close_rounded,
+                  color: Colors.white,
+                  size: 14,
                 ),
               ),
-              if (isFixed)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    block.type == CodeBlockType.start ? 'START' : 'END',
-                    style: GoogleFonts.nunito(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              if (!isFixed && !isExecuting)
-                GestureDetector(
-                  onTap: onRemove,
-                  child: Container(
-                    margin: const EdgeInsets.only(left: 6),
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.25),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Icon(Icons.close_rounded,
-                        color: Colors.white, size: 13),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
+            ),
+        ],
+      ),
     );
   }
+}
 
-  IconData _blockIcon(CodeBlockType type) {
-    switch (type) {
-      case CodeBlockType.start:
-        return Icons.play_arrow_rounded;
-      case CodeBlockType.moveForward:
-        return Icons.arrow_upward_rounded;
-      case CodeBlockType.turnLeft:
-        return Icons.rotate_left_rounded;
-      case CodeBlockType.turnRight:
-        return Icons.rotate_right_rounded;
-      case CodeBlockType.end:
-        return Icons.stop_rounded;
-    }
+class _DropSlot extends StatefulWidget {
+  final bool isExecuting;
+  final ValueChanged<_DraggedBlockData> onAccept;
+
+  const _DropSlot({required this.isExecuting, required this.onAccept});
+
+  @override
+  State<_DropSlot> createState() => _DropSlotState();
+}
+
+class _DropSlotState extends State<_DropSlot> {
+  bool _isHovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return DragTarget<_DraggedBlockData>(
+      onWillAcceptWithDetails: (_) {
+        if (widget.isExecuting) return false;
+        setState(() => _isHovering = true);
+        return true;
+      },
+      onLeave: (_) => setState(() => _isHovering = false),
+      onAcceptWithDetails: (details) {
+        setState(() => _isHovering = false);
+        widget.onAccept(details.data);
+      },
+      builder: (context, candidateData, rejectedData) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+          height: _isHovering ? 20 : 6,
+          decoration: BoxDecoration(
+            color: _isHovering
+                ? AppTheme.tealPrimary.withOpacity(0.18)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _isHovering
+                  ? AppTheme.tealPrimary
+                  : Colors.grey.withOpacity(0.25),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PaletteChip extends StatelessWidget {
+  final CodeBlockType blockType;
+  final Color color;
+  final bool elevated;
+
+  const _PaletteChip({
+    required this.blockType,
+    required this.color,
+    this.elevated = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        border: Border.all(color: color.withOpacity(0.5), width: 1.5),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: elevated
+            ? [
+                BoxShadow(
+                  color: color.withOpacity(0.35),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_blockIcon(blockType), size: 14, color: color),
+          const SizedBox(width: 5),
+          Text(
+            CodeBlock.typeLabels[blockType]!,
+            style: GoogleFonts.nunito(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DraggedBlockData {
+  final int? fromIndex;
+  final CodeBlockType? type;
+
+  const _DraggedBlockData({this.fromIndex, this.type});
+}
+
+IconData _blockIcon(CodeBlockType type) {
+  switch (type) {
+    case CodeBlockType.start:
+      return Icons.play_arrow_rounded;
+    case CodeBlockType.moveForward:
+      return Icons.arrow_upward_rounded;
+    case CodeBlockType.moveBackward:
+      return Icons.arrow_downward_rounded;
+    case CodeBlockType.moveLeft:
+      return Icons.arrow_back_rounded;
+    case CodeBlockType.moveRight:
+      return Icons.arrow_forward_rounded;
+    case CodeBlockType.turnLeft:
+      return Icons.rotate_left_rounded;
+    case CodeBlockType.turnRight:
+      return Icons.rotate_right_rounded;
+    case CodeBlockType.end:
+      return Icons.stop_rounded;
   }
 }
 
 // ─────────────────────────────────────────────────────
-// Run Button
+// Success Banner
 // ─────────────────────────────────────────────────────
-class _RunButton extends StatelessWidget {
-  final bool isExecuting;
-  final VoidCallback onPressed;
+class _SuccessBanner extends StatefulWidget {
+  final ChildModel child;
+  final Challenge challenge;
 
-  const _RunButton({required this.isExecuting, required this.onPressed});
+  const _SuccessBanner({required this.child, required this.challenge});
+
+  @override
+  State<_SuccessBanner> createState() => _SuccessBannerState();
+}
+
+class _SuccessBannerState extends State<_SuccessBanner>
+    with TickerProviderStateMixin {
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+  int _currentStreak = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
+    );
+    _scaleController.forward();
+
+    _currentStreak = widget.child.streak;
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isExecuting ? null : onPressed,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 52,
+    final streakMessage = _currentStreak > 0
+        ? '🔥 Streak: $_currentStreak!'
+        : 'Excellent work! Keep it up 🌟';
+
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: Container(
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: isExecuting
-              ? const LinearGradient(
-                  colors: [Color(0xFF90CBC0), Color(0xFF90CBC0)])
-              : const LinearGradient(
-                  colors: [Color(0xFF26A995), Color(0xFF19907C)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
+          ),
+          border: Border.all(color: const Color(0xFF4CAF50), width: 2),
           borderRadius: BorderRadius.circular(14),
-          boxShadow: isExecuting
-              ? []
-              : [
-                  BoxShadow(
-                    color: const Color(0xFF26A995).withOpacity(0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  )
-                ],
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF4CAF50).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              isExecuting
-                  ? Icons.hourglass_top_rounded
-                  : Icons.play_circle_filled_rounded,
-              color: Colors.white,
-              size: 22,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              isExecuting ? 'Running…' : 'Run Code',
-              style: GoogleFonts.nunito(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFF4CAF50),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_rounded,
                 color: Colors.white,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Challenge Completed! 🎉',
+                    style: GoogleFonts.nunito(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF2E7D32),
+                    ),
+                  ),
+                  Text(
+                    streakMessage,
+                    style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      color: const Color(0xFF388E3C),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1047,11 +1612,8 @@ class _RunButton extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────
-// Success Banner
-// ─────────────────────────────────────────────────────
-class _SuccessBanner extends StatelessWidget {
-  const _SuccessBanner();
+class _FailBanner extends StatelessWidget {
+  const _FailBanner();
 
   @override
   Widget build(BuildContext context) {
@@ -1059,9 +1621,9 @@ class _SuccessBanner extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
+          colors: [Color(0xFFFFEBEE), Color(0xFFFFCDD2)],
         ),
-        border: Border.all(color: const Color(0xFF4CAF50), width: 2),
+        border: Border.all(color: const Color(0xFFE53935), width: 2),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -1069,11 +1631,14 @@ class _SuccessBanner extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: const BoxDecoration(
-              color: Color(0xFF4CAF50),
+              color: Color(0xFFE53935),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.check_rounded,
-                color: Colors.white, size: 22),
+            child: const Icon(
+              Icons.close_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1081,21 +1646,69 @@ class _SuccessBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Challenge Completed!',
+                  'Try again',
                   style: GoogleFonts.nunito(
                     fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF2E7D32),
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFFB71C1C),
                   ),
                 ),
                 Text(
-                  'Great job! Keep it up 🎉',
+                  'Wrong order or wrong solution. Fix it and run again.',
                   style: GoogleFonts.nunito(
                     fontSize: 12,
-                    color: const Color(0xFF388E3C),
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFC62828),
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// Streak Badge
+// ─────────────────────────────────────────────────────
+class _StreakBadge extends StatefulWidget {
+  final int streak;
+  const _StreakBadge({required this.streak});
+
+  @override
+  State<_StreakBadge> createState() => _StreakBadgeState();
+}
+
+class _StreakBadgeState extends State<_StreakBadge> {
+  @override
+  Widget build(BuildContext context) {
+    if (widget.streak == 0) {
+      return const SizedBox.shrink(); // Don't show if no streak
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF6B6B).withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFFF6B6B).withOpacity(0.4),
+          width: 1.2,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('🔥', style: TextStyle(fontSize: 14)),
+          const SizedBox(width: 4),
+          Text(
+            'Streak: ${widget.streak}',
+            style: GoogleFonts.nunito(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFFFF6B6B),
             ),
           ),
         ],

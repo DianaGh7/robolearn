@@ -1,39 +1,79 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'challenge_screen.dart';
+import 'login_screen.dart';
 
 class AdventureMapScreen extends StatelessWidget {
   final ChildModel child;
   const AdventureMapScreen({super.key, required this.child});
 
+  Future<void> _showSettingsMenu(BuildContext context) async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ListTile(
+            leading: const Icon(Icons.logout_rounded, color: Color(0xFFD84E4E)),
+            title: Text(
+              'Log out',
+              style: GoogleFonts.nunito(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFFD84E4E),
+              ),
+            ),
+            onTap: () => Navigator.pop(context, 'logout'),
+          ),
+        );
+      },
+    );
+
+    if (selected == 'logout' && context.mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        PageRouteBuilder(
+          pageBuilder: (_, _, _) => const LoginScreen(),
+          transitionsBuilder: (_, anim, _, child) =>
+              FadeTransition(opacity: anim, child: child),
+          transitionDuration: const Duration(milliseconds: 350),
+        ),
+        (route) => false,
+      );
+    }
+  }
+
   static const List<_LevelData> _levels = [
-    _LevelData(number: 1, title: 'Move Forward',  unlocked: true),
-    _LevelData(number: 2, title: 'Turn Right',     unlocked: true),
-    _LevelData(number: 3, title: 'Turn Left',      unlocked: true),
-    _LevelData(number: 4, title: 'Loops',          unlocked: false),
-    _LevelData(number: 5, title: 'If Conditions',  unlocked: false),
+    _LevelData(number: 1, title: 'Move Forward', unlocked: true),
+    _LevelData(number: 2, title: 'Move Backward', unlocked: true),
+    _LevelData(number: 3, title: 'Move Right', unlocked: true),
+    _LevelData(number: 4, title: 'Move Right x3', unlocked: true),
+    _LevelData(number: 5, title: 'Move Left', unlocked: true),
+    _LevelData(number: 6, title: 'Move Left x2', unlocked: true),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(children: [
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFFB8F0E8), Color(0xFF90E0C4), Color(0xFFAEE8F8)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-        ),
-        const FloatingBubbles(),
-
-        SafeArea(
+      body: AppBackground(
+        child: SafeArea(
           child: Column(children: [
             // ── Top bar ───────────────────────────────────────────────────
             Padding(
@@ -81,7 +121,28 @@ class AdventureMapScreen extends StatelessWidget {
                           fontSize: 12, color: AppTheme.tealMid)),
                 ]),
                 const Spacer(),
-                const Icon(Icons.settings_outlined, color: AppTheme.tealMid),
+                GestureDetector(
+                  onTap: () => _showSettingsMenu(context),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.82),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.teal.withOpacity(0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.settings_outlined,
+                      color: AppTheme.tealMid,
+                    ),
+                  ),
+                ),
               ]),
             ),
 
@@ -91,7 +152,7 @@ class AdventureMapScreen extends StatelessWidget {
                     color: AppTheme.tealMid,
                     fontWeight: FontWeight.w600)),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
             // ── Level nodes ───────────────────────────────────────────────
             Expanded(
@@ -145,7 +206,7 @@ class AdventureMapScreen extends StatelessWidget {
             ),
           ]),
         ),
-      ]),
+      ),
     );
   }
 }
@@ -154,8 +215,12 @@ class _LevelData {
   final int number;
   final String title;
   final bool unlocked;
+  final int subLevelCount;
   const _LevelData(
-      {required this.number, required this.title, required this.unlocked});
+      {required this.number,
+      required this.title,
+      required this.unlocked,
+      this.subLevelCount = 6});
 }
 
 class _LevelNode extends StatelessWidget {
@@ -170,8 +235,35 @@ class _LevelNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color =
-    data.unlocked ? AppTheme.tealPrimary : Colors.grey.shade400;
+    final List<Challenge> levelChallenges = Challenge.demoChallenge
+        .where((challenge) => challenge.levelNumber == data.number)
+        .toList()
+      ..sort((a, b) => a.number.compareTo(b.number));
+    final int totalSubLevels =
+        levelChallenges.isEmpty ? data.subLevelCount : levelChallenges.length;
+
+    int inferredProgress = 0;
+    for (int i = 0; i < levelChallenges.length; i++) {
+      if (child.completedChallengeIds.contains(levelChallenges[i].number)) {
+        inferredProgress = math.max(inferredProgress, i + 1);
+      }
+    }
+
+    final int savedProgress = child.subLevelProgressByLevel[data.number] ?? 0;
+    final int completedSubLevels =
+        math.max(savedProgress, inferredProgress).clamp(0, totalSubLevels);
+    final bool isCompleted = completedSubLevels >= totalSubLevels;
+    const List<Color> levelColors = [
+      Color(0xFF4DD0C4),
+      Color(0xFF7E8DF1),
+      Color(0xFFF29E4C),
+      Color(0xFFE573B9),
+      Color(0xFF66BB6A),
+      Color(0xFF64B5F6),
+    ];
+    final Color nodeColor = levelColors[(data.number - 1) % levelColors.length];
+    const Color completedDashColor = Color(0xFF9A6B2F); // dark blonde
+    const Color pendingDashColor = Color(0xFFB0BEC5); // secondary
 
     return Padding(
       padding: EdgeInsets.only(
@@ -187,16 +279,30 @@ class _LevelNode extends StatelessWidget {
           child: GestureDetector(
             onTap: data.unlocked
                 ? () {
-                  if (data.number == 1) {
-                    Navigator.push(
+                  if (levelChallenges.isNotEmpty) {
+                    final int startIndex = completedSubLevels.clamp(
+                      0,
+                      levelChallenges.length - 1,
+                    );
+                    final Challenge selectedChallenge = levelChallenges[startIndex];
+                    Navigator.push<ChildModel>(
                       context,
                       MaterialPageRoute(
                         builder: (context) => ChallengeScreen(
                           child: child,
-                          challenge: Challenge.demoChallenge[0],
+                          challenge: selectedChallenge,
                         ),
                       ),
-                    );
+                    ).then((updatedChild) {
+                      if (updatedChild == null || !context.mounted) return;
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              AdventureMapScreen(child: updatedChild),
+                        ),
+                      );
+                    });
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text(
@@ -212,36 +318,64 @@ class _LevelNode extends StatelessWidget {
                 }
                 : null,
             child: Container(
-              width: 90, height: 90,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color,
-                boxShadow: [
-                  BoxShadow(
-                      color: color.withOpacity(0.5),
-                      blurRadius: 16, spreadRadius: 2)
-                ],
-                border: Border.all(color: Colors.white, width: 4),
-              ),
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                        data.unlocked
-                            ? Icons.star_rounded
-                            : Icons.lock_rounded,
-                        color: Colors.white, size: 22),
-                    Text('Level',
-                        style: GoogleFonts.nunito(
+              width: 98,
+              height: 98,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(
+                    size: const Size(98, 98),
+                    painter: _DashedCirclePainter(
+                      completedColor: completedDashColor,
+                      pendingColor: pendingDashColor,
+                      totalDashes: totalSubLevels,
+                      completedDashes: completedSubLevels,
+                    ),
+                  ),
+                  Container(
+                    width: 82,
+                    height: 82,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: nodeColor,
+                      boxShadow: [
+                        BoxShadow(
+                          color: nodeColor.withOpacity(0.45),
+                          blurRadius: 16,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                      border: Border.all(color: Colors.white, width: 3),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isCompleted ? Icons.check_rounded : Icons.star_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                        Text(
+                          'Level',
+                          style: GoogleFonts.nunito(
                             fontSize: 11,
                             color: Colors.white,
-                            fontWeight: FontWeight.w600)),
-                    Text('${data.number}',
-                        style: GoogleFonts.nunito(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          '${data.number}',
+                          style: GoogleFonts.nunito(
                             fontSize: 20,
                             color: Colors.white,
-                            fontWeight: FontWeight.w900)),
-                  ]),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -253,6 +387,55 @@ class _LevelNode extends StatelessWidget {
                 fontWeight: FontWeight.w700)),
       ]),
     );
+  }
+}
+
+class _DashedCirclePainter extends CustomPainter {
+  final Color completedColor;
+  final Color pendingColor;
+  final int totalDashes;
+  final int completedDashes;
+  const _DashedCirclePainter({
+    required this.completedColor,
+    required this.pendingColor,
+    required this.totalDashes,
+    required this.completedDashes,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+
+    final Offset center = size.center(Offset.zero);
+    final double radius = (size.width / 2) - 3;
+    final int dashCount = totalDashes.clamp(3, 40);
+    const double gapFactor = 0.45;
+    final double fullDashSweep = (2 * math.pi) / dashCount;
+    final double dashSweep = fullDashSweep * (1 - gapFactor);
+    final int doneCount = completedDashes.clamp(0, dashCount);
+
+    for (int i = 0; i < dashCount; i++) {
+      paint.color = i < doneCount ? completedColor : pendingColor;
+      final double start = i * fullDashSweep;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        start,
+        dashSweep,
+        false,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedCirclePainter oldDelegate) {
+    return oldDelegate.completedColor != completedColor ||
+        oldDelegate.pendingColor != pendingColor ||
+        oldDelegate.totalDashes != totalDashes ||
+        oldDelegate.completedDashes != completedDashes;
   }
 }
 

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'choose_child_screen.dart';
+import '../services/parent_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -25,6 +27,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   bool _isConfirmVisible  = false;
   bool _isAgreed          = false;
   bool _isFormValid       = false;
+  bool _isLoading         = false;
 
   // ── Animation ──────────────────────────────────────────────────────────────
   late final AnimationController _animCtrl;
@@ -125,14 +128,64 @@ class _SignUpScreenState extends State<SignUpScreen>
   }
 
   // ── On create account ──────────────────────────────────────────────────────
-  void _onCreateAccount() {
-    // TODO: connect to real auth — navigate to Choose Child on success
-    Navigator.of(context).pushReplacement(PageRouteBuilder(
-      pageBuilder: (_, __, ___) => const ChooseChildScreen(),
-      transitionsBuilder: (_, anim, __, child) =>
-          FadeTransition(opacity: anim, child: child),
-      transitionDuration: const Duration(milliseconds: 500),
-    ));
+  String _authErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'email-already-in-use':
+        return 'This email is already in use.';
+      case 'invalid-email':
+        return 'The email address format is invalid.';
+      case 'weak-password':
+        return 'Password is too weak. Use at least 8 characters.';
+      case 'operation-not-allowed':
+        return 'Email/password auth is not enabled yet.';
+      case 'network-request-failed':
+        return 'Network error. Check your connection and retry.';
+      default:
+        return 'Could not create account. Please try again.';
+    }
+  }
+
+  Future<void> _onCreateAccount() async {
+    setState(() => _isLoading = true);
+    try {
+      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailCtrl.text.trim().toLowerCase(),
+        password: _passwordCtrl.text,
+      );
+      await credential.user?.updateDisplayName(
+        '${_firstNameCtrl.text.trim()} ${_lastNameCtrl.text.trim()}',
+      );
+
+      final user = credential.user;
+      if (user != null) {
+        await ParentService().upsertParentProfile(
+          uid: user.uid,
+          email: user.email ?? _emailCtrl.text.trim().toLowerCase(),
+          displayName: user.displayName,
+        );
+      }
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(PageRouteBuilder(
+        pageBuilder: (_, _, _) => const ChooseChildScreen(),
+        transitionsBuilder: (_, anim, _, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 500),
+      ));
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_authErrorMessage(e), style: GoogleFonts.nunito()),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -324,9 +377,13 @@ class _SignUpScreenState extends State<SignUpScreen>
                     _GradientButton(
                       label: 'Create Account',
                       icon: Icons.check_circle_outline_rounded,
-                      enabled: _isFormValid,
+                      enabled: _isFormValid && !_isLoading,
                       onPressed: _onCreateAccount,
                     ),
+                    if (_isLoading) ...[
+                      const SizedBox(height: 12),
+                      const CircularProgressIndicator(),
+                    ],
 
                     const SizedBox(height: 20),
 

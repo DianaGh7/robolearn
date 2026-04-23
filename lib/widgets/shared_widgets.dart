@@ -76,7 +76,7 @@ class _FloatingBubblesState extends State<FloatingBubbles>
         children: List.generate(_pos.length, (i) {
           return AnimatedBuilder(
             animation: _anims[i],
-            builder: (_, __) => Positioned(
+            builder: (_, _) => Positioned(
               left: _pos[i].dx * box.maxWidth,
               top:  _pos[i].dy * box.maxHeight + _anims[i].value * 12,
               child: Container(
@@ -135,7 +135,7 @@ class _SparklesState extends State<Sparkles> with TickerProviderStateMixin {
         children: List.generate(_pos.length, (i) {
           return AnimatedBuilder(
             animation: _ctrls[i],
-            builder: (_, __) => Positioned(
+            builder: (_, _) => Positioned(
               left: _pos[i].dx * box.maxWidth,
               top:  _pos[i].dy * box.maxHeight,
               child: Opacity(

@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import 'choose_child_screen.dart';
 import 'welcome_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -28,12 +30,21 @@ class _SplashScreenState extends State<SplashScreen>
         CurvedAnimation(parent: _ctrl, curve: const Interval(0, 0.5)));
     _ctrl.forward();
 
-    Timer(const Duration(seconds: 3), () {
+    Timer(const Duration(seconds: 3), () async {
       if (!mounted) return;
+      final restoredUser = await FirebaseAuth.instance
+          .authStateChanges()
+          .first
+          .timeout(const Duration(seconds: 2), onTimeout: () {
+        return FirebaseAuth.instance.currentUser;
+      });
+      if (!mounted) return;
+      final hasUser = restoredUser != null;
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const WelcomeScreen(),
-          transitionsBuilder: (_, anim, __, child) =>
+          pageBuilder: (_, _, _) =>
+              hasUser ? const ChooseChildScreen() : const WelcomeScreen(),
+          transitionsBuilder: (_, anim, _, child) =>
               FadeTransition(opacity: anim, child: child),
           transitionDuration: const Duration(milliseconds: 600),
         ),
