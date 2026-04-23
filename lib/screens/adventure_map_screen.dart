@@ -61,13 +61,42 @@ class AdventureMapScreen extends StatelessWidget {
   }
 
   static const List<_LevelData> _levels = [
-    _LevelData(number: 1, title: 'Move Forward', unlocked: true),
-    _LevelData(number: 2, title: 'Move Backward', unlocked: true),
-    _LevelData(number: 3, title: 'Move Right', unlocked: true),
-    _LevelData(number: 4, title: 'Move Right x3', unlocked: true),
-    _LevelData(number: 5, title: 'Move Left', unlocked: true),
-    _LevelData(number: 6, title: 'Move Left x2', unlocked: true),
+    _LevelData(number: 1, title: 'Move Your Robot'),
+    _LevelData(number: 2, title: 'Make Some Noise'),
+    _LevelData(number: 3, title: 'Play with Colors'),
+    _LevelData(number: 4, title: 'Magic Screen'),
+    _LevelData(number: 5, title: 'Smart Moves'),
   ];
+
+  List<_LevelData> _getLevelsWithLockStatus(ChildModel child) {
+    return _levels.map((level) {
+      // Level 1 is always unlocked
+      if (level.number == 1) {
+        return _LevelData(number: level.number, title: level.title, unlocked: true);
+      }
+      // Other levels are unlocked only if previous level is completed
+      final previousLevel = level.number - 1;
+      final List<Challenge> previousLevelChallenges = Challenge.demoChallenge
+          .where((challenge) => challenge.levelNumber == previousLevel)
+          .toList()
+        ..sort((a, b) => a.number.compareTo(b.number));
+      
+      if (previousLevelChallenges.isEmpty) {
+        return _LevelData(number: level.number, title: level.title, unlocked: false);
+      }
+
+      // Check if all challenges in previous level are completed
+      final bool allCompleted = previousLevelChallenges.every(
+        (challenge) => child.completedChallengeIds.contains(challenge.number),
+      );
+
+      return _LevelData(
+        number: level.number,
+        title: level.title,
+        unlocked: allCompleted,
+      );
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +188,7 @@ class AdventureMapScreen extends StatelessWidget {
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 child: Column(
-                  children: _levels.asMap().entries.map((e) => _LevelNode(
+                  children: _getLevelsWithLockStatus(child).asMap().entries.map((e) => _LevelNode(
                     data: e.value,
                     isLeft: e.key.isEven,
                     child: child,
@@ -219,7 +248,7 @@ class _LevelData {
   const _LevelData(
       {required this.number,
       required this.title,
-      required this.unlocked,
+      this.unlocked = false,
       this.subLevelCount = 6});
 }
 

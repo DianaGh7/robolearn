@@ -636,35 +636,38 @@ class _HeaderBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          _StreakBadge(streak: child.streak),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Challenge ${challenge.number}',
-                  style: GoogleFonts.nunito(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    color: AppTheme.tealMid,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    '#${challenge.number}',
+                    style: GoogleFonts.nunito(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.tealMid,
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 1),
+              Text(
+                challenge.title,
+                style: GoogleFonts.nunito(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.tealDark,
                 ),
-                const SizedBox(height: 1),
-                Text(
-                  challenge.title,
-                  style: GoogleFonts.nunito(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: AppTheme.tealDark,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
+          const Spacer(),
+          _StreakBadge(streak: child.streak),
+          const SizedBox(width: 3),
           _RobotStatusBadge(status: connectionStatus),
           const SizedBox(width: 6),
           _RobotActionMiniButton(
@@ -1180,6 +1183,7 @@ class _CodeBlocksArea extends StatelessWidget {
           const SizedBox(height: 10),
 
           Expanded(
+            flex: 2,
             child: Container(
               decoration: BoxDecoration(
                 color: const Color(0xFFF5FAF9),
@@ -1260,7 +1264,7 @@ class _CodeBlocksArea extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
 
           Text(
             'Tap or drag blocks to build your solution:',
@@ -1272,34 +1276,40 @@ class _CodeBlocksArea extends StatelessWidget {
           ),
           const SizedBox(height: 8),
 
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: availableBlocks.map((blockType) {
-              final color = CodeBlock.typeColors[blockType]!;
-              final chip = _PaletteChip(blockType: blockType, color: color);
-              return Draggable<_DraggedBlockData>(
-                data: _DraggedBlockData(type: blockType),
-                maxSimultaneousDrags: isExecuting ? 0 : 1,
-                feedback: Material(
-                  color: Colors.transparent,
-                  child: _PaletteChip(
-                    blockType: blockType,
-                    color: color,
-                    elevated: true,
-                  ),
-                ),
-                childWhenDragging: Opacity(opacity: 0.3, child: chip),
-                child: GestureDetector(
-                  onTap: isExecuting ? null : () => onAddBlock(blockType),
-                  child: AnimatedOpacity(
-                    opacity: isExecuting ? 0.45 : 1,
-                    duration: const Duration(milliseconds: 200),
-                    child: chip,
-                  ),
-                ),
-              );
-            }).toList(),
+          Expanded(
+            flex: 1,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: availableBlocks.map((blockType) {
+                  final color = CodeBlock.typeColors[blockType]!;
+                  final chip = _PaletteChip(blockType: blockType, color: color);
+                  return Draggable<_DraggedBlockData>(
+                    data: _DraggedBlockData(type: blockType),
+                    maxSimultaneousDrags: isExecuting ? 0 : 1,
+                    feedback: Material(
+                      color: Colors.transparent,
+                      child: _PaletteChip(
+                        blockType: blockType,
+                        color: color,
+                        elevated: true,
+                      ),
+                    ),
+                    childWhenDragging: Opacity(opacity: 0.3, child: chip),
+                    child: GestureDetector(
+                      onTap: isExecuting ? null : () => onAddBlock(blockType),
+                      child: AnimatedOpacity(
+                        opacity: isExecuting ? 0.45 : 1,
+                        duration: const Duration(milliseconds: 200),
+                        child: chip,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
           ),
         ],
       ),
@@ -1689,10 +1699,10 @@ class _StreakBadgeState extends State<_StreakBadge> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFFFF6B6B).withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: const Color(0xFFFF6B6B).withOpacity(0.4),
           width: 1.2,
@@ -1701,10 +1711,10 @@ class _StreakBadgeState extends State<_StreakBadge> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('🔥', style: TextStyle(fontSize: 14)),
-          const SizedBox(width: 4),
+          const Text('🔥', style: TextStyle(fontSize: 13)),
+          const SizedBox(width: 3),
           Text(
-            'Streak: ${widget.streak}',
+            '${widget.streak}',
             style: GoogleFonts.nunito(
               fontSize: 12,
               fontWeight: FontWeight.w800,
