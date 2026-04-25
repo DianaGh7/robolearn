@@ -643,26 +643,25 @@ class _HeaderBar extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    '${challenge.number}. ',
+                    '#${challenge.number}',
                     style: GoogleFonts.nunito(
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.w900,
                       color: AppTheme.tealMid,
                     ),
                   ),
-                  Expanded(
-                    child: Text(
-                      challenge.title,
-                      style: GoogleFonts.nunito(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.tealDark,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
                 ],
+              ),
+              const SizedBox(height: 1),
+              Text(
+                challenge.title,
+                style: GoogleFonts.nunito(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.tealDark,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -1153,7 +1152,6 @@ class _CodeBlocksArea extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               const Icon(
@@ -1265,8 +1263,35 @@ class _CodeBlocksArea extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 10),
-
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(
+                Icons.widgets_rounded,
+                size: 14,
+                color: AppTheme.tealPrimary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Available Blocks',
+                style: GoogleFonts.nunito(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.tealDark,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${availableBlocks.length} block${availableBlocks.length != 1 ? 's' : ''}',
+                style: GoogleFonts.nunito(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.tealMid,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
           Text(
             'Tap or drag blocks to build your solution:',
             style: GoogleFonts.nunito(
@@ -1512,6 +1537,14 @@ IconData _blockIcon(CodeBlockType type) {
       return Icons.rotate_right_rounded;
     case CodeBlockType.end:
       return Icons.stop_rounded;
+    case CodeBlockType.beep:
+      return Icons.volume_up_rounded;
+    case CodeBlockType.clap:
+      return Icons.pan_tool_rounded;
+    case CodeBlockType.happy:
+      return Icons.sentiment_satisfied_rounded;
+    case CodeBlockType.repeat:
+      return Icons.repeat_rounded;
   }
 }
 

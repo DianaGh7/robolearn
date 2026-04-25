@@ -6,6 +6,7 @@ import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'challenge_screen.dart';
+import 'sound_challenge_screen.dart';
 import 'login_screen.dart';
 
 class AdventureMapScreen extends StatelessWidget {
@@ -70,19 +71,28 @@ class AdventureMapScreen extends StatelessWidget {
 
   List<_LevelData> _getLevelsWithLockStatus(ChildModel child) {
     return _levels.map((level) {
-      // Level 1 is always unlocked
-      if (level.number == 1) {
-        return _LevelData(number: level.number, title: level.title, unlocked: true);
+      // Level 1 and 2 are always unlocked (2 is unlocked for testing)
+      if (level.number == 1 || level.number == 2) {
+        return _LevelData(
+          number: level.number,
+          title: level.title,
+          unlocked: true,
+        );
       }
       // Other levels are unlocked only if previous level is completed
       final previousLevel = level.number - 1;
-      final List<Challenge> previousLevelChallenges = Challenge.demoChallenge
-          .where((challenge) => challenge.levelNumber == previousLevel)
-          .toList()
-        ..sort((a, b) => a.number.compareTo(b.number));
-      
+      final List<Challenge> previousLevelChallenges =
+          Challenge.demoChallenge
+              .where((challenge) => challenge.levelNumber == previousLevel)
+              .toList()
+            ..sort((a, b) => a.number.compareTo(b.number));
+
       if (previousLevelChallenges.isEmpty) {
-        return _LevelData(number: level.number, title: level.title, unlocked: false);
+        return _LevelData(
+          number: level.number,
+          title: level.title,
+          unlocked: false,
+        );
       }
 
       // Check if all challenges in previous level are completed
@@ -103,137 +113,182 @@ class AdventureMapScreen extends StatelessWidget {
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: Column(children: [
-            // ── Top bar ───────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(children: [
-                // Back button
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(12),
+          child: Column(
+            children: [
+              // ── Top bar ───────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    // Back button
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            color: AppTheme.tealDark,
+                            size: 20,
+                          ),
+                        ),
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new_rounded,
-                          color: AppTheme.tealDark, size: 20),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Child mini avatar
-                Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                        colors: child.palette,
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight),
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: AvatarFace(seed: child.avatarSeed),
-                ),
-                const SizedBox(width: 10),
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(child.name,
-                      style: GoogleFonts.nunito(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.tealDark)),
-                  Text('Adventure Map',
-                      style: GoogleFonts.nunito(
-                          fontSize: 12, color: AppTheme.tealMid)),
-                ]),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () => _showSettingsMenu(context),
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.82),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.teal.withOpacity(0.12),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+                    const SizedBox(width: 12),
+                    // Child mini avatar
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: child.palette,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: AvatarFace(seed: child.avatarSeed),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          child.name,
+                          style: GoogleFonts.nunito(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.tealDark,
+                          ),
+                        ),
+                        Text(
+                          'Adventure Map',
+                          style: GoogleFonts.nunito(
+                            fontSize: 12,
+                            color: AppTheme.tealMid,
+                          ),
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.settings_outlined,
-                      color: AppTheme.tealMid,
-                    ),
-                  ),
-                ),
-              ]),
-            ),
-
-            Text('Choose a level to start coding!',
-                style: GoogleFonts.nunito(
-                    fontSize: 13,
-                    color: AppTheme.tealMid,
-                    fontWeight: FontWeight.w600)),
-
-            const SizedBox(height: 12),
-
-            // ── Level nodes ───────────────────────────────────────────────
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Column(
-                  children: _getLevelsWithLockStatus(child).asMap().entries.map((e) => _LevelNode(
-                    data: e.value,
-                    isLeft: e.key.isEven,
-                    child: child,
-                  )).toList(),
-                ),
-              ),
-            ),
-
-            // ── Progress bar ──────────────────────────────────────────────
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.85),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.teal.withOpacity(0.1), blurRadius: 12)
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _Stat(label: 'Completed',
-                      value:
-                      '${child.completedLevels} / ${child.totalLevels}'),
-                  _Stat(label: 'Attempts', value: '${child.attempts}'),
-                  SizedBox(
-                    width: 36, height: 36,
-                    child: Stack(alignment: Alignment.center, children: [
-                      CircularProgressIndicator(
-                        value: child.progress,
-                        backgroundColor: Colors.grey.shade200,
-                        valueColor: const AlwaysStoppedAnimation(
-                            AppTheme.tealPrimary),
-                        strokeWidth: 4,
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => _showSettingsMenu(context),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.82),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.teal.withOpacity(0.12),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.settings_outlined,
+                          color: AppTheme.tealMid,
+                        ),
                       ),
-                      const Icon(Icons.star_rounded,
-                          color: AppTheme.orange, size: 16),
-                    ]),
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ]),
+
+              Text(
+                'Choose a level to start coding!',
+                style: GoogleFonts.nunito(
+                  fontSize: 13,
+                  color: AppTheme.tealMid,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // ── Level nodes ───────────────────────────────────────────────
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Column(
+                    children: _getLevelsWithLockStatus(child)
+                        .asMap()
+                        .entries
+                        .map(
+                          (e) => _LevelNode(
+                            data: e.value,
+                            isLeft: e.key.isEven,
+                            child: child,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ),
+
+              // ── Progress bar ──────────────────────────────────────────────
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.teal.withOpacity(0.1),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _Stat(
+                      label: 'Completed',
+                      value: '${child.completedLevels} / ${child.totalLevels}',
+                    ),
+                    _Stat(label: 'Attempts', value: '${child.attempts}'),
+                    SizedBox(
+                      width: 36,
+                      height: 36,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            value: child.progress,
+                            backgroundColor: Colors.grey.shade200,
+                            valueColor: const AlwaysStoppedAnimation(
+                              AppTheme.tealPrimary,
+                            ),
+                            strokeWidth: 4,
+                          ),
+                          const Icon(
+                            Icons.star_rounded,
+                            color: AppTheme.orange,
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -245,11 +300,12 @@ class _LevelData {
   final String title;
   final bool unlocked;
   final int subLevelCount;
-  const _LevelData(
-      {required this.number,
-      required this.title,
-      this.unlocked = false,
-      this.subLevelCount = 6});
+  const _LevelData({
+    required this.number,
+    required this.title,
+    this.unlocked = false,
+    this.subLevelCount = 6,
+  });
 }
 
 class _LevelNode extends StatelessWidget {
@@ -264,23 +320,37 @@ class _LevelNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<Challenge> levelChallenges = Challenge.demoChallenge
-        .where((challenge) => challenge.levelNumber == data.number)
-        .toList()
-      ..sort((a, b) => a.number.compareTo(b.number));
-    final int totalSubLevels =
-        levelChallenges.isEmpty ? data.subLevelCount : levelChallenges.length;
+    // Get challenges based on level type
+    late final List<dynamic> levelChallenges;
+    if (data.number == 2) {
+      levelChallenges = SoundChallenge.soundChallenges;
+    } else {
+      levelChallenges =
+          Challenge.demoChallenge
+              .where((challenge) => challenge.levelNumber == data.number)
+              .toList()
+            ..sort((a, b) => a.number.compareTo(b.number));
+    }
+
+    final int totalSubLevels = levelChallenges.isEmpty
+        ? data.subLevelCount
+        : levelChallenges.length;
 
     int inferredProgress = 0;
     for (int i = 0; i < levelChallenges.length; i++) {
-      if (child.completedChallengeIds.contains(levelChallenges[i].number)) {
+      final challenge = levelChallenges[i];
+      final int challengeNumber = challenge is Challenge
+          ? challenge.number
+          : (challenge as SoundChallenge).number;
+      if (child.completedChallengeIds.contains(challengeNumber)) {
         inferredProgress = math.max(inferredProgress, i + 1);
       }
     }
 
     final int savedProgress = child.subLevelProgressByLevel[data.number] ?? 0;
-    final int completedSubLevels =
-        math.max(savedProgress, inferredProgress).clamp(0, totalSubLevels);
+    final int completedSubLevels = math
+        .max(savedProgress, inferredProgress)
+        .clamp(0, totalSubLevels);
     final bool isCompleted = completedSubLevels >= totalSubLevels;
     const List<Color> levelColors = [
       Color(0xFF4DD0C4),
@@ -296,125 +366,184 @@ class _LevelNode extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.only(
-        left:   isLeft ? 60 : 160,
-        right:  isLeft ? 160 : 60,
+        left: isLeft ? 60 : 160,
+        right: isLeft ? 160 : 60,
         bottom: 10,
       ),
-      child: Column(children: [
-        MouseRegion(
-          cursor: data.unlocked
-              ? SystemMouseCursors.click
-              : SystemMouseCursors.basic,
-          child: GestureDetector(
-            onTap: data.unlocked
-                ? () {
-                  if (levelChallenges.isNotEmpty) {
-                    final int startIndex = completedSubLevels.clamp(
-                      0,
-                      levelChallenges.length - 1,
-                    );
-                    final Challenge selectedChallenge = levelChallenges[startIndex];
-                    Navigator.push<ChildModel>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ChallengeScreen(
-                          child: child,
-                          challenge: selectedChallenge,
-                        ),
+      child: Column(
+        children: [
+          MouseRegion(
+            cursor: data.unlocked
+                ? SystemMouseCursors.click
+                : SystemMouseCursors.basic,
+            child: GestureDetector(
+              onTap: data.unlocked
+                  ? () {
+                      // Handle Level 2 (Sound Challenges) separately
+                      if (data.number == 2) {
+                        final List<SoundChallenge> soundChallenges =
+                            SoundChallenge.soundChallenges;
+                        if (soundChallenges.isNotEmpty) {
+                          final int startIndex = completedSubLevels.clamp(
+                            0,
+                            soundChallenges.length - 1,
+                          );
+                          final SoundChallenge selectedChallenge =
+                              soundChallenges[startIndex];
+                          Navigator.push<ChildModel>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SoundChallengeScreen(
+                                child: child,
+                                challenge: selectedChallenge,
+                              ),
+                            ),
+                          ).then((updatedChild) {
+                            if (updatedChild == null || !context.mounted)
+                              return;
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    AdventureMapScreen(child: updatedChild),
+                              ),
+                            );
+                          });
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Level ${data.number}: ${data.title} — Coming soon!',
+                                style: GoogleFonts.nunito(),
+                              ),
+                              backgroundColor: AppTheme.tealPrimary,
+                              duration: const Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          );
+                        }
+                      } else if (levelChallenges.isNotEmpty) {
+                        // Handle other levels (Movement challenges)
+                        final int startIndex = completedSubLevels.clamp(
+                          0,
+                          levelChallenges.length - 1,
+                        );
+                        final Challenge selectedChallenge =
+                            levelChallenges[startIndex];
+                        Navigator.push<ChildModel>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChallengeScreen(
+                              child: child,
+                              challenge: selectedChallenge,
+                            ),
+                          ),
+                        ).then((updatedChild) {
+                          if (updatedChild == null || !context.mounted) return;
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AdventureMapScreen(child: updatedChild),
+                            ),
+                          );
+                        });
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Level ${data.number}: ${data.title} — Coming soon!',
+                              style: GoogleFonts.nunito(),
+                            ),
+                            backgroundColor: AppTheme.tealPrimary,
+                            duration: const Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  : null,
+              child: Container(
+                width: 98,
+                height: 98,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CustomPaint(
+                      size: const Size(98, 98),
+                      painter: _DashedCirclePainter(
+                        completedColor: completedDashColor,
+                        pendingColor: pendingDashColor,
+                        totalDashes: totalSubLevels,
+                        completedDashes: completedSubLevels,
                       ),
-                    ).then((updatedChild) {
-                      if (updatedChild == null || !context.mounted) return;
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              AdventureMapScreen(child: updatedChild),
-                        ),
-                      );
-                    });
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(
-                          'Level ${data.number}: ${data.title} — Coming soon!',
-                          style: GoogleFonts.nunito()),
-                      backgroundColor: AppTheme.tealPrimary,
-                      duration: const Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ));
-                  }
-                }
-                : null,
-            child: Container(
-              width: 98,
-              height: 98,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  CustomPaint(
-                    size: const Size(98, 98),
-                    painter: _DashedCirclePainter(
-                      completedColor: completedDashColor,
-                      pendingColor: pendingDashColor,
-                      totalDashes: totalSubLevels,
-                      completedDashes: completedSubLevels,
                     ),
-                  ),
-                  Container(
-                    width: 82,
-                    height: 82,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: nodeColor,
-                      boxShadow: [
-                        BoxShadow(
-                          color: nodeColor.withOpacity(0.45),
-                          blurRadius: 16,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                      border: Border.all(color: Colors.white, width: 3),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          isCompleted ? Icons.check_rounded : Icons.star_rounded,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                        Text(
-                          'Level',
-                          style: GoogleFonts.nunito(
-                            fontSize: 11,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
+                    Container(
+                      width: 82,
+                      height: 82,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: nodeColor,
+                        boxShadow: [
+                          BoxShadow(
+                            color: nodeColor.withOpacity(0.45),
+                            blurRadius: 16,
+                            spreadRadius: 1,
                           ),
-                        ),
-                        Text(
-                          '${data.number}',
-                          style: GoogleFonts.nunito(
-                            fontSize: 20,
+                        ],
+                        border: Border.all(color: Colors.white, width: 3),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isCompleted
+                                ? Icons.check_rounded
+                                : Icons.star_rounded,
                             color: Colors.white,
-                            fontWeight: FontWeight.w900,
+                            size: 22,
                           ),
-                        ),
-                      ],
+                          Text(
+                            'Level',
+                            style: GoogleFonts.nunito(
+                              fontSize: 11,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '${data.number}',
+                            style: GoogleFonts.nunito(
+                              fontSize: 20,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(data.title,
+          const SizedBox(height: 4),
+          Text(
+            data.title,
             style: GoogleFonts.nunito(
-                fontSize: 12,
-                color: AppTheme.tealDark,
-                fontWeight: FontWeight.w700)),
-      ]),
+              fontSize: 12,
+              color: AppTheme.tealDark,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -474,15 +603,22 @@ class _Stat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.nunito(fontSize: 11, color: Colors.grey.shade500),
+        ),
+        Text(
+          value,
           style: GoogleFonts.nunito(
-              fontSize: 11, color: Colors.grey.shade500)),
-      Text(value,
-          style: GoogleFonts.nunito(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.tealDark)),
-    ]);
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.tealDark,
+          ),
+        ),
+      ],
+    );
   }
 }

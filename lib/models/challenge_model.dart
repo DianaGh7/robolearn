@@ -9,6 +9,11 @@ enum CodeBlockType {
   turnLeft,
   turnRight,
   end,
+  // Sound blocks for Level 2
+  beep,
+  clap,
+  happy,
+  repeat,
 }
 
 class CodeBlock {
@@ -33,17 +38,25 @@ class CodeBlock {
     CodeBlockType.turnLeft: 'Turn Left',
     CodeBlockType.turnRight: 'Turn Right',
     CodeBlockType.end: 'End',
+    CodeBlockType.beep: 'Beep',
+    CodeBlockType.clap: 'Clap',
+    CodeBlockType.happy: 'Happy',
+    CodeBlockType.repeat: 'Repeat',
   };
 
   static const Map<CodeBlockType, Color> typeColors = {
-    CodeBlockType.start: Color(0xFF4CAF50),     // Green
+    CodeBlockType.start: Color(0xFF4CAF50), // Green
     CodeBlockType.moveForward: Color(0xFF2196F3), // Blue
     CodeBlockType.moveBackward: Color(0xFF00BCD4), // Cyan
-    CodeBlockType.moveLeft: Color(0xFF9C27B0),    // Purple
-    CodeBlockType.moveRight: Color(0xFFFFC107),   // Amber
-    CodeBlockType.turnLeft: Color(0xFFFF9800),    // Orange
-    CodeBlockType.turnRight: Color(0xFFFF5722),   // Red
-    CodeBlockType.end: Color(0xFF9C27B0),     // Purple
+    CodeBlockType.moveLeft: Color(0xFF9C27B0), // Purple
+    CodeBlockType.moveRight: Color(0xFFFFC107), // Amber
+    CodeBlockType.turnLeft: Color(0xFFFF9800), // Orange
+    CodeBlockType.turnRight: Color(0xFFFF5722), // Red
+    CodeBlockType.end: Color(0xFF9C27B0), // Purple
+    CodeBlockType.beep: Color(0xFF00ACC1), // Teal
+    CodeBlockType.clap: Color(0xFFE91E63), // Pink
+    CodeBlockType.happy: Color(0xFFFDD835), // Yellow
+    CodeBlockType.repeat: Color(0xFF7E57C2), // Deep Purple
   };
 
   factory CodeBlock.fromType(CodeBlockType type) {
@@ -64,11 +77,7 @@ class RobotState {
   final int y;
   final Direction direction;
 
-  const RobotState({
-    required this.x,
-    required this.y,
-    required this.direction,
-  });
+  const RobotState({required this.x, required this.y, required this.direction});
 
   RobotState copyWith({int? x, int? y, Direction? direction}) {
     return RobotState(
@@ -115,16 +124,121 @@ class RobotState {
   }
 
   RobotState turnLeft() {
-    const directions = [Direction.up, Direction.left, Direction.down, Direction.right];
+    const directions = [
+      Direction.up,
+      Direction.left,
+      Direction.down,
+      Direction.right,
+    ];
     final currentIndex = directions.indexOf(direction);
     return copyWith(direction: directions[(currentIndex + 1) % 4]);
   }
 
   RobotState turnRight() {
-    const directions = [Direction.up, Direction.right, Direction.down, Direction.left];
+    const directions = [
+      Direction.up,
+      Direction.right,
+      Direction.down,
+      Direction.left,
+    ];
     final currentIndex = directions.indexOf(direction);
     return copyWith(direction: directions[(currentIndex + 1) % 4]);
   }
+}
+
+// Sound Challenge definition for Level 2
+class SoundChallenge {
+  final int number;
+  final int levelNumber;
+  final String title;
+  final String instruction;
+  final String? targetDisplay; // Visual representation like "👏 😊 🔊"
+  final List<CodeBlockType> availableBlocks;
+  final List<CodeBlockType> correctSequence; // Expected solution
+
+  const SoundChallenge({
+    required this.number,
+    required this.levelNumber,
+    required this.title,
+    required this.instruction,
+    this.targetDisplay,
+    required this.availableBlocks,
+    required this.correctSequence,
+  });
+
+  // Level 2 Sound Challenges
+  static final List<SoundChallenge> soundChallenges = [
+    const SoundChallenge(
+      number: 7,
+      levelNumber: 2,
+      title: 'Beep Sound',
+      instruction: 'Make the robot emit one beep sound',
+      targetDisplay: '🔊',
+      availableBlocks: [CodeBlockType.beep],
+      correctSequence: [CodeBlockType.beep],
+    ),
+    const SoundChallenge(
+      number: 8,
+      levelNumber: 2,
+      title: 'Clap Sound',
+      instruction: 'Make the robot emit a clap sound',
+      targetDisplay: '👏',
+      availableBlocks: [CodeBlockType.clap],
+      correctSequence: [CodeBlockType.clap],
+    ),
+    const SoundChallenge(
+      number: 9,
+      levelNumber: 2,
+      title: 'Happy Sound',
+      instruction: 'Make the robot emit a happy sound',
+      targetDisplay: '😊',
+      availableBlocks: [CodeBlockType.happy],
+      correctSequence: [CodeBlockType.happy],
+    ),
+    const SoundChallenge(
+      number: 10,
+      levelNumber: 2,
+      title: 'Choose the Correct Sound',
+      instruction: 'Pick the clap sound to make 👏',
+      targetDisplay: '👏',
+      availableBlocks: [
+        CodeBlockType.beep,
+        CodeBlockType.clap,
+        CodeBlockType.happy,
+      ],
+      correctSequence: [CodeBlockType.clap],
+    ),
+    const SoundChallenge(
+      number: 11,
+      levelNumber: 2,
+      title: 'Repeat a Sound',
+      instruction: 'Clap 3 times using the repeat block',
+      targetDisplay: '👏 👏 👏',
+      availableBlocks: [CodeBlockType.clap, CodeBlockType.repeat],
+      correctSequence: [
+        CodeBlockType.clap,
+        CodeBlockType.clap,
+        CodeBlockType.clap,
+      ],
+    ),
+    const SoundChallenge(
+      number: 12,
+      levelNumber: 2,
+      title: 'Sound Sequence',
+      instruction: 'Create the sequence: clap → happy → beep',
+      targetDisplay: '👏 😊 🔊',
+      availableBlocks: [
+        CodeBlockType.clap,
+        CodeBlockType.happy,
+        CodeBlockType.beep,
+      ],
+      correctSequence: [
+        CodeBlockType.clap,
+        CodeBlockType.happy,
+        CodeBlockType.beep,
+      ],
+    ),
+  ];
 }
 
 // Challenge definition
@@ -162,9 +276,7 @@ class Challenge {
       targetRobotState: RobotState(x: 2, y: 1, direction: Direction.up),
       gridWidth: 5,
       gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveForward,
-      ],
+      availableBlocks: [CodeBlockType.moveForward],
     ),
     const Challenge(
       number: 2,
@@ -175,9 +287,7 @@ class Challenge {
       targetRobotState: RobotState(x: 2, y: 3, direction: Direction.up),
       gridWidth: 5,
       gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveBackward,
-      ],
+      availableBlocks: [CodeBlockType.moveBackward],
     ),
     const Challenge(
       number: 3,
@@ -188,9 +298,7 @@ class Challenge {
       targetRobotState: RobotState(x: 1, y: 2, direction: Direction.right),
       gridWidth: 5,
       gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveRight,
-      ],
+      availableBlocks: [CodeBlockType.moveRight],
     ),
     const Challenge(
       number: 4,
@@ -201,9 +309,7 @@ class Challenge {
       targetRobotState: RobotState(x: 3, y: 2, direction: Direction.right),
       gridWidth: 5,
       gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveRight,
-      ],
+      availableBlocks: [CodeBlockType.moveRight],
     ),
     const Challenge(
       number: 5,
@@ -214,9 +320,7 @@ class Challenge {
       targetRobotState: RobotState(x: 3, y: 2, direction: Direction.left),
       gridWidth: 5,
       gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveLeft,
-      ],
+      availableBlocks: [CodeBlockType.moveLeft],
     ),
     const Challenge(
       number: 6,
@@ -227,384 +331,7 @@ class Challenge {
       targetRobotState: RobotState(x: 2, y: 2, direction: Direction.left),
       gridWidth: 5,
       gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveLeft,
-      ],
-    ),
-    // Level 2 Challenges
-    const Challenge(
-      number: 7,
-      levelNumber: 2,
-      title: 'Turn Right',
-      instruction: 'Turn your robot to face right',
-      initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 2, y: 2, direction: Direction.right),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.turnRight,
-      ],
-    ),
-    const Challenge(
-      number: 8,
-      levelNumber: 2,
-      title: 'Turn Left',
-      instruction: 'Turn your robot to face left',
-      initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 2, y: 2, direction: Direction.left),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.turnLeft,
-      ],
-    ),
-    const Challenge(
-      number: 9,
-      levelNumber: 2,
-      title: 'Turn and Move',
-      instruction: 'Turn right and move forward',
-      initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 3, y: 2, direction: Direction.right),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.turnRight,
-        CodeBlockType.moveForward,
-      ],
-    ),
-    const Challenge(
-      number: 10,
-      levelNumber: 2,
-      title: 'Complex Turn',
-      instruction: 'Turn twice and move',
-      initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 2, y: 3, direction: Direction.down),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.turnRight,
-        CodeBlockType.moveForward,
-      ],
-    ),
-    const Challenge(
-      number: 11,
-      levelNumber: 2,
-      title: 'Navigate Square',
-      instruction: 'Move in an L shape',
-      initialRobotState: RobotState(x: 0, y: 0, direction: Direction.right),
-      targetRobotState: RobotState(x: 2, y: 2, direction: Direction.down),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveRight,
-        CodeBlockType.turnRight,
-        CodeBlockType.moveForward,
-      ],
-    ),
-    const Challenge(
-      number: 12,
-      levelNumber: 2,
-      title: 'Full Turn',
-      instruction: 'Make the robot face the opposite direction',
-      initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 2, y: 2, direction: Direction.down),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.turnLeft,
-        CodeBlockType.turnRight,
-      ],
-    ),
-    // Level 3 Challenges
-    const Challenge(
-      number: 13,
-      levelNumber: 3,
-      title: 'Backward Move',
-      instruction: 'Move backward and turn',
-      initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 2, y: 3, direction: Direction.down),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveBackward,
-        CodeBlockType.turnLeft,
-      ],
-    ),
-    const Challenge(
-      number: 14,
-      levelNumber: 3,
-      title: 'Navigate Path',
-      instruction: 'Follow the winding path',
-      initialRobotState: RobotState(x: 0, y: 2, direction: Direction.right),
-      targetRobotState: RobotState(x: 3, y: 0, direction: Direction.up),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveRight,
-        CodeBlockType.moveForward,
-        CodeBlockType.turnRight,
-        CodeBlockType.turnLeft,
-      ],
-    ),
-    const Challenge(
-      number: 15,
-      levelNumber: 3,
-      title: 'Diagonal Move',
-      instruction: 'Move diagonally to the target',
-      initialRobotState: RobotState(x: 0, y: 4, direction: Direction.up),
-      targetRobotState: RobotState(x: 4, y: 0, direction: Direction.up),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.turnRight,
-        CodeBlockType.moveForward,
-      ],
-    ),
-    const Challenge(
-      number: 16,
-      levelNumber: 3,
-      title: 'Complex Navigation',
-      instruction: 'Navigate around obstacles',
-      initialRobotState: RobotState(x: 1, y: 1, direction: Direction.right),
-      targetRobotState: RobotState(x: 3, y: 3, direction: Direction.right),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveRight,
-        CodeBlockType.moveForward,
-        CodeBlockType.turnLeft,
-        CodeBlockType.moveBackward,
-      ],
-    ),
-    const Challenge(
-      number: 17,
-      levelNumber: 3,
-      title: 'Left Turn Challenge',
-      instruction: 'Navigate using left turns only',
-      initialRobotState: RobotState(x: 2, y: 2, direction: Direction.right),
-      targetRobotState: RobotState(x: 2, y: 2, direction: Direction.right),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveForward,
-        CodeBlockType.turnLeft,
-      ],
-    ),
-    const Challenge(
-      number: 18,
-      levelNumber: 3,
-      title: 'Multi-direction',
-      instruction: 'Move in all directions',
-      initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveForward,
-        CodeBlockType.moveBackward,
-        CodeBlockType.moveLeft,
-        CodeBlockType.moveRight,
-      ],
-    ),
-    // Level 4 Challenges
-    const Challenge(
-      number: 19,
-      levelNumber: 4,
-      title: 'Precision Movement',
-      instruction: 'Move with exact precision',
-      initialRobotState: RobotState(x: 0, y: 0, direction: Direction.right),
-      targetRobotState: RobotState(x: 2, y: 1, direction: Direction.up),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveRight,
-        CodeBlockType.moveForward,
-        CodeBlockType.turnLeft,
-      ],
-    ),
-    const Challenge(
-      number: 20,
-      levelNumber: 4,
-      title: 'Square Path',
-      instruction: 'Complete a square path',
-      initialRobotState: RobotState(x: 1, y: 1, direction: Direction.right),
-      targetRobotState: RobotState(x: 1, y: 1, direction: Direction.right),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveForward,
-        CodeBlockType.turnRight,
-      ],
-    ),
-    const Challenge(
-      number: 21,
-      levelNumber: 4,
-      title: 'Advanced Navigation',
-      instruction: 'Navigate a complex maze',
-      initialRobotState: RobotState(x: 0, y: 2, direction: Direction.right),
-      targetRobotState: RobotState(x: 4, y: 2, direction: Direction.right),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveForward,
-        CodeBlockType.moveBackward,
-        CodeBlockType.turnLeft,
-        CodeBlockType.turnRight,
-      ],
-    ),
-    const Challenge(
-      number: 22,
-      levelNumber: 4,
-      title: 'Reverse Path',
-      instruction: 'Go backward to the destination',
-      initialRobotState: RobotState(x: 4, y: 2, direction: Direction.left),
-      targetRobotState: RobotState(x: 0, y: 2, direction: Direction.left),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveBackward,
-        CodeBlockType.turnRight,
-      ],
-    ),
-    const Challenge(
-      number: 23,
-      levelNumber: 4,
-      title: 'Zigzag Pattern',
-      instruction: 'Create a zigzag movement',
-      initialRobotState: RobotState(x: 0, y: 0, direction: Direction.right),
-      targetRobotState: RobotState(x: 4, y: 4, direction: Direction.right),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveRight,
-        CodeBlockType.moveForward,
-        CodeBlockType.turnRight,
-        CodeBlockType.turnLeft,
-      ],
-    ),
-    const Challenge(
-      number: 24,
-      levelNumber: 4,
-      title: 'Final Challenge',
-      instruction: 'Complete the final level 4 challenge',
-      initialRobotState: RobotState(x: 2, y: 0, direction: Direction.down),
-      targetRobotState: RobotState(x: 2, y: 4, direction: Direction.down),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveForward,
-        CodeBlockType.moveBackward,
-        CodeBlockType.moveLeft,
-        CodeBlockType.moveRight,
-        CodeBlockType.turnLeft,
-        CodeBlockType.turnRight,
-      ],
-    ),
-    // Level 5 Challenges
-    const Challenge(
-      number: 25,
-      levelNumber: 5,
-      title: 'Expert Movement',
-      instruction: 'Master the robot movement',
-      initialRobotState: RobotState(x: 0, y: 4, direction: Direction.up),
-      targetRobotState: RobotState(x: 4, y: 0, direction: Direction.right),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveForward,
-        CodeBlockType.moveRight,
-        CodeBlockType.turnRight,
-      ],
-    ),
-    const Challenge(
-      number: 26,
-      levelNumber: 5,
-      title: 'Ultimate Challenge 1',
-      instruction: 'Navigate the ultimate maze',
-      initialRobotState: RobotState(x: 1, y: 1, direction: Direction.right),
-      targetRobotState: RobotState(x: 3, y: 3, direction: Direction.right),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveForward,
-        CodeBlockType.moveBackward,
-        CodeBlockType.moveLeft,
-        CodeBlockType.moveRight,
-        CodeBlockType.turnLeft,
-        CodeBlockType.turnRight,
-      ],
-    ),
-    const Challenge(
-      number: 27,
-      levelNumber: 5,
-      title: 'Ultimate Challenge 2',
-      instruction: 'Master the complex path',
-      initialRobotState: RobotState(x: 0, y: 0, direction: Direction.right),
-      targetRobotState: RobotState(x: 4, y: 4, direction: Direction.right),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveForward,
-        CodeBlockType.moveBackward,
-        CodeBlockType.moveLeft,
-        CodeBlockType.moveRight,
-        CodeBlockType.turnLeft,
-        CodeBlockType.turnRight,
-      ],
-    ),
-    const Challenge(
-      number: 28,
-      levelNumber: 5,
-      title: 'Ultimate Challenge 3',
-      instruction: 'Perfect your skills',
-      initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 2, y: 2, direction: Direction.down),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveForward,
-        CodeBlockType.moveBackward,
-        CodeBlockType.moveLeft,
-        CodeBlockType.moveRight,
-        CodeBlockType.turnLeft,
-        CodeBlockType.turnRight,
-      ],
-    ),
-    const Challenge(
-      number: 29,
-      levelNumber: 5,
-      title: 'Ultimate Challenge 4',
-      instruction: 'The final test awaits',
-      initialRobotState: RobotState(x: 0, y: 2, direction: Direction.right),
-      targetRobotState: RobotState(x: 4, y: 2, direction: Direction.left),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveForward,
-        CodeBlockType.moveBackward,
-        CodeBlockType.moveLeft,
-        CodeBlockType.moveRight,
-        CodeBlockType.turnLeft,
-        CodeBlockType.turnRight,
-      ],
-    ),
-    const Challenge(
-      number: 30,
-      levelNumber: 5,
-      title: 'Grand Finale',
-      instruction: 'Complete the ultimate master challenge',
-      initialRobotState: RobotState(x: 2, y: 4, direction: Direction.up),
-      targetRobotState: RobotState(x: 2, y: 0, direction: Direction.up),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [
-        CodeBlockType.moveForward,
-        CodeBlockType.moveBackward,
-        CodeBlockType.moveLeft,
-        CodeBlockType.moveRight,
-        CodeBlockType.turnLeft,
-        CodeBlockType.turnRight,
-      ],
+      availableBlocks: [CodeBlockType.moveLeft],
     ),
   ];
 }
