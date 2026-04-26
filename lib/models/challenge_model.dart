@@ -14,6 +14,11 @@ enum CodeBlockType {
   clap,
   happy,
   repeat,
+  // Conditional and advanced blocks
+  ifHappy,
+  music,
+  ifSad,
+  cry,
 }
 
 class CodeBlock {
@@ -42,6 +47,10 @@ class CodeBlock {
     CodeBlockType.clap: 'Clap',
     CodeBlockType.happy: 'Happy',
     CodeBlockType.repeat: 'Repeat',
+    CodeBlockType.ifHappy: 'If(Happy)',
+    CodeBlockType.music: 'Music',
+    CodeBlockType.ifSad: 'If(Sad)',
+    CodeBlockType.cry: 'Cry',
   };
 
   static const Map<CodeBlockType, Color> typeColors = {
@@ -57,6 +66,10 @@ class CodeBlock {
     CodeBlockType.clap: Color(0xFFE91E63), // Pink
     CodeBlockType.happy: Color(0xFFFDD835), // Yellow
     CodeBlockType.repeat: Color(0xFF7E57C2), // Deep Purple
+    CodeBlockType.ifHappy: Color(0xFF76FF03), // Light Green
+    CodeBlockType.music: Color(0xFF1976D2), // Deep Blue
+    CodeBlockType.ifSad: Color(0xFF9E9E9E), // Grey
+    CodeBlockType.cry: Color(0xFF29B6F6), // Light Blue
   };
 
   factory CodeBlock.fromType(CodeBlockType type) {
@@ -237,6 +250,34 @@ class SoundChallenge {
         CodeBlockType.happy,
         CodeBlockType.beep,
       ],
+    ),
+    const SoundChallenge(
+      number: 13,
+      levelNumber: 2,
+      title: 'Start If Happy',
+      instruction: 'Create block sequence: Start → If(Happy) → Music → End',
+      targetDisplay: '😊 → 🎵',
+      availableBlocks: [
+        CodeBlockType.start,
+        CodeBlockType.ifHappy,
+        CodeBlockType.music,
+        CodeBlockType.end,
+      ],
+      correctSequence: [CodeBlockType.ifHappy, CodeBlockType.music],
+    ),
+    const SoundChallenge(
+      number: 14,
+      levelNumber: 2,
+      title: 'If Sad then Cry',
+      instruction: 'Create block sequence: Start → If(Sad) → Cry → End',
+      targetDisplay: '😢 → 💧',
+      availableBlocks: [
+        CodeBlockType.start,
+        CodeBlockType.ifSad,
+        CodeBlockType.cry,
+        CodeBlockType.end,
+      ],
+      correctSequence: [CodeBlockType.ifSad, CodeBlockType.cry],
     ),
   ];
 }

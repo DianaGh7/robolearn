@@ -1550,6 +1550,14 @@ IconData _blockIcon(CodeBlockType type) {
       return Icons.sentiment_satisfied_rounded;
     case CodeBlockType.repeat:
       return Icons.repeat_rounded;
+    case CodeBlockType.ifHappy:
+      return Icons.sentiment_very_satisfied_rounded;
+    case CodeBlockType.music:
+      return Icons.music_note_rounded;
+    case CodeBlockType.ifSad:
+      return Icons.sentiment_dissatisfied_rounded;
+    case CodeBlockType.cry:
+      return Icons.water_drop_rounded;
   }
 }
 

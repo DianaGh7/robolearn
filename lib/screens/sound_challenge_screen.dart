@@ -193,6 +193,18 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
       case CodeBlockType.happy:
         await _triggerHappyAnimation();
         break;
+      case CodeBlockType.ifHappy:
+        // Conditional block - no direct sound
+        break;
+      case CodeBlockType.music:
+        // Music block - plays music
+        break;
+      case CodeBlockType.ifSad:
+        // Conditional block - no direct sound
+        break;
+      case CodeBlockType.cry:
+        // Cry block - plays cry sound
+        break;
       default:
         break;
     }
@@ -323,15 +335,18 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final totalHeight = constraints.maxHeight;
-                        final visualizationHeight =
-                            (totalHeight * 0.25).clamp(150.0, 220.0);
-                        final codeAreaHeight =
-                            (totalHeight * 0.65).clamp(360.0, 560.0);
+                        final visualizationHeight = (totalHeight * 0.25).clamp(
+                          150.0,
+                          220.0,
+                        );
+                        final codeAreaHeight = (totalHeight * 0.65).clamp(
+                          360.0,
+                          560.0,
+                        );
 
                         return SingleChildScrollView(
                           child: ConstrainedBox(
-                            constraints:
-                                BoxConstraints(minHeight: totalHeight),
+                            constraints: BoxConstraints(minHeight: totalHeight),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -347,7 +362,7 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
                                       child: _SoundVisualizationCard(
                                         targetDisplay:
                                             widget.challenge.targetDisplay ??
-                                                '🎵',
+                                            '🎵',
                                         pulseController: _pulseController,
                                         waveController: _waveController,
                                       ),
@@ -896,7 +911,9 @@ class _SoundVisualizationCard extends StatelessWidget {
                 ScaleTransition(
                   scale: Tween<double>(begin: 0.8, end: 1.4).animate(
                     CurvedAnimation(
-                        parent: waveController, curve: Curves.easeOut),
+                      parent: waveController,
+                      curve: Curves.easeOut,
+                    ),
                   ),
                   child: Container(
                     width: 80,
@@ -1488,6 +1505,14 @@ IconData _blockIcon(CodeBlockType type) {
       return Icons.sentiment_satisfied_rounded;
     case CodeBlockType.repeat:
       return Icons.repeat_rounded;
+    case CodeBlockType.ifHappy:
+      return Icons.sentiment_very_satisfied_rounded;
+    case CodeBlockType.music:
+      return Icons.music_note_rounded;
+    case CodeBlockType.ifSad:
+      return Icons.sentiment_dissatisfied_rounded;
+    case CodeBlockType.cry:
+      return Icons.water_drop_rounded;
     default:
       return Icons.code_rounded;
   }
