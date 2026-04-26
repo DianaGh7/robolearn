@@ -636,36 +636,34 @@ class _HeaderBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    '#${challenge.number}',
-                    style: GoogleFonts.nunito(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.tealMid,
-                    ),
+          Expanded(
+            child: Row(
+              children: [
+                Text(
+                  '${challenge.number}',
+                  style: GoogleFonts.nunito(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.tealMid,
                   ),
-                ],
-              ),
-              const SizedBox(height: 1),
-              Text(
-                challenge.title,
-                style: GoogleFonts.nunito(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.tealDark,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    challenge.title,
+                    style: GoogleFonts.nunito(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.tealDark,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const Spacer(),
+          const SizedBox(width: 12),
           _StreakBadge(streak: child.streak),
           const SizedBox(width: 3),
           _RobotStatusBadge(status: connectionStatus),
@@ -1434,12 +1432,19 @@ class _DropSlotState extends State<_DropSlot> {
     return DragTarget<_DraggedBlockData>(
       onWillAcceptWithDetails: (_) {
         if (widget.isExecuting) return false;
+        if (!mounted) return false;
         setState(() => _isHovering = true);
         return true;
       },
-      onLeave: (_) => setState(() => _isHovering = false),
+      onLeave: (_) {
+        if (mounted) {
+          setState(() => _isHovering = false);
+        }
+      },
       onAcceptWithDetails: (details) {
-        setState(() => _isHovering = false);
+        if (mounted) {
+          setState(() => _isHovering = false);
+        }
         widget.onAccept(details.data);
       },
       builder: (context, candidateData, rejectedData) {
