@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
@@ -289,7 +289,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
           ),
         ),
       );
-      if (!context.mounted) return;
+      if (!mounted) return;
       Navigator.pop(context, updatedChild ?? _progressChild);
     }
   }
@@ -308,7 +308,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
               ChallengeScreen(child: _progressChild, challenge: nextChallenge),
         ),
       );
-      if (!context.mounted) return;
+      if (!mounted) return;
       Navigator.pop(context, updatedChild ?? _progressChild);
     } else {
       // No more challenges, return to adventure map
@@ -481,7 +481,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.95),
+                color: Colors.white.withValues(alpha: 0.95),
                 border: Border(
                   top: BorderSide(color: Colors.grey.shade200, width: 1),
                 ),
@@ -613,9 +613,9 @@ class _HeaderBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.85),
+        color: Colors.white.withValues(alpha: 0.85),
         border: Border(
-          bottom: BorderSide(color: Colors.teal.withOpacity(0.12), width: 1),
+          bottom: BorderSide(color: Colors.teal.withValues(alpha: 0.12), width: 1),
         ),
       ),
       child: Row(
@@ -625,7 +625,7 @@ class _HeaderBar extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                color: AppTheme.tealPrimary.withOpacity(0.12),
+                color: AppTheme.tealPrimary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
@@ -695,7 +695,7 @@ class _HeaderBar extends StatelessWidget {
               border: Border.all(color: Colors.white, width: 1.8),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.tealPrimary.withOpacity(0.25),
+                  color: AppTheme.tealPrimary.withValues(alpha: 0.25),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -777,9 +777,9 @@ class _RobotStatusBadge extends StatelessWidget {
       duration: const Duration(milliseconds: 220),
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: data.$1.withOpacity(0.14),
+        color: data.$1.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: data.$1.withOpacity(0.34)),
+        border: Border.all(color: data.$1.withValues(alpha: 0.34)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -837,10 +837,10 @@ class _InstructionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
+        color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: AppTheme.tealPrimary.withOpacity(0.15),
+          color: AppTheme.tealPrimary.withValues(alpha: 0.15),
           width: 1.5,
         ),
       ),
@@ -850,7 +850,7 @@ class _InstructionCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: AppTheme.tealPrimary.withOpacity(0.12),
+              color: AppTheme.tealPrimary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(
@@ -900,10 +900,10 @@ class _RobotGridWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
+        color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: AppTheme.tealPrimary.withOpacity(0.15),
+          color: AppTheme.tealPrimary.withValues(alpha: 0.15),
           width: 1.5,
         ),
       ),
@@ -1069,12 +1069,12 @@ class _GridCell extends StatelessWidget {
         border: isTarget
             ? Border.all(color: Colors.amber.shade700, width: 2)
             : isRobot
-            ? Border.all(color: AppTheme.tealDark.withOpacity(0.4), width: 1.5)
+            ? Border.all(color: AppTheme.tealDark.withValues(alpha: 0.4), width: 1.5)
             : null,
         boxShadow: isRobot
             ? [
                 BoxShadow(
-                  color: AppTheme.tealPrimary.withOpacity(0.35),
+                  color: AppTheme.tealPrimary.withValues(alpha: 0.35),
                   blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),
@@ -1140,10 +1140,10 @@ class _CodeBlocksArea extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
+        color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: AppTheme.tealPrimary.withOpacity(0.15),
+          color: AppTheme.tealPrimary.withValues(alpha: 0.15),
           width: 1.5,
         ),
       ),
@@ -1367,7 +1367,7 @@ class _CodeBlockWidget extends StatelessWidget {
             : null,
         boxShadow: [
           BoxShadow(
-            color: block.color.withOpacity(0.3),
+            color: block.color.withValues(alpha: 0.3),
             blurRadius: isHighlighted ? 10 : 6,
             offset: const Offset(0, 2),
           ),
@@ -1377,7 +1377,7 @@ class _CodeBlockWidget extends StatelessWidget {
         children: [
           Icon(
             _blockIcon(block.type),
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.9),
             size: 16,
           ),
           const SizedBox(width: 8),
@@ -1398,7 +1398,7 @@ class _CodeBlockWidget extends StatelessWidget {
                 margin: const EdgeInsets.only(left: 6),
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.25),
+                  color: Colors.white.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(5),
                 ),
                 child: const Icon(
@@ -1454,13 +1454,13 @@ class _DropSlotState extends State<_DropSlot> {
           height: _isHovering ? 20 : 6,
           decoration: BoxDecoration(
             color: _isHovering
-                ? AppTheme.tealPrimary.withOpacity(0.18)
+                ? AppTheme.tealPrimary.withValues(alpha: 0.18)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: _isHovering
                   ? AppTheme.tealPrimary
-                  : Colors.grey.withOpacity(0.25),
+                  : Colors.grey.withValues(alpha: 0.25),
             ),
           ),
         );
@@ -1485,13 +1485,13 @@ class _PaletteChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        border: Border.all(color: color.withOpacity(0.5), width: 1.5),
+        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
         borderRadius: BorderRadius.circular(10),
         boxShadow: elevated
             ? [
                 BoxShadow(
-                  color: color.withOpacity(0.35),
+                  color: color.withValues(alpha: 0.35),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -1558,6 +1558,8 @@ IconData _blockIcon(CodeBlockType type) {
       return Icons.sentiment_dissatisfied_rounded;
     case CodeBlockType.cry:
       return Icons.water_drop_rounded;
+    default:
+      return Icons.code_rounded;
   }
 }
 
@@ -1619,7 +1621,7 @@ class _SuccessBannerState extends State<_SuccessBanner>
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF4CAF50).withOpacity(0.3),
+              color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -1748,10 +1750,10 @@ class _StreakBadgeState extends State<_StreakBadge> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFFF6B6B).withOpacity(0.15),
+        color: const Color(0xFFFF6B6B).withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: const Color(0xFFFF6B6B).withOpacity(0.4),
+          color: const Color(0xFFFF6B6B).withValues(alpha: 0.4),
           width: 1.2,
         ),
       ),

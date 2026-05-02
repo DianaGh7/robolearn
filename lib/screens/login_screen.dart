@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
@@ -171,6 +171,7 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
               final email = _resetEmailCtrl.text.trim().toLowerCase();
               try {
                 if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(email)) {
@@ -181,8 +182,7 @@ class _LoginScreenState extends State<LoginScreen>
                 }
 
                 await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-                if (!context.mounted) return;
-                Navigator.pop(context);
+                navigator.pop();
                 messenger.showSnackBar(SnackBar(
                   content: Text(
                       'If this email exists, a reset link has been sent.',
@@ -193,7 +193,6 @@ class _LoginScreenState extends State<LoginScreen>
                       borderRadius: BorderRadius.circular(12)),
                 ));
               } on FirebaseAuthException catch (e) {
-                if (!context.mounted) return;
                 messenger.showSnackBar(
                   SnackBar(
                     content: Text(_authErrorMessage(e), style: GoogleFonts.nunito()),
@@ -240,7 +239,7 @@ class _LoginScreenState extends State<LoginScreen>
                         borderRadius: BorderRadius.circular(26),
                         boxShadow: [
                           BoxShadow(
-                              color: AppTheme.tealPrimary.withOpacity(0.35),
+                              color: AppTheme.tealPrimary.withValues(alpha: 0.35),
                               blurRadius: 20,
                               spreadRadius: 3)
                         ],
@@ -320,7 +319,7 @@ class _LoginScreenState extends State<LoginScreen>
                     // ── Divider ────────────────────────────────────────────
                     Row(children: [
                       Expanded(
-                          child: Divider(color: Colors.white.withOpacity(0.7),
+                          child: Divider(color: Colors.white.withValues(alpha: 0.7),
                               thickness: 1)),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -330,7 +329,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 fontWeight: FontWeight.w600)),
                       ),
                       Expanded(
-                          child: Divider(color: Colors.white.withOpacity(0.7),
+                          child: Divider(color: Colors.white.withValues(alpha: 0.7),
                               thickness: 1)),
                     ]),
 
@@ -404,7 +403,7 @@ class _ThemedField extends StatelessWidget {
         hintStyle:
         GoogleFonts.nunito(color: Colors.grey.shade400, fontSize: 14),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.88),
+        fillColor: Colors.white.withValues(alpha: 0.88),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none),
@@ -455,7 +454,7 @@ class _ThemedPasswordField extends StatelessWidget {
         hintStyle:
         GoogleFonts.nunito(color: Colors.grey.shade400, fontSize: 14),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.88),
+        fillColor: Colors.white.withValues(alpha: 0.88),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none),
@@ -507,7 +506,7 @@ class _GradientButton extends StatelessWidget {
             boxShadow: enabled
                 ? [
               BoxShadow(
-                  color: AppTheme.tealPrimary.withOpacity(0.45),
+                  color: AppTheme.tealPrimary.withValues(alpha: 0.45),
                   blurRadius: 16,
                   offset: const Offset(0, 6))
             ]

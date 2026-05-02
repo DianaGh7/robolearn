@@ -9,16 +9,35 @@ enum CodeBlockType {
   turnLeft,
   turnRight,
   end,
-  // Sound blocks for Level 2
+  // Sound blocks
   beep,
   clap,
   happy,
   repeat,
-  // Conditional and advanced blocks
+  // Level 2 – Challenge 1 & 2: if/then
   ifHappy,
   music,
   ifSad,
   cry,
+  // Level 2 – Challenge 3: Day / Night if-else
+  ifMoon,
+  thenNight,
+  elseIfSun,
+  thenMorning,
+  // Level 2 – Challenge 4: Streak reward if-else-if
+  ifStreak5,
+  cheering,
+  elseIfStreak2,
+  elseBlock,
+  encourage,
+  // Level 2 – Challenge 5: Guess the Animal (nested if)
+  ifBig,
+  ifHasTrunk,
+  elephantSound,
+  lionSound,
+  ifFluffy,
+  catSound,
+  dogSound,
 }
 
 class CodeBlock {
@@ -35,41 +54,73 @@ class CodeBlock {
   });
 
   static const Map<CodeBlockType, String> typeLabels = {
-    CodeBlockType.start: 'Start',
+    CodeBlockType.start: 'START',
     CodeBlockType.moveForward: 'Move Forward',
     CodeBlockType.moveBackward: 'Move Backward',
     CodeBlockType.moveLeft: 'Move Left',
     CodeBlockType.moveRight: 'Move Right',
     CodeBlockType.turnLeft: 'Turn Left',
     CodeBlockType.turnRight: 'Turn Right',
-    CodeBlockType.end: 'End',
-    CodeBlockType.beep: 'Beep',
-    CodeBlockType.clap: 'Clap',
-    CodeBlockType.happy: 'Happy',
-    CodeBlockType.repeat: 'Repeat',
-    CodeBlockType.ifHappy: 'If(Happy)',
-    CodeBlockType.music: 'Music',
-    CodeBlockType.ifSad: 'If(Sad)',
-    CodeBlockType.cry: 'Cry',
+    CodeBlockType.end: 'END',
+    CodeBlockType.beep: 'beep 🔊',
+    CodeBlockType.clap: 'clap 👏',
+    CodeBlockType.happy: 'happy 😊',
+    CodeBlockType.repeat: 'repeat',
+    CodeBlockType.ifHappy: 'IF happy 😊',
+    CodeBlockType.music: 'play music 🎵',
+    CodeBlockType.ifSad: 'IF sad 😢',
+    CodeBlockType.cry: 'cry 💧',
+    CodeBlockType.ifMoon: 'IF moon 🌙',
+    CodeBlockType.thenNight: 'show night 🌃',
+    CodeBlockType.elseIfSun: 'ELSE IF sun ☀️',
+    CodeBlockType.thenMorning: 'show morning 🌅',
+    CodeBlockType.ifStreak5: 'IF streak >= 5',
+    CodeBlockType.cheering: 'cheer 🎉',
+    CodeBlockType.elseIfStreak2: 'ELSE IF streak >= 2',
+    CodeBlockType.elseBlock: 'ELSE',
+    CodeBlockType.encourage: 'keep going! 💪',
+    CodeBlockType.ifBig: 'IF big 🐾',
+    CodeBlockType.ifHasTrunk: 'IF has trunk 🦣',
+    CodeBlockType.elephantSound: 'elephant 🐘',
+    CodeBlockType.lionSound: 'lion 🦁',
+    CodeBlockType.ifFluffy: 'IF fluffy 🐱',
+    CodeBlockType.catSound: 'cat 🐱',
+    CodeBlockType.dogSound: 'dog 🐶',
   };
 
   static const Map<CodeBlockType, Color> typeColors = {
-    CodeBlockType.start: Color(0xFF4CAF50), // Green
-    CodeBlockType.moveForward: Color(0xFF2196F3), // Blue
-    CodeBlockType.moveBackward: Color(0xFF00BCD4), // Cyan
-    CodeBlockType.moveLeft: Color(0xFF9C27B0), // Purple
-    CodeBlockType.moveRight: Color(0xFFFFC107), // Amber
-    CodeBlockType.turnLeft: Color(0xFFFF9800), // Orange
-    CodeBlockType.turnRight: Color(0xFFFF5722), // Red
-    CodeBlockType.end: Color(0xFF9C27B0), // Purple
-    CodeBlockType.beep: Color(0xFF00ACC1), // Teal
-    CodeBlockType.clap: Color(0xFFE91E63), // Pink
-    CodeBlockType.happy: Color(0xFFFDD835), // Yellow
-    CodeBlockType.repeat: Color(0xFF7E57C2), // Deep Purple
-    CodeBlockType.ifHappy: Color(0xFF76FF03), // Light Green
-    CodeBlockType.music: Color(0xFF1976D2), // Deep Blue
-    CodeBlockType.ifSad: Color(0xFF9E9E9E), // Grey
-    CodeBlockType.cry: Color(0xFF29B6F6), // Light Blue
+    CodeBlockType.start: Color(0xFF4CAF50),
+    CodeBlockType.moveForward: Color(0xFF2196F3),
+    CodeBlockType.moveBackward: Color(0xFF00BCD4),
+    CodeBlockType.moveLeft: Color(0xFF9C27B0),
+    CodeBlockType.moveRight: Color(0xFFFFC107),
+    CodeBlockType.turnLeft: Color(0xFFFF9800),
+    CodeBlockType.turnRight: Color(0xFFFF5722),
+    CodeBlockType.end: Color(0xFF9C27B0),
+    CodeBlockType.beep: Color(0xFF00ACC1),
+    CodeBlockType.clap: Color(0xFFE91E63),
+    CodeBlockType.happy: Color(0xFFFDD835),
+    CodeBlockType.repeat: Color(0xFF7E57C2),
+    CodeBlockType.ifHappy: Color(0xFF43A047),
+    CodeBlockType.music: Color(0xFF1976D2),
+    CodeBlockType.ifSad: Color(0xFF757575),
+    CodeBlockType.cry: Color(0xFF29B6F6),
+    CodeBlockType.ifMoon: Color(0xFF3949AB),
+    CodeBlockType.thenNight: Color(0xFF1A237E),
+    CodeBlockType.elseIfSun: Color(0xFFFFB300),
+    CodeBlockType.thenMorning: Color(0xFFFF8F00),
+    CodeBlockType.ifStreak5: Color(0xFFAD1457),
+    CodeBlockType.cheering: Color(0xFFD81B60),
+    CodeBlockType.elseIfStreak2: Color(0xFF1565C0),
+    CodeBlockType.elseBlock: Color(0xFF546E7A),
+    CodeBlockType.encourage: Color(0xFF2E7D32),
+    CodeBlockType.ifBig: Color(0xFF6D4C41),
+    CodeBlockType.ifHasTrunk: Color(0xFF546E7A),
+    CodeBlockType.elephantSound: Color(0xFF78909C),
+    CodeBlockType.lionSound: Color(0xFFEF6C00),
+    CodeBlockType.ifFluffy: Color(0xFF7986CB),
+    CodeBlockType.catSound: Color(0xFF26A69A),
+    CodeBlockType.dogSound: Color(0xFF8D6E63),
   };
 
   factory CodeBlock.fromType(CodeBlockType type) {
@@ -165,9 +216,12 @@ class SoundChallenge {
   final int levelNumber;
   final String title;
   final String instruction;
-  final String? targetDisplay; // Visual representation like "👏 😊 🔊"
+  final String? targetDisplay;
+  // Maps each correctSequence index to a targetDisplay line index for highlighting.
+  // null means no per-line highlighting.
+  final List<int>? lineForBlock;
   final List<CodeBlockType> availableBlocks;
-  final List<CodeBlockType> correctSequence; // Expected solution
+  final List<CodeBlockType> correctSequence;
 
   const SoundChallenge({
     required this.number,
@@ -175,88 +229,27 @@ class SoundChallenge {
     required this.title,
     required this.instruction,
     this.targetDisplay,
+    this.lineForBlock,
     required this.availableBlocks,
     required this.correctSequence,
   });
 
-  // Level 2 Sound Challenges
+  // Per-level display number (starts from 1 within each level)
+  int get displayNumber {
+    final index = soundChallenges.indexWhere((c) => c.number == number);
+    return index + 1;
+  }
+
+  // Level 2 Sound Challenges (internal numbers start at 7 to avoid collision with Level 1)
   static final List<SoundChallenge> soundChallenges = [
+    // Challenge 1 – highlights matching Logic to Match row on execution
     const SoundChallenge(
       number: 7,
       levelNumber: 2,
-      title: 'Beep Sound',
-      instruction: 'Make the robot emit one beep sound',
-      targetDisplay: '🔊',
-      availableBlocks: [CodeBlockType.beep],
-      correctSequence: [CodeBlockType.beep],
-    ),
-    const SoundChallenge(
-      number: 8,
-      levelNumber: 2,
-      title: 'Clap Sound',
-      instruction: 'Make the robot emit a clap sound',
-      targetDisplay: '👏',
-      availableBlocks: [CodeBlockType.clap],
-      correctSequence: [CodeBlockType.clap],
-    ),
-    const SoundChallenge(
-      number: 9,
-      levelNumber: 2,
-      title: 'Happy Sound',
-      instruction: 'Make the robot emit a happy sound',
-      targetDisplay: '😊',
-      availableBlocks: [CodeBlockType.happy],
-      correctSequence: [CodeBlockType.happy],
-    ),
-    const SoundChallenge(
-      number: 10,
-      levelNumber: 2,
-      title: 'Choose the Correct Sound',
-      instruction: 'Pick the clap sound to make 👏',
-      targetDisplay: '👏',
-      availableBlocks: [
-        CodeBlockType.beep,
-        CodeBlockType.clap,
-        CodeBlockType.happy,
-      ],
-      correctSequence: [CodeBlockType.clap],
-    ),
-    const SoundChallenge(
-      number: 11,
-      levelNumber: 2,
-      title: 'Repeat a Sound',
-      instruction: 'Clap 3 times using the repeat block',
-      targetDisplay: '👏 👏 👏',
-      availableBlocks: [CodeBlockType.clap, CodeBlockType.repeat],
-      correctSequence: [
-        CodeBlockType.clap,
-        CodeBlockType.clap,
-        CodeBlockType.clap,
-      ],
-    ),
-    const SoundChallenge(
-      number: 12,
-      levelNumber: 2,
-      title: 'Sound Sequence',
-      instruction: 'Create the sequence: clap → happy → beep',
-      targetDisplay: '👏 😊 🔊',
-      availableBlocks: [
-        CodeBlockType.clap,
-        CodeBlockType.happy,
-        CodeBlockType.beep,
-      ],
-      correctSequence: [
-        CodeBlockType.clap,
-        CodeBlockType.happy,
-        CodeBlockType.beep,
-      ],
-    ),
-    const SoundChallenge(
-      number: 13,
-      levelNumber: 2,
-      title: 'Start If Happy',
-      instruction: 'Create block sequence: Start → If(Happy) → Music → End',
-      targetDisplay: '😊 → 🎵',
+      title: 'Happy Music',
+      instruction: 'Build the logic when a happy emoji appears:',
+      targetDisplay: 'IF 😊 happy\n→ 🎵 play music',
+      lineForBlock: [0, 1], // ifHappy→line0, music→line1
       availableBlocks: [
         CodeBlockType.start,
         CodeBlockType.ifHappy,
@@ -265,12 +258,13 @@ class SoundChallenge {
       ],
       correctSequence: [CodeBlockType.ifHappy, CodeBlockType.music],
     ),
+    // Challenge 2 – shows emoji cue only; child solves independently
     const SoundChallenge(
-      number: 14,
+      number: 8,
       levelNumber: 2,
-      title: 'If Sad then Cry',
-      instruction: 'Create block sequence: Start → If(Sad) → Cry → End',
-      targetDisplay: '😢 → 💧',
+      title: 'Sad Reaction',
+      instruction: 'Build the logic when a sad emoji appears:',
+      targetDisplay: '😢',
       availableBlocks: [
         CodeBlockType.start,
         CodeBlockType.ifSad,
@@ -278,6 +272,98 @@ class SoundChallenge {
         CodeBlockType.end,
       ],
       correctSequence: [CodeBlockType.ifSad, CodeBlockType.cry],
+    ),
+    // Challenge 3 – highlights matching row on execution
+    const SoundChallenge(
+      number: 9,
+      levelNumber: 2,
+      title: 'Day and Night',
+      instruction:
+          'Represent the following logic with appropriate code blocks:',
+      targetDisplay: '🌙 → 🌃 night\n☀️ → 🌅 morning',
+      lineForBlock: [0, 0, 1, 1], // ifMoon/thenNight→line0, elseIfSun/thenMorning→line1
+      availableBlocks: [
+        CodeBlockType.start,
+        CodeBlockType.ifMoon,
+        CodeBlockType.thenNight,
+        CodeBlockType.elseIfSun,
+        CodeBlockType.thenMorning,
+        CodeBlockType.end,
+      ],
+      correctSequence: [
+        CodeBlockType.ifMoon,
+        CodeBlockType.thenNight,
+        CodeBlockType.elseIfSun,
+        CodeBlockType.thenMorning,
+      ],
+    ),
+    // Challenge 4 – highlights matching row on execution
+    const SoundChallenge(
+      number: 10,
+      levelNumber: 2,
+      title: 'Streaks',
+      instruction: 'Build the streak reward system using code blocks!',
+      targetDisplay: 'streak >= 5  →  🎉\nstreak >= 2  →  👏\nelse  →  keep going! 💪',
+      lineForBlock: [0, 0, 1, 1, 2, 2], // ifStreak5/cheering→0, elseIfStreak2/clap→1, elseBlock/encourage→2
+      availableBlocks: [
+        CodeBlockType.start,
+        CodeBlockType.ifStreak5,
+        CodeBlockType.cheering,
+        CodeBlockType.elseIfStreak2,
+        CodeBlockType.clap,
+        CodeBlockType.elseBlock,
+        CodeBlockType.encourage,
+        CodeBlockType.end,
+      ],
+      correctSequence: [
+        CodeBlockType.ifStreak5,
+        CodeBlockType.cheering,
+        CodeBlockType.elseIfStreak2,
+        CodeBlockType.clap,
+        CodeBlockType.elseBlock,
+        CodeBlockType.encourage,
+      ],
+    ),
+    // Challenge 5 – Guess the Animal (nested if)
+    const SoundChallenge(
+      number: 11,
+      levelNumber: 2,
+      title: 'Guess the Animal',
+      instruction: 'Guess the animal using nested if blocks:',
+      targetDisplay:
+          'big + trunk  →  🐘 elephant\n'
+          'big, no trunk  →  🦁 lion\n'
+          'small + fluffy  →  🐱 cat\n'
+          'small, not fluffy  →  🐶 dog',
+      // ifBig→0, ifHasTrunk→0, elephant→0,
+      // ELSE(no trunk)→1, lion→1,
+      // ELSE(small)→2, ifFluffy→2, cat→2,
+      // ELSE(not fluffy)→3, dog→3
+      lineForBlock: [0, 0, 0, 1, 1, 2, 2, 2, 3, 3],
+      availableBlocks: [
+        CodeBlockType.start,
+        CodeBlockType.ifBig,
+        CodeBlockType.ifHasTrunk,
+        CodeBlockType.elephantSound,
+        CodeBlockType.elseBlock,
+        CodeBlockType.lionSound,
+        CodeBlockType.ifFluffy,
+        CodeBlockType.catSound,
+        CodeBlockType.dogSound,
+        CodeBlockType.end,
+      ],
+      correctSequence: [
+        CodeBlockType.ifBig,
+        CodeBlockType.ifHasTrunk,
+        CodeBlockType.elephantSound,
+        CodeBlockType.elseBlock, // else: big but no trunk → lion
+        CodeBlockType.lionSound,
+        CodeBlockType.elseBlock, // else: small → check fluffy
+        CodeBlockType.ifFluffy,
+        CodeBlockType.catSound,
+        CodeBlockType.elseBlock, // else: small and not fluffy → dog
+        CodeBlockType.dogSound,
+      ],
     ),
   ];
 }

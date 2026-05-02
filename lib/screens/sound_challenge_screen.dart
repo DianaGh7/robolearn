@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:robolearn/theme/app_theme.dart';
 import 'package:robolearn/models/challenge_model.dart';
@@ -9,7 +9,7 @@ class SoundChallengeScreen extends StatefulWidget {
   final ChildModel child;
   final SoundChallenge challenge;
 
-  const SoundChallengeScreen({required this.child, required this.challenge});
+  const SoundChallengeScreen({super.key, required this.child, required this.challenge});
 
   @override
   State<SoundChallengeScreen> createState() => _SoundChallengeScreenState();
@@ -28,6 +28,7 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
   bool _showFailToast = false;
   bool _challengeSuccessfullyCompleted = false;
   int? _activeBlockIndex;
+  int? _highlightedLineIndex;
   late List<CodeBlockType> _availableBlocks;
   RobotConnectionStatus _connectionStatus = RobotConnectionStatus.disconnected;
 
@@ -36,11 +37,11 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
     super.initState();
     arrangedBlocks = [];
     _progressChild = widget.child;
-    _availableBlocks = [
+    _availableBlocks = {
       ...widget.challenge.availableBlocks,
       CodeBlockType.start,
       CodeBlockType.end,
-    ].toSet().toList();
+    }.toList();
 
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 600),
@@ -138,26 +139,49 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
     setState(() {
       _isExecuting = true;
       _activeBlockIndex = null;
+      _highlightedLineIndex = null;
+    });
+
+    final mapping = widget.challenge.lineForBlock;
+    int seqIdx = 0;
+
+    for (int i = 0; i < arrangedBlocks.length; i++) {
+      final blockType = arrangedBlocks[i].type;
+      final isExecutable = blockType != CodeBlockType.start &&
+          blockType != CodeBlockType.end &&
+          blockType != CodeBlockType.repeat;
+
+      setState(() {
+        _activeBlockIndex = i;
+        _highlightedLineIndex = isExecutable &&
+                mapping != null &&
+                seqIdx < mapping.length
+            ? mapping[seqIdx]
+            : null;
+      });
+
+      if (isExecutable) {
+        await _executeSound(blockType);
+        seqIdx++;
+      } else {
+        await Future.delayed(const Duration(milliseconds: 250));
+      }
+      await Future.delayed(const Duration(milliseconds: 150));
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _activeBlockIndex = null;
+      _highlightedLineIndex = null;
     });
 
     final soundSequence = arrangedBlocks
         .map((b) => b.type)
-        .where(
-          (t) =>
-              t != CodeBlockType.start &&
-              t != CodeBlockType.end &&
-              t != CodeBlockType.repeat,
-        )
+        .where((t) =>
+            t != CodeBlockType.start &&
+            t != CodeBlockType.end &&
+            t != CodeBlockType.repeat)
         .toList();
-
-    for (int i = 0; i < soundSequence.length; i++) {
-      setState(() => _activeBlockIndex = i);
-      await _executeSound(soundSequence[i]);
-      await Future.delayed(const Duration(milliseconds: 300));
-    }
-
-    if (!mounted) return;
-    setState(() => _activeBlockIndex = null);
 
     final isCorrect = _validateSequence(soundSequence);
 
@@ -188,24 +212,26 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
         await _triggerBeepAnimation();
         break;
       case CodeBlockType.clap:
+      case CodeBlockType.cheering:
+      case CodeBlockType.encourage:
         await _triggerClapAnimation();
         break;
       case CodeBlockType.happy:
+      case CodeBlockType.music:
+      case CodeBlockType.thenNight:
+      case CodeBlockType.thenMorning:
+      case CodeBlockType.catSound:
         await _triggerHappyAnimation();
         break;
-      case CodeBlockType.ifHappy:
-        // Conditional block - no direct sound
+      case CodeBlockType.elephantSound:
+        await _triggerBeepAnimation();
         break;
-      case CodeBlockType.music:
-        // Music block - plays music
-        break;
-      case CodeBlockType.ifSad:
-        // Conditional block - no direct sound
-        break;
-      case CodeBlockType.cry:
-        // Cry block - plays cry sound
+      case CodeBlockType.lionSound:
+      case CodeBlockType.dogSound:
+        await _triggerClapAnimation();
         break;
       default:
+        await Future.delayed(const Duration(milliseconds: 300));
         break;
     }
   }
@@ -242,7 +268,7 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
           ),
         ),
       );
-      if (!context.mounted) return;
+      if (!mounted) return;
       Navigator.pop(context, updatedChild ?? _progressChild);
     }
   }
@@ -263,7 +289,7 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
           ),
         ),
       );
-      if (!context.mounted) return;
+      if (!mounted) return;
       Navigator.pop(context, updatedChild ?? _progressChild);
     } else {
       Navigator.pop(context, _progressChild);
@@ -335,16 +361,19 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final totalHeight = constraints.maxHeight;
-                        final visualizationHeight = (totalHeight * 0.25).clamp(
-                          150.0,
-                          220.0,
-                        );
+                        final lineCount = (widget.challenge.targetDisplay ?? '')
+                            .split('\n')
+                            .where((l) => l.trim().isNotEmpty)
+                            .length;
+                        final visualizationHeight =
+                            (70.0 + lineCount * 66.0).clamp(155.0, 345.0);
                         final codeAreaHeight = (totalHeight * 0.65).clamp(
                           360.0,
                           560.0,
                         );
 
                         return SingleChildScrollView(
+                          padding: const EdgeInsets.only(bottom: 84),
                           child: ConstrainedBox(
                             constraints: BoxConstraints(minHeight: totalHeight),
                             child: Column(
@@ -353,22 +382,25 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
                                 _InstructionCard(
                                   instruction: widget.challenge.instruction,
                                 ),
-                                const SizedBox(height: 6),
-                                SizedBox(
-                                  height: visualizationHeight,
-                                  child: Center(
-                                    child: FractionallySizedBox(
-                                      widthFactor: 0.80,
-                                      child: _SoundVisualizationCard(
-                                        targetDisplay:
-                                            widget.challenge.targetDisplay ??
-                                            '🎵',
-                                        pulseController: _pulseController,
-                                        waveController: _waveController,
+                                if (widget.challenge.targetDisplay != null) ...[
+                                  const SizedBox(height: 6),
+                                  SizedBox(
+                                    height: visualizationHeight,
+                                    child: Center(
+                                      child: FractionallySizedBox(
+                                        widthFactor: 0.80,
+                                        child: _SoundVisualizationCard(
+                                          targetDisplay:
+                                              widget.challenge.targetDisplay!,
+                                          highlightedLineIndex:
+                                              _highlightedLineIndex,
+                                          pulseController: _pulseController,
+                                          waveController: _waveController,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
+                                ],
                                 const SizedBox(height: 6),
                                 SizedBox(
                                   height: codeAreaHeight,
@@ -383,7 +415,6 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
                                     activeBlockIndex: _activeBlockIndex,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
                               ],
                             ),
                           ),
@@ -427,7 +458,7 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.95),
+                color: Colors.white.withValues(alpha: 0.95),
                 border: Border(
                   top: BorderSide(color: Colors.grey.shade200, width: 1),
                 ),
@@ -438,12 +469,12 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: widget.challenge.number > 7
+                        onPressed: widget.challenge.displayNumber > 1
                             ? _goToPreviousChallenge
                             : null,
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(
-                            color: widget.challenge.number > 7
+                            color: widget.challenge.displayNumber > 1
                                 ? const Color(0xFF9E9E9E)
                                 : Colors.grey.shade300,
                             width: 1.5,
@@ -459,7 +490,7 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
                           children: [
                             Icon(
                               Icons.arrow_back_rounded,
-                              color: widget.challenge.number > 7
+                              color: widget.challenge.displayNumber > 1
                                   ? const Color(0xFF616161)
                                   : Colors.grey.shade400,
                               size: 18,
@@ -470,7 +501,7 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
                               style: GoogleFonts.nunito(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
-                                color: widget.challenge.number > 7
+                                color: widget.challenge.displayNumber > 1
                                     ? const Color(0xFF616161)
                                     : Colors.grey.shade400,
                               ),
@@ -554,9 +585,9 @@ class _HeaderBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.85),
+        color: Colors.white.withValues(alpha: 0.85),
         border: Border(
-          bottom: BorderSide(color: Colors.teal.withOpacity(0.12), width: 1),
+          bottom: BorderSide(color: Colors.teal.withValues(alpha: 0.12), width: 1),
         ),
       ),
       child: Row(
@@ -566,7 +597,7 @@ class _HeaderBar extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                color: AppTheme.tealPrimary.withOpacity(0.12),
+                color: AppTheme.tealPrimary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
@@ -581,7 +612,7 @@ class _HeaderBar extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  '${challenge.number}',
+                  '${challenge.displayNumber}',
                   style: GoogleFonts.nunito(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
@@ -636,7 +667,7 @@ class _HeaderBar extends StatelessWidget {
               border: Border.all(color: Colors.white, width: 1.8),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.tealPrimary.withOpacity(0.25),
+                  color: AppTheme.tealPrimary.withValues(alpha: 0.25),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -718,9 +749,9 @@ class _RobotStatusBadge extends StatelessWidget {
       duration: const Duration(milliseconds: 220),
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: data.$1.withOpacity(0.14),
+        color: data.$1.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: data.$1.withOpacity(0.34)),
+        border: Border.all(color: data.$1.withValues(alpha: 0.34)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -784,10 +815,10 @@ class _StreakBadgeState extends State<_StreakBadge> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFFF6B6B).withOpacity(0.15),
+        color: const Color(0xFFFF6B6B).withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: const Color(0xFFFF6B6B).withOpacity(0.4),
+          color: const Color(0xFFFF6B6B).withValues(alpha: 0.4),
           width: 1.2,
         ),
       ),
@@ -819,10 +850,10 @@ class _InstructionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
+        color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: AppTheme.tealPrimary.withOpacity(0.15),
+          color: AppTheme.tealPrimary.withValues(alpha: 0.15),
           width: 1.5,
         ),
       ),
@@ -832,7 +863,7 @@ class _InstructionCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: AppTheme.tealPrimary.withOpacity(0.12),
+              color: AppTheme.tealPrimary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(
@@ -861,24 +892,38 @@ class _InstructionCard extends StatelessWidget {
 
 class _SoundVisualizationCard extends StatelessWidget {
   final String targetDisplay;
+  final int? highlightedLineIndex;
   final AnimationController pulseController;
   final AnimationController waveController;
 
   const _SoundVisualizationCard({
     required this.targetDisplay,
+    required this.highlightedLineIndex,
     required this.pulseController,
     required this.waveController,
   });
 
+  static const _rowColors = [
+    Color(0xFF4DD0C4),
+    Color(0xFF7E8DF1),
+    Color(0xFFF29E4C),
+    Color(0xFFE573B9),
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final lines = targetDisplay
+        .split('\n')
+        .where((l) => l.trim().isNotEmpty)
+        .toList();
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
+        color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: AppTheme.tealPrimary.withOpacity(0.15),
+          color: AppTheme.tealPrimary.withValues(alpha: 0.15),
           width: 1.5,
         ),
       ),
@@ -888,13 +933,13 @@ class _SoundVisualizationCard extends StatelessWidget {
           Row(
             children: [
               const Icon(
-                Icons.volume_up_rounded,
+                Icons.emoji_objects_rounded,
                 size: 16,
                 color: AppTheme.tealPrimary,
               ),
               const SizedBox(width: 6),
               Text(
-                'Target Sounds',
+                'Logic to Match',
                 style: GoogleFonts.nunito(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
@@ -905,43 +950,61 @@ class _SoundVisualizationCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                ScaleTransition(
-                  scale: Tween<double>(begin: 0.8, end: 1.4).animate(
-                    CurvedAnimation(
-                      parent: waveController,
-                      curve: Curves.easeOut,
-                    ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: lines.asMap().entries.map((entry) {
+                final lineIdx = entry.key;
+                final color = _rowColors[lineIdx % _rowColors.length];
+                final isHighlighted = highlightedLineIndex == lineIdx;
+                final fontSize = lines.length == 1
+                    ? 42.0
+                    : lines.length == 2
+                        ? 17.0
+                        : lines.length == 3
+                            ? 14.0
+                            : 12.0;
+
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: isHighlighted ? 11 : 8,
                   ),
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppTheme.tealPrimary.withOpacity(
-                          1 - waveController.value,
-                        ),
-                        width: 2,
-                      ),
+                  decoration: BoxDecoration(
+                    color: isHighlighted
+                        ? color.withValues(alpha: 0.22)
+                        : color.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isHighlighted
+                          ? color
+                          : color.withValues(alpha: 0.5),
+                      width: isHighlighted ? 2.5 : 1.5,
                     ),
-                  ),
-                ),
-                ScaleTransition(
-                  scale: Tween<double>(begin: 1.0, end: 1.3).animate(
-                    CurvedAnimation(
-                      parent: pulseController,
-                      curve: Curves.elasticOut,
-                    ),
+                    boxShadow: isHighlighted
+                        ? [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.35),
+                              blurRadius: 10,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
                   ),
                   child: Text(
-                    targetDisplay,
-                    style: GoogleFonts.nunito(fontSize: 48),
+                    entry.value,
+                    style: GoogleFonts.nunito(
+                      fontSize: fontSize,
+                      fontWeight: isHighlighted
+                          ? FontWeight.w900
+                          : FontWeight.w800,
+                      color: isHighlighted ? color : AppTheme.tealDark,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-              ],
+                );
+              }).toList(),
             ),
           ),
         ],
@@ -976,10 +1039,10 @@ class _CodeBlocksArea extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
+        color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: AppTheme.tealPrimary.withOpacity(0.15),
+          color: AppTheme.tealPrimary.withValues(alpha: 0.15),
           width: 1.5,
         ),
       ),
@@ -1200,7 +1263,7 @@ class _CodeBlockWidget extends StatelessWidget {
             : null,
         boxShadow: [
           BoxShadow(
-            color: block.color.withOpacity(0.3),
+            color: block.color.withValues(alpha: 0.3),
             blurRadius: isHighlighted ? 10 : 6,
             offset: const Offset(0, 2),
           ),
@@ -1210,7 +1273,7 @@ class _CodeBlockWidget extends StatelessWidget {
         children: [
           Icon(
             _blockIcon(block.type),
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.9),
             size: 16,
           ),
           const SizedBox(width: 8),
@@ -1231,7 +1294,7 @@ class _CodeBlockWidget extends StatelessWidget {
                 margin: const EdgeInsets.only(left: 6),
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.25),
+                  color: Colors.white.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(5),
                 ),
                 child: const Icon(
@@ -1287,13 +1350,13 @@ class _DropSlotState extends State<_DropSlot> {
           height: _isHovering ? 20 : 6,
           decoration: BoxDecoration(
             color: _isHovering
-                ? AppTheme.tealPrimary.withOpacity(0.18)
+                ? AppTheme.tealPrimary.withValues(alpha: 0.18)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: _isHovering
                   ? AppTheme.tealPrimary
-                  : Colors.grey.withOpacity(0.25),
+                  : Colors.grey.withValues(alpha: 0.25),
             ),
           ),
         );
@@ -1318,13 +1381,13 @@ class _PaletteChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        border: Border.all(color: color.withOpacity(0.5), width: 1.5),
+        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
         borderRadius: BorderRadius.circular(10),
         boxShadow: elevated
             ? [
                 BoxShadow(
-                  color: color.withOpacity(0.35),
+                  color: color.withValues(alpha: 0.35),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -1395,7 +1458,7 @@ class _SuccessBannerState extends State<_SuccessBanner>
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF4CAF50).withOpacity(0.3),
+              color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -1513,6 +1576,38 @@ IconData _blockIcon(CodeBlockType type) {
       return Icons.sentiment_dissatisfied_rounded;
     case CodeBlockType.cry:
       return Icons.water_drop_rounded;
+    case CodeBlockType.ifMoon:
+      return Icons.nightlight_round;
+    case CodeBlockType.thenNight:
+      return Icons.mode_night_rounded;
+    case CodeBlockType.elseIfSun:
+      return Icons.wb_sunny_rounded;
+    case CodeBlockType.thenMorning:
+      return Icons.wb_sunny_outlined;
+    case CodeBlockType.ifStreak5:
+      return Icons.local_fire_department_rounded;
+    case CodeBlockType.cheering:
+      return Icons.emoji_events_rounded;
+    case CodeBlockType.elseIfStreak2:
+      return Icons.trending_up_rounded;
+    case CodeBlockType.elseBlock:
+      return Icons.call_split_rounded;
+    case CodeBlockType.encourage:
+      return Icons.favorite_rounded;
+    case CodeBlockType.ifBig:
+      return Icons.pets_rounded;
+    case CodeBlockType.ifHasTrunk:
+      return Icons.swipe_right_alt_rounded;
+    case CodeBlockType.elephantSound:
+      return Icons.graphic_eq_rounded;
+    case CodeBlockType.lionSound:
+      return Icons.graphic_eq_rounded;
+    case CodeBlockType.ifFluffy:
+      return Icons.sentiment_satisfied_alt_rounded;
+    case CodeBlockType.catSound:
+      return Icons.graphic_eq_rounded;
+    case CodeBlockType.dogSound:
+      return Icons.graphic_eq_rounded;
     default:
       return Icons.code_rounded;
   }

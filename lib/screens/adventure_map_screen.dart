@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
@@ -26,7 +26,7 @@ class AdventureMapScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 18,
                 offset: const Offset(0, 6),
               ),
@@ -131,7 +131,7 @@ class AdventureMapScreen extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
@@ -186,11 +186,11 @@ class AdventureMapScreen extends StatelessWidget {
                         width: 38,
                         height: 38,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.82),
+                          color: Colors.white.withValues(alpha: 0.82),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.teal.withOpacity(0.12),
+                              color: Colors.teal.withValues(alpha: 0.12),
                               blurRadius: 10,
                               offset: const Offset(0, 3),
                             ),
@@ -245,11 +245,11 @@ class AdventureMapScreen extends StatelessWidget {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.85),
+                  color: Colors.white.withValues(alpha: 0.85),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.teal.withOpacity(0.1),
+                      color: Colors.teal.withValues(alpha: 0.1),
                       blurRadius: 12,
                     ),
                   ],
@@ -299,12 +299,10 @@ class _LevelData {
   final int number;
   final String title;
   final bool unlocked;
-  final int subLevelCount;
   const _LevelData({
     required this.number,
     required this.title,
     this.unlocked = false,
-    this.subLevelCount = 6,
   });
 }
 
@@ -332,9 +330,7 @@ class _LevelNode extends StatelessWidget {
             ..sort((a, b) => a.number.compareTo(b.number));
     }
 
-    final int totalSubLevels = levelChallenges.isEmpty
-        ? data.subLevelCount
-        : levelChallenges.length;
+    final int totalSubLevels = levelChallenges.length;
 
     int inferredProgress = 0;
     for (int i = 0; i < levelChallenges.length; i++) {
@@ -399,8 +395,9 @@ class _LevelNode extends StatelessWidget {
                               ),
                             ),
                           ).then((updatedChild) {
-                            if (updatedChild == null || !context.mounted)
+                            if (updatedChild == null || !context.mounted) {
                               return;
+                            }
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
@@ -469,7 +466,7 @@ class _LevelNode extends StatelessWidget {
                       }
                     }
                   : null,
-              child: Container(
+              child: SizedBox(
                 width: 98,
                 height: 98,
                 child: Stack(
@@ -492,7 +489,7 @@ class _LevelNode extends StatelessWidget {
                         color: nodeColor,
                         boxShadow: [
                           BoxShadow(
-                            color: nodeColor.withOpacity(0.45),
+                            color: nodeColor.withValues(alpha: 0.45),
                             blurRadius: 16,
                             spreadRadius: 1,
                           ),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
@@ -32,11 +32,11 @@ class AppTheme {
 
   // Enhanced card decoration with softer shadows
   static BoxDecoration cardDecoration({Color? shadowColor}) => BoxDecoration(
-    color: Colors.white.withOpacity(0.90),
+    color: Colors.white.withValues(alpha: 0.90),
     borderRadius: BorderRadius.circular(16),
     boxShadow: [
       BoxShadow(
-        color: (shadowColor ?? tealPrimary).withOpacity(0.12),
+        color: (shadowColor ?? tealPrimary).withValues(alpha: 0.12),
         blurRadius: 12,
         offset: const Offset(0, 3),
         spreadRadius: 0,
@@ -90,7 +90,7 @@ class AppTheme {
     borderRadius: BorderRadius.circular(12),
     boxShadow: [
       BoxShadow(
-        color: const Color(0xFF26A995).withOpacity(0.35),
+        color: const Color(0xFF26A995).withValues(alpha: 0.35),
         blurRadius: 12,
         offset: const Offset(0, 4),
       ),

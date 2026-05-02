@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/child_model.dart';
@@ -37,7 +37,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 18,
                 offset: const Offset(0, 6),
               ),
@@ -128,7 +128,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
 
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.4),
+      barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (_) => StatefulBuilder(builder: (ctx, setDialogState) {
         return AlertDialog(
           shape:
@@ -264,7 +264,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
 
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.4),
+      barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (_) => StatefulBuilder(builder: (ctx, setDialogState) {
         return AlertDialog(
           shape:
@@ -479,7 +479,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(Icons.arrow_back_ios_new_rounded,
@@ -580,7 +580,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                                   boxShadow: [
                                     BoxShadow(
                                         color: AppTheme.tealPrimary
-                                            .withOpacity(0.4),
+                                            .withValues(alpha: 0.4),
                                         blurRadius: 10,
                                         offset: const Offset(0, 4))
                                   ],
@@ -651,11 +651,11 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.88),
+        color: Colors.white.withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               blurRadius: 12,
               offset: const Offset(0, 4))
         ],
@@ -665,7 +665,7 @@ class _SummaryCard extends StatelessWidget {
           width: 34,
           height: 34,
           decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10)),
           child: Icon(icon, color: color, size: 20),
         ),
@@ -705,11 +705,11 @@ class _ChildProgressCard extends StatelessWidget {
       duration: const Duration(milliseconds: 300),
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
+        color: Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: child.palette[0].withOpacity(0.2),
+            color: child.palette[0].withValues(alpha: 0.2),
             blurRadius: isExpanded ? 20 : 10,
             offset: const Offset(0, 4),
           )
@@ -737,7 +737,7 @@ class _ChildProgressCard extends StatelessWidget {
                   border: Border.all(color: Colors.white, width: 2),
                   boxShadow: [
                     BoxShadow(
-                        color: child.palette[0].withOpacity(0.4),
+                        color: child.palette[0].withValues(alpha: 0.4),
                         blurRadius: 8)
                   ],
                 ),
@@ -759,7 +759,7 @@ class _ChildProgressCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppTheme.tealPrimary.withOpacity(0.12),
+                            color: AppTheme.tealPrimary.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text('Lv ${child.level}',
@@ -915,7 +915,7 @@ class _MiniStat extends StatelessWidget {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10)),
           child: Icon(icon, color: color, size: 18),
         ),
@@ -946,7 +946,7 @@ class _SessionRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: session.passed
-            ? AppTheme.tealPrimary.withOpacity(0.07)
+            ? AppTheme.tealPrimary.withValues(alpha: 0.07)
             : Colors.red.shade50,
         borderRadius: BorderRadius.circular(12),
       ),
@@ -975,7 +975,7 @@ class _SessionRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
             color: session.passed
-                ? AppTheme.tealPrimary.withOpacity(0.15)
+                ? AppTheme.tealPrimary.withValues(alpha: 0.15)
                 : Colors.red.shade100,
             borderRadius: BorderRadius.circular(8),
           ),
@@ -1044,7 +1044,7 @@ class _GenderChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color:
-              selected ? color.withOpacity(0.15) : Colors.grey.shade100,
+              selected ? color.withValues(alpha: 0.15) : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
               color: selected ? color : Colors.grey.shade300, width: 2),

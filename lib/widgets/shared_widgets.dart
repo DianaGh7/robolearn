@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
@@ -48,7 +48,7 @@ class _FloatingBubblesState extends State<FloatingBubbles>
     _pos   = List.generate(n, (_) => Offset(_rng.nextDouble(), _rng.nextDouble()));
     _sizes = List.generate(n, (_) => 8 + _rng.nextDouble() * 18);
     _colors = List.generate(
-        n, (i) => _palette[i % 4].withOpacity(0.18 + _rng.nextDouble() * 0.15));
+        n, (i) => _palette[i % 4].withValues(alpha: 0.18 + _rng.nextDouble() * 0.15));
     _ctrls = List.generate(
       n,
           (_) => AnimationController(
@@ -161,7 +161,7 @@ class _SparklesState extends State<Sparkles> with TickerProviderStateMixin {
 class CloudPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.6);
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.6);
     void draw(double cx, double cy, double s) {
       canvas.drawCircle(Offset(cx, cy), 50 * s, paint);
       canvas.drawCircle(Offset(cx + 40 * s, cy + 10 * s), 38 * s, paint);
@@ -228,7 +228,7 @@ class _RobotFacePainter extends CustomPainter {
       ..quadraticBezierTo(cx, cy + h * .16, cx + w * .10, cy + h * .08);
     canvas.drawPath(path, smileP);
 
-    final cheekP = Paint()..color = const Color(0xFFE8A0BF).withOpacity(0.5);
+    final cheekP = Paint()..color = const Color(0xFFE8A0BF).withValues(alpha: 0.5);
     canvas.drawCircle(Offset(cx - w * .18, cy + h * .06), w * .06, cheekP);
     canvas.drawCircle(Offset(cx + w * .18, cy + h * .06), w * .06, cheekP);
   }
@@ -372,7 +372,7 @@ class PrimaryButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(28)),
           elevation: 6,
-          shadowColor: AppTheme.tealPrimary.withOpacity(0.5),
+          shadowColor: AppTheme.tealPrimary.withValues(alpha: 0.5),
         ),
         onPressed: onPressed,
         child: icon != null

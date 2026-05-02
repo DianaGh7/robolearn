@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/child_model.dart';
@@ -113,7 +113,7 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 18,
                 offset: const Offset(0, 6),
               ),
@@ -172,11 +172,11 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.82),
+                    color: Colors.white.withValues(alpha: 0.82),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.teal.withOpacity(0.12),
+                        color: Colors.teal.withValues(alpha: 0.12),
                         blurRadius: 10,
                         offset: const Offset(0, 3),
                       ),
@@ -228,14 +228,14 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.78),
+                          color: Colors.white.withValues(alpha: 0.78),
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
+                              color: Colors.black.withValues(alpha: 0.06),
                               blurRadius: 14,
                               offset: const Offset(0, 6),
                             ),
@@ -320,11 +320,11 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.75),
+                          color: Colors.white.withValues(alpha: 0.75),
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                                color: Colors.teal.withOpacity(0.1),
+                                color: Colors.teal.withValues(alpha: 0.1),
                                 blurRadius: 8)
                           ],
                         ),
@@ -371,8 +371,6 @@ class _ChildCardState extends State<_ChildCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _scale;
-  bool _hovering = false;
-
   @override
   void initState() {
     super.initState();
@@ -398,14 +396,8 @@ class _ChildCardState extends State<_ChildCard>
       child: MouseRegion(
         // ← hand cursor on hover
         cursor: SystemMouseCursors.click,
-        onEnter: (_) {
-          setState(() => _hovering = true);
-          _ctrl.forward();
-        },
-        onExit: (_) {
-          setState(() => _hovering = false);
-          _ctrl.reverse();
-        },
+        onEnter: (_) => _ctrl.forward(),
+        onExit: (_) => _ctrl.reverse(),
         child: GestureDetector(
           onTap: widget.onTap,
           child: ScaleTransition(
@@ -423,13 +415,13 @@ class _ChildCardState extends State<_ChildCard>
                   end: Alignment.bottomRight,
                 ),
                 border: Border.all(
-                  color: selected ? Colors.white : Colors.white.withOpacity(0.6),
+                  color: selected ? Colors.white : Colors.white.withValues(alpha: 0.6),
                   width: selected ? 3 : 2,
                 ),
                 boxShadow: [
                   BoxShadow(
                     color: (selected ? AppTheme.tealPrimary : colors[0])
-                        .withOpacity(selected ? 0.55 : 0.35),
+                        .withValues(alpha: selected ? 0.55 : 0.35),
                     blurRadius: selected ? 20 : 12,
                     spreadRadius: selected ? 2 : 0,
                     offset: const Offset(0, 4),
@@ -445,8 +437,8 @@ class _ChildCardState extends State<_ChildCard>
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          Colors.white.withOpacity(0.28),
-                          Colors.white.withOpacity(0.15),
+                          Colors.white.withValues(alpha: 0.28),
+                          Colors.white.withValues(alpha: 0.15),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -468,12 +460,12 @@ class _ChildCardState extends State<_ChildCard>
                             end: Alignment.bottomRight,
                           ),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.95),
+                            color: Colors.white.withValues(alpha: 0.95),
                             width: 2.4,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.10),
+                              color: Colors.black.withValues(alpha: 0.10),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -503,7 +495,7 @@ class _ChildCardState extends State<_ChildCard>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text('Lv ${widget.data.level}',
@@ -562,7 +554,7 @@ class _LetsPlayButton extends StatelessWidget {
         boxShadow: enabled
             ? [
           BoxShadow(
-              color: AppTheme.tealPrimary.withOpacity(0.45),
+              color: AppTheme.tealPrimary.withValues(alpha: 0.45),
               blurRadius: 16,
               offset: const Offset(0, 6))
         ]

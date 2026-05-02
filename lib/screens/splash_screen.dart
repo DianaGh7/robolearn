@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -86,7 +86,7 @@ class _SplashScreenState extends State<SplashScreen>
                     borderRadius: BorderRadius.circular(32),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.tealPrimary.withOpacity(0.4),
+                        color: AppTheme.tealPrimary.withValues(alpha: 0.4),
                         blurRadius: 24, spreadRadius: 4,
                       )
                     ],

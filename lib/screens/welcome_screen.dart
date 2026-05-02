@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
@@ -63,7 +63,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                              color: Colors.teal.withOpacity(0.2),
+                              color: Colors.teal.withValues(alpha: 0.2),
                               blurRadius: 10)
                         ],
                       ),
@@ -186,7 +186,7 @@ class _Step extends StatelessWidget {
         Container(
           width: 50, height: 50,
           decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(14)),
           child: Icon(icon, color: color, size: 26),
         ),

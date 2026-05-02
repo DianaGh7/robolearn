@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
@@ -85,7 +85,7 @@ class _SignUpScreenState extends State<SignUpScreen>
         shape:
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Row(children: [
-          const RobotLogoIcon_Small(),
+          const RobotLogoIconSmall(),
           const SizedBox(width: 10),
           Text('RoboLearn Terms',
               style: GoogleFonts.nunito(
@@ -214,7 +214,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withValues(alpha: 0.8),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(Icons.arrow_back_ios_new_rounded,
@@ -235,7 +235,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                         borderRadius: BorderRadius.circular(26),
                         boxShadow: [
                           BoxShadow(
-                              color: AppTheme.tealPrimary.withOpacity(0.35),
+                              color: AppTheme.tealPrimary.withValues(alpha: 0.35),
                               blurRadius: 20,
                               spreadRadius: 3)
                         ],
@@ -329,7 +329,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Row(children: [
@@ -452,7 +452,7 @@ class _ThemedField extends StatelessWidget {
         hintStyle:
         GoogleFonts.nunito(color: Colors.grey.shade400, fontSize: 14),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.88),
+        fillColor: Colors.white.withValues(alpha: 0.88),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none),
@@ -506,7 +506,7 @@ class _ThemedPasswordField extends StatelessWidget {
         hintStyle:
         GoogleFonts.nunito(color: Colors.grey.shade400, fontSize: 14),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.88),
+        fillColor: Colors.white.withValues(alpha: 0.88),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none),
@@ -557,7 +557,7 @@ class _GradientButton extends StatelessWidget {
             boxShadow: enabled
                 ? [
               BoxShadow(
-                  color: AppTheme.tealPrimary.withOpacity(0.45),
+                  color: AppTheme.tealPrimary.withValues(alpha: 0.45),
                   blurRadius: 16,
                   offset: const Offset(0, 6))
             ]
@@ -580,8 +580,8 @@ class _GradientButton extends StatelessWidget {
 }
 
 // ── Tiny robot logo for dialog title ──────────────────────────────────────────
-class RobotLogoIcon_Small extends StatelessWidget {
-  const RobotLogoIcon_Small({super.key});
+class RobotLogoIconSmall extends StatelessWidget {
+  const RobotLogoIconSmall({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -589,7 +589,7 @@ class RobotLogoIcon_Small extends StatelessWidget {
       width: 32,
       height: 32,
       decoration: BoxDecoration(
-        color: AppTheme.tealPrimary.withOpacity(0.15),
+        color: AppTheme.tealPrimary.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
       ),
       child: const RobotLogoIcon(),
