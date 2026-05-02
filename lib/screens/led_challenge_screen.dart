@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,24 +7,37 @@ import 'package:robolearn/models/challenge_model.dart';
 import 'package:robolearn/models/child_model.dart';
 import 'package:robolearn/widgets/shared_widgets.dart';
 
-class SoundChallengeScreen extends StatefulWidget {
-  final ChildModel child;
-  final SoundChallenge challenge;
+enum _RobotConnectionStatus { disconnected, connecting, connected, executing }
 
-  const SoundChallengeScreen({super.key, required this.child, required this.challenge});
+// Canonical LED color constants used throughout execution and display.
+const Color _kRed = Color(0xFFE53935);
+const Color _kGreen = Color(0xFF43A047);
+const Color _kBlue = Color(0xFF1E88E5);
+const Color _kYellow = Color(0xFFF9A825);
+const Color _kOff = Color(0xFF37474F);
+
+class LedChallengeScreen extends StatefulWidget {
+  final ChildModel child;
+  final LedChallenge challenge;
+
+  const LedChallengeScreen({
+    super.key,
+    required this.child,
+    required this.challenge,
+  });
 
   @override
-  State<SoundChallengeScreen> createState() => _SoundChallengeScreenState();
+  State<LedChallengeScreen> createState() => _LedChallengeScreenState();
 }
 
-enum RobotConnectionStatus { disconnected, connecting, connected, executing }
-
-class _SoundChallengeScreenState extends State<SoundChallengeScreen>
+class _LedChallengeScreenState extends State<LedChallengeScreen>
     with TickerProviderStateMixin {
   late List<CodeBlock> arrangedBlocks;
   late ChildModel _progressChild;
-  late AnimationController _pulseController;
-  late AnimationController _waveController;
+  late AnimationController _glowController;
+  late Animation<double> _glowAnim;
+
+  Color _ledColor = _kOff;
   bool _isExecuting = false;
   bool _showSuccessToast = false;
   bool _showFailToast = false;
@@ -32,7 +45,8 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
   int? _activeBlockIndex;
   int? _highlightedLineIndex;
   late List<CodeBlockType> _availableBlocks;
-  RobotConnectionStatus _connectionStatus = RobotConnectionStatus.disconnected;
+  _RobotConnectionStatus _connectionStatus =
+      _RobotConnectionStatus.disconnected;
 
   @override
   void initState() {
@@ -45,42 +59,36 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
       CodeBlockType.end,
     }.toList();
 
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+    _glowController = AnimationController(
+      duration: const Duration(milliseconds: 900),
       vsync: this,
-    );
-    _waveController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
+    )..repeat(reverse: true);
+    _glowAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
-    _waveController.dispose();
+    _glowController.dispose();
     super.dispose();
   }
 
+  // ── Block manipulation ────────────────────────────────
   void _addBlock(CodeBlockType type) {
     if (_isExecuting) return;
-    setState(() {
-      arrangedBlocks.add(CodeBlock.fromType(type));
-    });
+    setState(() => arrangedBlocks.add(CodeBlock.fromType(type)));
   }
 
   void _removeBlock(int index) {
     if (_isExecuting || index < 0 || index >= arrangedBlocks.length) return;
-    setState(() {
-      arrangedBlocks.removeAt(index);
-    });
+    setState(() => arrangedBlocks.removeAt(index));
   }
 
   void _insertBlockAt(CodeBlockType type, int index) {
     if (_isExecuting) return;
     setState(() {
-      final targetIndex = index.clamp(0, arrangedBlocks.length);
-      arrangedBlocks.insert(targetIndex, CodeBlock.fromType(type));
+      arrangedBlocks.insert(index.clamp(0, arrangedBlocks.length), CodeBlock.fromType(type));
     });
   }
 
@@ -93,11 +101,9 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
         toIndex > arrangedBlocks.length) {
       return;
     }
-
     setState(() {
       final block = arrangedBlocks.removeAt(fromIndex);
-      final adjustedTarget = fromIndex < toIndex ? toIndex - 1 : toIndex;
-      arrangedBlocks.insert(adjustedTarget, block);
+      arrangedBlocks.insert(fromIndex < toIndex ? toIndex - 1 : toIndex, block);
     });
   }
 
@@ -107,30 +113,7 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
         arrangedBlocks.last.type == CodeBlockType.end;
   }
 
-  ChildModel _markChallengeCompleted() {
-    final completedSet = <int>{..._progressChild.completedChallengeIds}
-      ..add(widget.challenge.number);
-
-    final challenges = SoundChallenge.soundChallenges;
-    int reachedIndex = 0;
-    for (int i = 0; i < challenges.length; i++) {
-      if (challenges[i].number == widget.challenge.number) {
-        reachedIndex = i + 1;
-        break;
-      }
-    }
-
-    final progressMap = Map<int, int>.from(_progressChild.subLevelProgressByLevel);
-    final oldProgress = progressMap[2] ?? 0;
-    final steppedProgress = (oldProgress + 1).clamp(0, challenges.length);
-    progressMap[2] = math.max(steppedProgress, reachedIndex);
-
-    return _progressChild.copyWith(
-      completedChallengeIds: completedSet.toList()..sort(),
-      subLevelProgressByLevel: progressMap,
-    );
-  }
-
+  // ── Notifications ─────────────────────────────────────
   void _showSuccessNotification() {
     if (!mounted) return;
     setState(() {
@@ -138,8 +121,7 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
       _showSuccessToast = true;
     });
     Future.delayed(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      setState(() => _showSuccessToast = false);
+      if (mounted) setState(() => _showSuccessToast = false);
     });
   }
 
@@ -150,12 +132,63 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
       _showFailToast = true;
     });
     Future.delayed(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      setState(() => _showFailToast = false);
+      if (mounted) setState(() => _showFailToast = false);
     });
   }
 
-  Future<void> _executeSoundSequence() async {
+  // ── Progress tracking ─────────────────────────────────
+  ChildModel _markChallengeCompleted() {
+    final completedSet = <int>{..._progressChild.completedChallengeIds}
+      ..add(widget.challenge.number);
+
+    final challenges = LedChallenge.ledChallenges;
+    int reachedIndex = 0;
+    for (int i = 0; i < challenges.length; i++) {
+      if (challenges[i].number == widget.challenge.number) {
+        reachedIndex = i + 1;
+        break;
+      }
+    }
+
+    final progressMap = Map<int, int>.from(_progressChild.subLevelProgressByLevel);
+    final oldProgress = progressMap[3] ?? 0;
+    final steppedProgress = (oldProgress + 1).clamp(0, challenges.length);
+    progressMap[3] = math.max(steppedProgress, reachedIndex);
+
+    return _progressChild.copyWith(
+      completedChallengeIds: completedSet.toList()..sort(),
+      subLevelProgressByLevel: progressMap,
+    );
+  }
+
+  // ── LED action ────────────────────────────────────────
+  void _applyLedAction(CodeBlockType type) {
+    switch (type) {
+      case CodeBlockType.setRed:
+        setState(() => _ledColor = _kRed);
+        break;
+      case CodeBlockType.setGreen:
+        setState(() => _ledColor = _kGreen);
+        break;
+      case CodeBlockType.setBlue:
+        setState(() => _ledColor = _kBlue);
+        break;
+      case CodeBlockType.setYellow:
+        setState(() => _ledColor = _kYellow);
+        break;
+      case CodeBlockType.ledOff:
+        setState(() => _ledColor = _kOff);
+        break;
+      default:
+        break;
+    }
+  }
+
+  bool _isRepeatBlock(CodeBlockType type) =>
+      type == CodeBlockType.ledRepeat3 || type == CodeBlockType.ledRepeat2;
+
+  // ── Execution ─────────────────────────────────────────
+  Future<void> _executeLedSequence() async {
     if (_isExecuting) return;
     if (!_hasValidStartEndOrder) {
       _showFailNotification();
@@ -166,52 +199,105 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
       _isExecuting = true;
       _activeBlockIndex = null;
       _highlightedLineIndex = null;
+      _ledColor = _kOff;
     });
 
+    // Collect non-start/end blocks with their arranged indices.
+    final List<(int, CodeBlock)> actionPairs = [];
+    for (int i = 0; i < arrangedBlocks.length; i++) {
+      final b = arrangedBlocks[i];
+      if (b.type != CodeBlockType.start && b.type != CodeBlockType.end) {
+        actionPairs.add((i, b));
+      }
+    }
+
+    // lineForBlock mapping (null for challenges with repeat blocks).
     final mapping = widget.challenge.lineForBlock;
     int seqIdx = 0;
+    // Track which repeat section we're in for line highlighting.
+    int repeatSection = -1;
 
-    for (int i = 0; i < arrangedBlocks.length; i++) {
-      final blockType = arrangedBlocks[i].type;
-      final isExecutable = blockType != CodeBlockType.start &&
-          blockType != CodeBlockType.end &&
-          blockType != CodeBlockType.repeat;
+    int i = 0;
+    while (i < actionPairs.length) {
+      final (idx, block) = actionPairs[i];
 
-      setState(() {
-        _activeBlockIndex = i;
-        _highlightedLineIndex = isExecutable &&
-                mapping != null &&
-                seqIdx < mapping.length
-            ? mapping[seqIdx]
-            : null;
-      });
+      if (_isRepeatBlock(block.type)) {
+        repeatSection++;
+        final repeatCount = block.type == CodeBlockType.ledRepeat3 ? 3 : 2;
 
-      if (isExecutable) {
-        await _executeSound(blockType);
-        seqIdx++;
+        // Highlight the repeat block itself.
+        setState(() {
+          _activeBlockIndex = idx;
+          _highlightedLineIndex = repeatSection;
+        });
+        await Future.delayed(const Duration(milliseconds: 550));
+        if (!mounted) return;
+
+        // Collect body blocks until the next repeat block.
+        final List<(int, CodeBlock)> body = [];
+        int j = i + 1;
+        while (j < actionPairs.length && !_isRepeatBlock(actionPairs[j].$2.type)) {
+          body.add(actionPairs[j]);
+          j++;
+        }
+
+        // Execute body repeatCount times.
+        for (int r = 0; r < repeatCount; r++) {
+          for (final (bodyIdx, bodyBlock) in body) {
+            if (!mounted) return;
+            setState(() {
+              _activeBlockIndex = bodyIdx;
+              _highlightedLineIndex = repeatSection;
+            });
+            await Future.delayed(const Duration(milliseconds: 350));
+            if (!mounted) return;
+            _applyLedAction(bodyBlock.type);
+            await Future.delayed(const Duration(milliseconds: 400));
+          }
+        }
+
+        // Leave LED off after each repeat group.
+        if (mounted) setState(() => _ledColor = _kOff);
+        await Future.delayed(const Duration(milliseconds: 200));
+        i = j;
       } else {
-        await Future.delayed(const Duration(milliseconds: 250));
+        // Single action block (Ch 12 intro sequence).
+        setState(() {
+          _activeBlockIndex = idx;
+          _highlightedLineIndex = (mapping != null && seqIdx < mapping.length)
+              ? mapping[seqIdx]
+              : null;
+        });
+        await Future.delayed(const Duration(milliseconds: 450));
+        if (!mounted) return;
+
+        if (block.type == CodeBlockType.waitShort) {
+          await Future.delayed(const Duration(milliseconds: 600));
+        } else {
+          _applyLedAction(block.type);
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+        seqIdx++;
+        i++;
       }
-      await Future.delayed(const Duration(milliseconds: 150));
     }
 
     if (!mounted) return;
     setState(() {
       _activeBlockIndex = null;
       _highlightedLineIndex = null;
+      _isExecuting = false;
     });
 
-    final soundSequence = arrangedBlocks
+    final sequence = arrangedBlocks
+        .where((b) => b.type != CodeBlockType.start && b.type != CodeBlockType.end)
         .map((b) => b.type)
-        .where((t) =>
-            t != CodeBlockType.start &&
-            t != CodeBlockType.end &&
-            t != CodeBlockType.repeat)
         .toList();
 
-    final isCorrect = _validateSequence(soundSequence);
-
-    setState(() => _isExecuting = false);
+    final isCorrect = sequence.length == widget.challenge.correctSequence.length &&
+        sequence.asMap().entries.every(
+          (e) => e.value == widget.challenge.correctSequence[e.key],
+        );
 
     if (isCorrect) {
       _progressChild = _markChallengeCompleted();
@@ -222,109 +308,13 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
     }
   }
 
-  bool _validateSequence(List<CodeBlockType> sequence) {
-    return sequence.length == widget.challenge.correctSequence.length &&
-        sequence.asMap().entries.every(
-          (e) => e.value == widget.challenge.correctSequence[e.key],
-        );
-  }
-
-  Future<void> _executeSound(CodeBlockType type) async {
-    switch (type) {
-      case CodeBlockType.beep:
-        await _triggerBeepAnimation();
-        break;
-      case CodeBlockType.clap:
-      case CodeBlockType.cheering:
-      case CodeBlockType.encourage:
-        await _triggerClapAnimation();
-        break;
-      case CodeBlockType.happy:
-      case CodeBlockType.music:
-      case CodeBlockType.thenNight:
-      case CodeBlockType.thenMorning:
-      case CodeBlockType.catSound:
-        await _triggerHappyAnimation();
-        break;
-      case CodeBlockType.elephantSound:
-        await _triggerBeepAnimation();
-        break;
-      case CodeBlockType.lionSound:
-      case CodeBlockType.dogSound:
-        await _triggerClapAnimation();
-        break;
-      default:
-        await Future.delayed(const Duration(milliseconds: 300));
-        break;
-    }
-  }
-
-  Future<void> _triggerBeepAnimation() async {
-    _waveController.forward(from: 0);
-    await Future.delayed(const Duration(milliseconds: 800));
-  }
-
-  Future<void> _triggerClapAnimation() async {
-    _pulseController.forward(from: 0);
-    await Future.delayed(const Duration(milliseconds: 600));
-  }
-
-  Future<void> _triggerHappyAnimation() async {
-    _pulseController.forward(from: 0);
-    _waveController.forward(from: 0);
-    await Future.delayed(const Duration(milliseconds: 800));
-  }
-
-  Future<void> _goToPreviousChallenge() async {
-    final challenges = SoundChallenge.soundChallenges;
-    final previousChallenge = challenges.firstWhere(
-      (c) => c.number == widget.challenge.number - 1,
-      orElse: () => challenges.first,
-    );
-    if (previousChallenge.number != widget.challenge.number) {
-      final ChildModel? updatedChild = await Navigator.push<ChildModel>(
-        context,
-        MaterialPageRoute(
-          builder: (context) => SoundChallengeScreen(
-            child: _progressChild,
-            challenge: previousChallenge,
-          ),
-        ),
-      );
-      if (!mounted) return;
-      Navigator.pop(context, updatedChild ?? _progressChild);
-    }
-  }
-
-  Future<void> _goToNextChallenge() async {
-    final challenges = SoundChallenge.soundChallenges;
-    final nextChallenge = challenges.firstWhere(
-      (c) => c.number == widget.challenge.number + 1,
-      orElse: () => challenges.last,
-    );
-    if (nextChallenge.number != widget.challenge.number) {
-      final ChildModel? updatedChild = await Navigator.push<ChildModel>(
-        context,
-        MaterialPageRoute(
-          builder: (context) => SoundChallengeScreen(
-            child: _progressChild,
-            challenge: nextChallenge,
-          ),
-        ),
-      );
-      if (!mounted) return;
-      Navigator.pop(context, updatedChild ?? _progressChild);
-    } else {
-      Navigator.pop(context, _progressChild);
-    }
-  }
-
+  // ── Connection / run ──────────────────────────────────
   Future<void> _handleRobotAction() async {
-    if (_connectionStatus == RobotConnectionStatus.disconnected) {
-      setState(() => _connectionStatus = RobotConnectionStatus.connecting);
+    if (_connectionStatus == _RobotConnectionStatus.disconnected) {
+      setState(() => _connectionStatus = _RobotConnectionStatus.connecting);
       await Future.delayed(const Duration(milliseconds: 900));
       if (!mounted) return;
-      setState(() => _connectionStatus = RobotConnectionStatus.connected);
+      setState(() => _connectionStatus = _RobotConnectionStatus.connected);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -333,19 +323,55 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
           ),
           backgroundColor: AppTheme.tealDark,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
       return;
     }
-
-    if (_connectionStatus == RobotConnectionStatus.connected) {
-      await _executeSoundSequence();
+    if (_connectionStatus == _RobotConnectionStatus.connected) {
+      setState(() => _connectionStatus = _RobotConnectionStatus.executing);
+      await _executeLedSequence();
+      if (mounted) setState(() => _connectionStatus = _RobotConnectionStatus.connected);
     }
   }
 
+  // ── Navigation ────────────────────────────────────────
+  Future<void> _goToPreviousChallenge() async {
+    final challenges = LedChallenge.ledChallenges;
+    final prev = challenges.firstWhere(
+      (c) => c.number == widget.challenge.number - 1,
+      orElse: () => challenges.first,
+    );
+    if (prev.number == widget.challenge.number) return;
+    final updated = await Navigator.push<ChildModel>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LedChallengeScreen(child: _progressChild, challenge: prev),
+      ),
+    );
+    if (mounted) Navigator.pop(context, updated ?? _progressChild);
+  }
+
+  Future<void> _goToNextChallenge() async {
+    final challenges = LedChallenge.ledChallenges;
+    final next = challenges.firstWhere(
+      (c) => c.number == widget.challenge.number + 1,
+      orElse: () => challenges.last,
+    );
+    if (next.number == widget.challenge.number) {
+      Navigator.pop(context, _progressChild);
+      return;
+    }
+    final updated = await Navigator.push<ChildModel>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LedChallengeScreen(child: _progressChild, challenge: next),
+      ),
+    );
+    if (mounted) Navigator.pop(context, updated ?? _progressChild);
+  }
+
+  // ── Build ─────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -354,11 +380,7 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Color(0xFFD4F5EE),
-                  Color(0xFFB0ECD9),
-                  Color(0xFFCAF0FC),
-                ],
+                colors: [Color(0xFFD4F5EE), Color(0xFFB0ECD9), Color(0xFFCAF0FC)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -370,17 +392,13 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
                 _HeaderBar(
                   child: _progressChild,
                   challenge: widget.challenge,
-                  isExecuting: _isExecuting,
                   connectionStatus: _connectionStatus,
                   onRobotActionPressed: _handleRobotAction,
                   onBackPressed: () => Navigator.pop(context, _progressChild),
                 ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final totalHeight = constraints.maxHeight;
@@ -388,12 +406,8 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
                             .split('\n')
                             .where((l) => l.trim().isNotEmpty)
                             .length;
-                        final visualizationHeight =
-                            (70.0 + lineCount * 66.0).clamp(155.0, 345.0);
-                        final codeAreaHeight = (totalHeight * 0.65).clamp(
-                          360.0,
-                          560.0,
-                        );
+                        final vizHeight = (110.0 + lineCount * 52.0).clamp(200.0, 320.0);
+                        final codeAreaHeight = (totalHeight * 0.62).clamp(340.0, 540.0);
 
                         return SingleChildScrollView(
                           padding: const EdgeInsets.only(bottom: 84),
@@ -402,28 +416,22 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                _InstructionCard(
-                                  instruction: widget.challenge.instruction,
-                                ),
-                                if (widget.challenge.targetDisplay != null) ...[
-                                  const SizedBox(height: 6),
-                                  SizedBox(
-                                    height: visualizationHeight,
-                                    child: Center(
-                                      child: FractionallySizedBox(
-                                        widthFactor: 0.80,
-                                        child: _SoundVisualizationCard(
-                                          targetDisplay:
-                                              widget.challenge.targetDisplay!,
-                                          highlightedLineIndex:
-                                              _highlightedLineIndex,
-                                          pulseController: _pulseController,
-                                          waveController: _waveController,
-                                        ),
+                                _InstructionCard(instruction: widget.challenge.instruction),
+                                const SizedBox(height: 6),
+                                SizedBox(
+                                  height: vizHeight,
+                                  child: Center(
+                                    child: FractionallySizedBox(
+                                      widthFactor: 0.82,
+                                      child: _LedVisualizationCard(
+                                        targetDisplay: widget.challenge.targetDisplay ?? '',
+                                        highlightedLineIndex: _highlightedLineIndex,
+                                        ledColor: _ledColor,
+                                        glowAnim: _glowAnim,
                                       ),
                                     ),
                                   ),
-                                ],
+                                ),
                                 const SizedBox(height: 6),
                                 SizedBox(
                                   height: codeAreaHeight,
@@ -449,6 +457,7 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
               ],
             ),
           ),
+          // Toast banners
           Positioned(
             top: 16,
             left: 16,
@@ -466,14 +475,13 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
                   opacity: (_showSuccessToast || _showFailToast) ? 1 : 0,
                   child: SafeArea(
                     bottom: false,
-                    child: _showSuccessToast
-                        ? _SuccessBanner()
-                        : const _FailBanner(),
+                    child: _showSuccessToast ? const _SuccessBanner() : const _FailBanner(),
                   ),
                 ),
               ),
             ),
           ),
+          // Prev / Next bar
           Positioned(
             bottom: 0,
             left: 0,
@@ -482,9 +490,7 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.95),
-                border: Border(
-                  top: BorderSide(color: Colors.grey.shade200, width: 1),
-                ),
+                border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
               ),
               child: SafeArea(
                 top: false,
@@ -536,9 +542,8 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: _challengeSuccessfullyCompleted
-                            ? _goToNextChallenge
-                            : null,
+                        onPressed:
+                            _challengeSuccessfullyCompleted ? _goToNextChallenge : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _challengeSuccessfullyCompleted
                               ? const Color(0xFF4CAF50)
@@ -586,18 +591,19 @@ class _SoundChallengeScreenState extends State<SoundChallengeScreen>
   }
 }
 
+// ─────────────────────────────────────────────────────
+// Header Bar
+// ─────────────────────────────────────────────────────
 class _HeaderBar extends StatelessWidget {
   final ChildModel child;
-  final SoundChallenge challenge;
-  final bool isExecuting;
-  final RobotConnectionStatus connectionStatus;
+  final LedChallenge challenge;
+  final _RobotConnectionStatus connectionStatus;
   final VoidCallback onRobotActionPressed;
   final VoidCallback onBackPressed;
 
   const _HeaderBar({
     required this.child,
     required this.challenge,
-    required this.isExecuting,
     required this.connectionStatus,
     required this.onRobotActionPressed,
     required this.onBackPressed,
@@ -659,8 +665,10 @@ class _HeaderBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          _StreakBadge(streak: child.streak),
-          const SizedBox(width: 3),
+          if (child.streak > 0) ...[
+            _StreakBadge(streak: child.streak),
+            const SizedBox(width: 3),
+          ],
           _RobotStatusBadge(status: connectionStatus),
           const SizedBox(width: 6),
           _RobotActionMiniButton(
@@ -706,27 +714,22 @@ class _HeaderBar extends StatelessWidget {
 }
 
 class _RobotActionMiniButton extends StatelessWidget {
-  final RobotConnectionStatus status;
+  final _RobotConnectionStatus status;
   final VoidCallback onPressed;
 
   const _RobotActionMiniButton({required this.status, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
-    final busy =
-        status == RobotConnectionStatus.connecting ||
-        status == RobotConnectionStatus.executing;
-    final isDisconnected = status == RobotConnectionStatus.disconnected;
+    final busy = status == _RobotConnectionStatus.connecting ||
+        status == _RobotConnectionStatus.executing;
+    final isDisconnected = status == _RobotConnectionStatus.disconnected;
     final icon = isDisconnected
         ? Icons.bluetooth_searching_rounded
         : busy
-        ? Icons.hourglass_top_rounded
-        : Icons.play_arrow_rounded;
-    final label = isDisconnected
-        ? 'Connect'
-        : busy
-        ? 'Running'
-        : 'Run';
+            ? Icons.hourglass_top_rounded
+            : Icons.play_arrow_rounded;
+    final label = isDisconnected ? 'Connect' : busy ? 'Running' : 'Run';
 
     return GestureDetector(
       onTap: busy ? null : onPressed,
@@ -737,8 +740,8 @@ class _RobotActionMiniButton extends StatelessWidget {
           color: busy
               ? const Color(0xFF9CCFC5)
               : isDisconnected
-              ? const Color(0xFF5EA1D8)
-              : AppTheme.tealPrimary,
+                  ? const Color(0xFF5EA1D8)
+                  : AppTheme.tealPrimary,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -762,31 +765,31 @@ class _RobotActionMiniButton extends StatelessWidget {
 }
 
 class _RobotStatusBadge extends StatelessWidget {
-  final RobotConnectionStatus status;
+  final _RobotConnectionStatus status;
   const _RobotStatusBadge({required this.status});
 
   @override
   Widget build(BuildContext context) {
-    final data = _statusData(status);
+    final d = _data(status);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: data.$1.withValues(alpha: 0.14),
+        color: d.$1.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: data.$1.withValues(alpha: 0.34)),
+        border: Border.all(color: d.$1.withValues(alpha: 0.34)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(data.$2, size: 13, color: data.$1),
+          Icon(d.$2, size: 13, color: d.$1),
           const SizedBox(width: 5),
           Text(
-            data.$3,
+            d.$3,
             style: GoogleFonts.nunito(
               fontSize: 11,
               fontWeight: FontWeight.w800,
-              color: data.$1,
+              color: d.$1,
             ),
           ),
         ],
@@ -794,47 +797,36 @@ class _RobotStatusBadge extends StatelessWidget {
     );
   }
 
-  (Color, IconData, String) _statusData(RobotConnectionStatus status) {
-    switch (status) {
-      case RobotConnectionStatus.disconnected:
-        return (
+  (Color, IconData, String) _data(_RobotConnectionStatus s) => switch (s) {
+        _RobotConnectionStatus.disconnected => (
           const Color(0xFFD84343),
           Icons.bluetooth_disabled_rounded,
           'Offline',
-        );
-      case RobotConnectionStatus.connecting:
-        return (
+        ),
+        _RobotConnectionStatus.connecting => (
           const Color(0xFFE7A63D),
           Icons.bluetooth_searching_rounded,
           'Connecting',
-        );
-      case RobotConnectionStatus.connected:
-        return (
+        ),
+        _RobotConnectionStatus.connected => (
           const Color(0xFF2A9D7D),
           Icons.bluetooth_connected_rounded,
           'Connected',
-        );
-      case RobotConnectionStatus.executing:
-        return (const Color(0xFF4D8ED8), Icons.smart_toy_rounded, 'Executing');
-    }
-  }
+        ),
+        _RobotConnectionStatus.executing => (
+          const Color(0xFF4D8ED8),
+          Icons.smart_toy_rounded,
+          'Executing',
+        ),
+      };
 }
 
-class _StreakBadge extends StatefulWidget {
+class _StreakBadge extends StatelessWidget {
   final int streak;
   const _StreakBadge({required this.streak});
 
   @override
-  State<_StreakBadge> createState() => _StreakBadgeState();
-}
-
-class _StreakBadgeState extends State<_StreakBadge> {
-  @override
   Widget build(BuildContext context) {
-    if (widget.streak == 0) {
-      return const SizedBox.shrink(); // Don't show if no streak
-    }
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -851,7 +843,7 @@ class _StreakBadgeState extends State<_StreakBadge> {
           const Text('🔥', style: TextStyle(fontSize: 13)),
           const SizedBox(width: 3),
           Text(
-            '${widget.streak}',
+            '$streak',
             style: GoogleFonts.nunito(
               fontSize: 12,
               fontWeight: FontWeight.w800,
@@ -864,6 +856,9 @@ class _StreakBadgeState extends State<_StreakBadge> {
   }
 }
 
+// ─────────────────────────────────────────────────────
+// Instruction Card
+// ─────────────────────────────────────────────────────
 class _InstructionCard extends StatelessWidget {
   final String instruction;
   const _InstructionCard({required this.instruction});
@@ -889,11 +884,7 @@ class _InstructionCard extends StatelessWidget {
               color: AppTheme.tealPrimary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
-              Icons.lightbulb_rounded,
-              color: AppTheme.tealPrimary,
-              size: 18,
-            ),
+            child: const Icon(Icons.lightbulb_rounded, color: AppTheme.tealPrimary, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -913,25 +904,38 @@ class _InstructionCard extends StatelessWidget {
   }
 }
 
-class _SoundVisualizationCard extends StatelessWidget {
+// ─────────────────────────────────────────────────────
+// LED Visualization Card
+// ─────────────────────────────────────────────────────
+class _LedVisualizationCard extends StatelessWidget {
   final String targetDisplay;
   final int? highlightedLineIndex;
-  final AnimationController pulseController;
-  final AnimationController waveController;
+  final Color ledColor;
+  final Animation<double> glowAnim;
 
-  const _SoundVisualizationCard({
+  const _LedVisualizationCard({
     required this.targetDisplay,
     required this.highlightedLineIndex,
-    required this.pulseController,
-    required this.waveController,
+    required this.ledColor,
+    required this.glowAnim,
   });
 
   static const _rowColors = [
+    Color(0xFF7E57C2),
     Color(0xFF4DD0C4),
-    Color(0xFF7E8DF1),
     Color(0xFFF29E4C),
     Color(0xFFE573B9),
   ];
+
+  String _colorName(Color c) {
+    if (c == _kRed) return 'RED';
+    if (c == _kGreen) return 'GREEN';
+    if (c == _kBlue) return 'BLUE';
+    if (c == _kYellow) return 'YELLOW';
+    return 'OFF';
+  }
+
+  bool get _isOff => ledColor == _kOff;
 
   @override
   Widget build(BuildContext context) {
@@ -953,25 +957,99 @@ class _SoundVisualizationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header row
           Row(
             children: [
-              const Icon(
-                Icons.emoji_objects_rounded,
-                size: 16,
-                color: AppTheme.tealPrimary,
-              ),
+              const Icon(Icons.lightbulb_rounded, size: 16, color: AppTheme.tealPrimary),
               const SizedBox(width: 6),
               Text(
-                'Logic to Match',
+                'LED Display',
                 style: GoogleFonts.nunito(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark,
                 ),
               ),
+              const Spacer(),
+              // Live LED circle in header (small)
+              AnimatedBuilder(
+                animation: glowAnim,
+                builder: (context2, child2) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _isOff ? const Color(0xFF37474F) : ledColor,
+                    boxShadow: _isOff
+                        ? []
+                        : [
+                            BoxShadow(
+                              color: ledColor.withValues(alpha: glowAnim.value * 0.7),
+                              blurRadius: 14 * glowAnim.value,
+                              spreadRadius: 3 * glowAnim.value,
+                            ),
+                          ],
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.lightbulb,
+                      size: 13,
+                      color: _isOff
+                          ? Colors.white.withValues(alpha: 0.3)
+                          : Colors.white.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _isOff
+                      ? Colors.grey.shade200
+                      : ledColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _isOff
+                        ? Colors.grey.shade300
+                        : ledColor.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Text(
+                  _colorName(ledColor),
+                  style: GoogleFonts.nunito(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: _isOff ? Colors.grey.shade500 : ledColor,
+                  ),
+                ),
+              ),
             ],
           ),
+
+          const SizedBox(height: 10),
+          Divider(color: Colors.grey.shade200, height: 1),
           const SizedBox(height: 8),
+
+          // Target pattern rows (same style as Level 2)
+          Row(
+            children: [
+              const Icon(Icons.emoji_objects_rounded, size: 14, color: AppTheme.tealPrimary),
+              const SizedBox(width: 5),
+              Text(
+                'Target Pattern',
+                style: GoogleFonts.nunito(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.tealDark,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -979,37 +1057,27 @@ class _SoundVisualizationCard extends StatelessWidget {
                 final lineIdx = entry.key;
                 final color = _rowColors[lineIdx % _rowColors.length];
                 final isHighlighted = highlightedLineIndex == lineIdx;
-                final fontSize = lines.length == 1
-                    ? 42.0
-                    : lines.length == 2
-                        ? 17.0
-                        : lines.length == 3
-                            ? 14.0
-                            : 12.0;
-
                 return AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   width: double.infinity,
                   padding: EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: isHighlighted ? 11 : 8,
+                    horizontal: 12,
+                    vertical: isHighlighted ? 9 : 6,
                   ),
                   decoration: BoxDecoration(
                     color: isHighlighted
                         ? color.withValues(alpha: 0.22)
                         : color.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(9),
                     border: Border.all(
-                      color: isHighlighted
-                          ? color
-                          : color.withValues(alpha: 0.5),
+                      color: isHighlighted ? color : color.withValues(alpha: 0.5),
                       width: isHighlighted ? 2.5 : 1.5,
                     ),
                     boxShadow: isHighlighted
                         ? [
                             BoxShadow(
-                              color: color.withValues(alpha: 0.35),
-                              blurRadius: 10,
+                              color: color.withValues(alpha: 0.30),
+                              blurRadius: 8,
                               spreadRadius: 1,
                             ),
                           ]
@@ -1018,10 +1086,9 @@ class _SoundVisualizationCard extends StatelessWidget {
                   child: Text(
                     entry.value,
                     style: GoogleFonts.nunito(
-                      fontSize: fontSize,
-                      fontWeight: isHighlighted
-                          ? FontWeight.w900
-                          : FontWeight.w800,
+                      fontSize: lines.length == 1 ? 16 : 13,
+                      fontWeight:
+                          isHighlighted ? FontWeight.w900 : FontWeight.w800,
                       color: isHighlighted ? color : AppTheme.tealDark,
                     ),
                     textAlign: TextAlign.center,
@@ -1036,6 +1103,9 @@ class _SoundVisualizationCard extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────
+// Code Blocks Area (identical structure to Level 2)
+// ─────────────────────────────────────────────────────
 class _CodeBlocksArea extends StatelessWidget {
   final List<CodeBlock> arrangedBlocks;
   final Function(int) onRemoveBlock;
@@ -1074,14 +1144,10 @@ class _CodeBlocksArea extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.code_rounded,
-                size: 14,
-                color: AppTheme.tealPrimary,
-              ),
+              const Icon(Icons.code_rounded, size: 14, color: AppTheme.tealPrimary),
               const SizedBox(width: 6),
               Text(
-                'Your Sound Code',
+                'Your LED Code',
                 style: GoogleFonts.nunito(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
@@ -1100,6 +1166,7 @@ class _CodeBlocksArea extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
+
           Expanded(
             flex: 2,
             child: Container(
@@ -1125,7 +1192,6 @@ class _CodeBlocksArea extends StatelessWidget {
                         },
                       );
                     }
-
                     final block = arrangedBlocks[index];
                     final isActive = activeBlockIndex == index;
                     return Column(
@@ -1140,14 +1206,14 @@ class _CodeBlocksArea extends StatelessWidget {
                             }
                           },
                         ),
-                        Draggable<_DraggedBlockData>(
-                          data: _DraggedBlockData(fromIndex: index),
+                        Draggable<_DragData>(
+                          data: _DragData(fromIndex: index),
                           maxSimultaneousDrags: isExecuting ? 0 : 1,
                           feedback: Material(
                             color: Colors.transparent,
                             child: SizedBox(
                               width: MediaQuery.of(context).size.width - 72,
-                              child: _CodeBlockWidget(
+                              child: _BlockWidget(
                                 block: block,
                                 isExecuting: true,
                                 isHighlighted: isActive,
@@ -1156,20 +1222,16 @@ class _CodeBlocksArea extends StatelessWidget {
                           ),
                           childWhenDragging: Opacity(
                             opacity: 0.25,
-                            child: _CodeBlockWidget(
+                            child: _BlockWidget(
                               block: block,
-                              onRemove: isExecuting
-                                  ? null
-                                  : () => onRemoveBlock(index),
+                              onRemove: isExecuting ? null : () => onRemoveBlock(index),
                               isExecuting: isExecuting,
                               isHighlighted: isActive,
                             ),
                           ),
-                          child: _CodeBlockWidget(
+                          child: _BlockWidget(
                             block: block,
-                            onRemove: isExecuting
-                                ? null
-                                : () => onRemoveBlock(index),
+                            onRemove: isExecuting ? null : () => onRemoveBlock(index),
                             isExecuting: isExecuting,
                             isHighlighted: isActive,
                           ),
@@ -1181,14 +1243,11 @@ class _CodeBlocksArea extends StatelessWidget {
               ),
             ),
           ),
+
           const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(
-                Icons.widgets_rounded,
-                size: 14,
-                color: AppTheme.tealPrimary,
-              ),
+              const Icon(Icons.widgets_rounded, size: 14, color: AppTheme.tealPrimary),
               const SizedBox(width: 6),
               Text(
                 'Available Blocks',
@@ -1219,6 +1278,7 @@ class _CodeBlocksArea extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
+
           Expanded(
             flex: 1,
             child: SingleChildScrollView(
@@ -1229,16 +1289,12 @@ class _CodeBlocksArea extends StatelessWidget {
                 children: availableBlocks.map((blockType) {
                   final color = CodeBlock.typeColors[blockType]!;
                   final chip = _PaletteChip(blockType: blockType, color: color);
-                  return Draggable<_DraggedBlockData>(
-                    data: _DraggedBlockData(type: blockType),
+                  return Draggable<_DragData>(
+                    data: _DragData(type: blockType),
                     maxSimultaneousDrags: isExecuting ? 0 : 1,
                     feedback: Material(
                       color: Colors.transparent,
-                      child: _PaletteChip(
-                        blockType: blockType,
-                        color: color,
-                        elevated: true,
-                      ),
+                      child: _PaletteChip(blockType: blockType, color: color, elevated: true),
                     ),
                     childWhenDragging: Opacity(opacity: 0.3, child: chip),
                     child: GestureDetector(
@@ -1260,13 +1316,13 @@ class _CodeBlocksArea extends StatelessWidget {
   }
 }
 
-class _CodeBlockWidget extends StatelessWidget {
+class _BlockWidget extends StatelessWidget {
   final CodeBlock block;
   final VoidCallback? onRemove;
   final bool isExecuting;
   final bool isHighlighted;
 
-  const _CodeBlockWidget({
+  const _BlockWidget({
     required this.block,
     this.onRemove,
     required this.isExecuting,
@@ -1281,9 +1337,7 @@ class _CodeBlockWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: block.color,
         borderRadius: BorderRadius.circular(10),
-        border: isHighlighted
-            ? Border.all(color: Colors.white, width: 2.4)
-            : null,
+        border: isHighlighted ? Border.all(color: Colors.white, width: 2.4) : null,
         boxShadow: [
           BoxShadow(
             color: block.color.withValues(alpha: 0.3),
@@ -1294,11 +1348,7 @@ class _CodeBlockWidget extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            _blockIcon(block.type),
-            color: Colors.white.withValues(alpha: 0.9),
-            size: 16,
-          ),
+          Icon(_blockIcon(block.type), color: Colors.white.withValues(alpha: 0.9), size: 16),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -1320,11 +1370,7 @@ class _CodeBlockWidget extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(5),
                 ),
-                child: const Icon(
-                  Icons.close_rounded,
-                  color: Colors.white,
-                  size: 14,
-                ),
+                child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
               ),
             ),
         ],
@@ -1335,8 +1381,7 @@ class _CodeBlockWidget extends StatelessWidget {
 
 class _DropSlot extends StatefulWidget {
   final bool isExecuting;
-  final ValueChanged<_DraggedBlockData> onAccept;
-
+  final ValueChanged<_DragData> onAccept;
   const _DropSlot({required this.isExecuting, required this.onAccept});
 
   @override
@@ -1344,46 +1389,39 @@ class _DropSlot extends StatefulWidget {
 }
 
 class _DropSlotState extends State<_DropSlot> {
-  bool _isHovering = false;
+  bool _hovering = false;
 
   @override
   Widget build(BuildContext context) {
-    return DragTarget<_DraggedBlockData>(
+    return DragTarget<_DragData>(
       onWillAcceptWithDetails: (_) {
-        if (widget.isExecuting) return false;
-        if (!mounted) return false;
-        setState(() => _isHovering = true);
+        if (widget.isExecuting || !mounted) return false;
+        setState(() => _hovering = true);
         return true;
       },
       onLeave: (_) {
-        if (mounted) {
-          setState(() => _isHovering = false);
-        }
+        if (mounted) setState(() => _hovering = false);
       },
       onAcceptWithDetails: (details) {
-        if (mounted) {
-          setState(() => _isHovering = false);
-        }
+        if (mounted) setState(() => _hovering = false);
         widget.onAccept(details.data);
       },
-      builder: (context, candidateData, rejectedData) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-          height: _isHovering ? 20 : 6,
-          decoration: BoxDecoration(
-            color: _isHovering
-                ? AppTheme.tealPrimary.withValues(alpha: 0.18)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: _isHovering
-                  ? AppTheme.tealPrimary
-                  : Colors.grey.withValues(alpha: 0.25),
-            ),
+      builder: (context2, candidateData, rejectedData) => AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+        height: _hovering ? 20 : 6,
+        decoration: BoxDecoration(
+          color: _hovering
+              ? AppTheme.tealPrimary.withValues(alpha: 0.18)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: _hovering
+                ? AppTheme.tealPrimary
+                : Colors.grey.withValues(alpha: 0.25),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -1436,6 +1474,15 @@ class _PaletteChip extends StatelessWidget {
   }
 }
 
+class _DragData {
+  final int? fromIndex;
+  final CodeBlockType? type;
+  const _DragData({this.fromIndex, this.type});
+}
+
+// ─────────────────────────────────────────────────────
+// Success / Fail Banners
+// ─────────────────────────────────────────────────────
 class _SuccessBanner extends StatefulWidget {
   const _SuccessBanner();
 
@@ -1444,33 +1491,33 @@ class _SuccessBanner extends StatefulWidget {
 }
 
 class _SuccessBannerState extends State<_SuccessBanner>
-    with TickerProviderStateMixin {
-  late AnimationController _scaleController;
-  late Animation<double> _scaleAnimation;
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _scale;
 
   @override
   void initState() {
     super.initState();
-    _scaleController = AnimationController(
+    _ctrl = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
+    _scale = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut),
     );
-    _scaleController.forward();
+    _ctrl.forward();
   }
 
   @override
   void dispose() {
-    _scaleController.dispose();
+    _ctrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return ScaleTransition(
-      scale: _scaleAnimation,
+      scale: _scale,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -1495,11 +1542,7 @@ class _SuccessBannerState extends State<_SuccessBanner>
                 color: Color(0xFF4CAF50),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.check_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
+              child: const Icon(Icons.check_rounded, color: Colors.white, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1541,11 +1584,7 @@ class _FailBanner extends StatelessWidget {
               color: Color(0xFFE53935),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.close_rounded,
-              color: Colors.white,
-              size: 22,
-            ),
+            child: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1561,7 +1600,7 @@ class _FailBanner extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Check the target sequence and try again.',
+                  'Check the target pattern and try again.',
                   style: GoogleFonts.nunito(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -1577,68 +1616,32 @@ class _FailBanner extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────
+// Block icon helper
+// ─────────────────────────────────────────────────────
 IconData _blockIcon(CodeBlockType type) {
   switch (type) {
     case CodeBlockType.start:
       return Icons.play_arrow_rounded;
     case CodeBlockType.end:
       return Icons.stop_rounded;
-    case CodeBlockType.beep:
-      return Icons.volume_up_rounded;
-    case CodeBlockType.clap:
-      return Icons.pan_tool_rounded;
-    case CodeBlockType.happy:
-      return Icons.sentiment_satisfied_rounded;
-    case CodeBlockType.repeat:
+    case CodeBlockType.setRed:
+      return Icons.circle;
+    case CodeBlockType.setGreen:
+      return Icons.circle;
+    case CodeBlockType.setBlue:
+      return Icons.circle;
+    case CodeBlockType.setYellow:
+      return Icons.circle;
+    case CodeBlockType.ledOff:
+      return Icons.highlight_off_rounded;
+    case CodeBlockType.waitShort:
+      return Icons.hourglass_top_rounded;
+    case CodeBlockType.ledRepeat3:
       return Icons.repeat_rounded;
-    case CodeBlockType.ifHappy:
-      return Icons.sentiment_very_satisfied_rounded;
-    case CodeBlockType.music:
-      return Icons.music_note_rounded;
-    case CodeBlockType.ifSad:
-      return Icons.sentiment_dissatisfied_rounded;
-    case CodeBlockType.cry:
-      return Icons.water_drop_rounded;
-    case CodeBlockType.ifMoon:
-      return Icons.nightlight_round;
-    case CodeBlockType.thenNight:
-      return Icons.mode_night_rounded;
-    case CodeBlockType.elseIfSun:
-      return Icons.wb_sunny_rounded;
-    case CodeBlockType.thenMorning:
-      return Icons.wb_sunny_outlined;
-    case CodeBlockType.ifStreak5:
-      return Icons.local_fire_department_rounded;
-    case CodeBlockType.cheering:
-      return Icons.emoji_events_rounded;
-    case CodeBlockType.elseIfStreak2:
-      return Icons.trending_up_rounded;
-    case CodeBlockType.elseBlock:
-      return Icons.call_split_rounded;
-    case CodeBlockType.encourage:
-      return Icons.favorite_rounded;
-    case CodeBlockType.ifBig:
-      return Icons.pets_rounded;
-    case CodeBlockType.ifHasTrunk:
-      return Icons.swipe_right_alt_rounded;
-    case CodeBlockType.elephantSound:
-      return Icons.graphic_eq_rounded;
-    case CodeBlockType.lionSound:
-      return Icons.graphic_eq_rounded;
-    case CodeBlockType.ifFluffy:
-      return Icons.sentiment_satisfied_alt_rounded;
-    case CodeBlockType.catSound:
-      return Icons.graphic_eq_rounded;
-    case CodeBlockType.dogSound:
-      return Icons.graphic_eq_rounded;
+    case CodeBlockType.ledRepeat2:
+      return Icons.repeat_rounded;
     default:
       return Icons.code_rounded;
   }
-}
-
-class _DraggedBlockData {
-  final int? fromIndex;
-  final CodeBlockType? type;
-
-  const _DraggedBlockData({this.fromIndex, this.type});
 }

@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'challenge_screen.dart';
 import 'sound_challenge_screen.dart';
+import 'led_challenge_screen.dart';
 import 'login_screen.dart';
 
 class AdventureMapScreen extends StatelessWidget {
@@ -69,42 +70,35 @@ class AdventureMapScreen extends StatelessWidget {
     _LevelData(number: 5, title: 'Smart Moves'),
   ];
 
+  // Returns challenge numbers for a given level across all level types.
+  List<int> _challengeNumbersForLevel(int levelNumber) {
+    switch (levelNumber) {
+      case 2:
+        return SoundChallenge.soundChallenges.map((c) => c.number).toList();
+      case 3:
+        return LedChallenge.ledChallenges.map((c) => c.number).toList();
+      default:
+        return Challenge.demoChallenge
+            .where((c) => c.levelNumber == levelNumber)
+            .map((c) => c.number)
+            .toList();
+    }
+  }
+
   List<_LevelData> _getLevelsWithLockStatus(ChildModel child) {
     return _levels.map((level) {
-      // Level 1 and 2 are always unlocked (2 is unlocked for testing)
+      // Levels 1 and 2 are always unlocked (2 kept open for testing).
       if (level.number == 1 || level.number == 2) {
-        return _LevelData(
-          number: level.number,
-          title: level.title,
-          unlocked: true,
-        );
+        return _LevelData(number: level.number, title: level.title, unlocked: true);
       }
-      // Other levels are unlocked only if previous level is completed
-      final previousLevel = level.number - 1;
-      final List<Challenge> previousLevelChallenges =
-          Challenge.demoChallenge
-              .where((challenge) => challenge.levelNumber == previousLevel)
-              .toList()
-            ..sort((a, b) => a.number.compareTo(b.number));
-
-      if (previousLevelChallenges.isEmpty) {
-        return _LevelData(
-          number: level.number,
-          title: level.title,
-          unlocked: false,
-        );
+      final previousNumbers = _challengeNumbersForLevel(level.number - 1);
+      if (previousNumbers.isEmpty) {
+        return _LevelData(number: level.number, title: level.title, unlocked: false);
       }
-
-      // Check if all challenges in previous level are completed
-      final bool allCompleted = previousLevelChallenges.every(
-        (challenge) => child.completedChallengeIds.contains(challenge.number),
+      final allCompleted = previousNumbers.every(
+        (n) => child.completedChallengeIds.contains(n),
       );
-
-      return _LevelData(
-        number: level.number,
-        title: level.title,
-        unlocked: allCompleted,
-      );
+      return _LevelData(number: level.number, title: level.title, unlocked: allCompleted);
     }).toList();
   }
 
@@ -322,6 +316,8 @@ class _LevelNode extends StatelessWidget {
     late final List<dynamic> levelChallenges;
     if (data.number == 2) {
       levelChallenges = SoundChallenge.soundChallenges;
+    } else if (data.number == 3) {
+      levelChallenges = LedChallenge.ledChallenges;
     } else {
       levelChallenges =
           Challenge.demoChallenge
@@ -335,9 +331,12 @@ class _LevelNode extends StatelessWidget {
     int inferredProgress = 0;
     for (int i = 0; i < levelChallenges.length; i++) {
       final challenge = levelChallenges[i];
-      final int challengeNumber = challenge is Challenge
-          ? challenge.number
-          : (challenge as SoundChallenge).number;
+      final int challengeNumber = switch (challenge) {
+        Challenge c => c.number,
+        SoundChallenge c => c.number,
+        LedChallenge c => c.number,
+        _ => 0,
+      };
       if (child.completedChallengeIds.contains(challengeNumber)) {
         inferredProgress = math.max(inferredProgress, i + 1);
       }
@@ -422,6 +421,32 @@ class _LevelNode extends StatelessWidget {
                             ),
                           );
                         }
+                      } else if (data.number == 3 && levelChallenges.isNotEmpty) {
+                        // Handle Level 3 (LED Challenges)
+                        final List<LedChallenge> ledChallenges =
+                            LedChallenge.ledChallenges;
+                        final int startIndex = completedSubLevels.clamp(
+                          0,
+                          ledChallenges.length - 1,
+                        );
+                        Navigator.push<ChildModel>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => LedChallengeScreen(
+                              child: child,
+                              challenge: ledChallenges[startIndex],
+                            ),
+                          ),
+                        ).then((updatedChild) {
+                          if (updatedChild == null || !context.mounted) return;
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AdventureMapScreen(child: updatedChild),
+                            ),
+                          );
+                        });
                       } else if (levelChallenges.isNotEmpty) {
                         // Handle other levels (Movement challenges)
                         final int startIndex = completedSubLevels.clamp(

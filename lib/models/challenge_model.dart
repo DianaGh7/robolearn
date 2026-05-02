@@ -38,6 +38,15 @@ enum CodeBlockType {
   ifFluffy,
   catSound,
   dogSound,
+  // Level 3 – RGB LED + Loops
+  setRed,
+  setGreen,
+  setBlue,
+  setYellow,
+  ledOff,
+  waitShort,
+  ledRepeat3,
+  ledRepeat2,
 }
 
 class CodeBlock {
@@ -86,6 +95,14 @@ class CodeBlock {
     CodeBlockType.ifFluffy: 'IF fluffy 🐱',
     CodeBlockType.catSound: 'cat 🐱',
     CodeBlockType.dogSound: 'dog 🐶',
+    CodeBlockType.setRed: 'set RED 🔴',
+    CodeBlockType.setGreen: 'set GREEN 🟢',
+    CodeBlockType.setBlue: 'set BLUE 🔵',
+    CodeBlockType.setYellow: 'set YELLOW 🟡',
+    CodeBlockType.ledOff: 'LED off ⚫',
+    CodeBlockType.waitShort: 'wait ⏱️',
+    CodeBlockType.ledRepeat3: 'REPEAT 3×',
+    CodeBlockType.ledRepeat2: 'REPEAT 2×',
   };
 
   static const Map<CodeBlockType, Color> typeColors = {
@@ -121,6 +138,14 @@ class CodeBlock {
     CodeBlockType.ifFluffy: Color(0xFF7986CB),
     CodeBlockType.catSound: Color(0xFF26A69A),
     CodeBlockType.dogSound: Color(0xFF8D6E63),
+    CodeBlockType.setRed: Color(0xFFE53935),
+    CodeBlockType.setGreen: Color(0xFF43A047),
+    CodeBlockType.setBlue: Color(0xFF1E88E5),
+    CodeBlockType.setYellow: Color(0xFFF9A825),
+    CodeBlockType.ledOff: Color(0xFF546E7A),
+    CodeBlockType.waitShort: Color(0xFF8E24AA),
+    CodeBlockType.ledRepeat3: Color(0xFF7E57C2),
+    CodeBlockType.ledRepeat2: Color(0xFF5E35B1),
   };
 
   factory CodeBlock.fromType(CodeBlockType type) {
@@ -459,6 +484,160 @@ class Challenge {
       gridWidth: 5,
       gridHeight: 5,
       availableBlocks: [CodeBlockType.moveLeft],
+    ),
+  ];
+}
+
+// Level 3 RGB LED Challenge definition
+class LedChallenge {
+  final int number;
+  final int levelNumber;
+  final String title;
+  final String instruction;
+  final String? targetDisplay;
+  final List<int>? lineForBlock;
+  final List<CodeBlockType> availableBlocks;
+  final List<CodeBlockType> correctSequence;
+
+  const LedChallenge({
+    required this.number,
+    required this.levelNumber,
+    required this.title,
+    required this.instruction,
+    this.targetDisplay,
+    this.lineForBlock,
+    required this.availableBlocks,
+    required this.correctSequence,
+  });
+
+  int get displayNumber {
+    final index = ledChallenges.indexWhere((c) => c.number == number);
+    return index + 1;
+  }
+
+  static const List<LedChallenge> ledChallenges = [
+    // Challenge 12 – First Blink (intro: no loop, just sequence)
+    LedChallenge(
+      number: 12,
+      levelNumber: 3,
+      title: 'First Blink',
+      instruction: 'Light it up! Turn the LED red, wait, then turn it off.',
+      targetDisplay: '🔴 turn on\n⏱️ wait\n⚫ turn off',
+      lineForBlock: [0, 1, 2],
+      availableBlocks: [
+        CodeBlockType.setRed,
+        CodeBlockType.waitShort,
+        CodeBlockType.ledOff,
+      ],
+      correctSequence: [
+        CodeBlockType.setRed,
+        CodeBlockType.waitShort,
+        CodeBlockType.ledOff,
+      ],
+    ),
+    // Challenge 13 – Blink 3 Times (basic repeat loop)
+    LedChallenge(
+      number: 13,
+      levelNumber: 3,
+      title: 'Blink 3 Times',
+      instruction: 'Use REPEAT 3× to blink the red LED 3 times!',
+      targetDisplay: 'REPEAT 3×\n🔴 on → ⚫ off',
+      availableBlocks: [
+        CodeBlockType.ledRepeat3,
+        CodeBlockType.setRed,
+        CodeBlockType.ledOff,
+      ],
+      correctSequence: [
+        CodeBlockType.ledRepeat3,
+        CodeBlockType.setRed,
+        CodeBlockType.ledOff,
+      ],
+    ),
+    // Challenge 14 – Color Parade (multiple actions inside loop)
+    LedChallenge(
+      number: 14,
+      levelNumber: 3,
+      title: 'Color Parade',
+      instruction: 'Inside the loop, show red, then green, then blue!',
+      targetDisplay: 'REPEAT 3×\n🔴 → 🟢 → 🔵',
+      availableBlocks: [
+        CodeBlockType.ledRepeat3,
+        CodeBlockType.setRed,
+        CodeBlockType.setGreen,
+        CodeBlockType.setBlue,
+      ],
+      correctSequence: [
+        CodeBlockType.ledRepeat3,
+        CodeBlockType.setRed,
+        CodeBlockType.setGreen,
+        CodeBlockType.setBlue,
+      ],
+    ),
+    // Challenge 15 – Yellow Blink (repeat 2×, different count)
+    LedChallenge(
+      number: 15,
+      levelNumber: 3,
+      title: 'Yellow Blink',
+      instruction: 'Blink the yellow LED 2 times using REPEAT 2×!',
+      targetDisplay: 'REPEAT 2×\n🟡 on → ⚫ off',
+      availableBlocks: [
+        CodeBlockType.ledRepeat2,
+        CodeBlockType.setYellow,
+        CodeBlockType.ledOff,
+      ],
+      correctSequence: [
+        CodeBlockType.ledRepeat2,
+        CodeBlockType.setYellow,
+        CodeBlockType.ledOff,
+      ],
+    ),
+    // Challenge 16 – Traffic Light (chaining two loops)
+    LedChallenge(
+      number: 16,
+      levelNumber: 3,
+      title: 'Traffic Light',
+      instruction: 'First blink red 3 times, then blink green 2 times!',
+      targetDisplay: 'REPEAT 3×: 🔴 blink\nREPEAT 2×: 🟢 blink',
+      availableBlocks: [
+        CodeBlockType.ledRepeat3,
+        CodeBlockType.ledRepeat2,
+        CodeBlockType.setRed,
+        CodeBlockType.setGreen,
+        CodeBlockType.ledOff,
+      ],
+      correctSequence: [
+        CodeBlockType.ledRepeat3,
+        CodeBlockType.setRed,
+        CodeBlockType.ledOff,
+        CodeBlockType.ledRepeat2,
+        CodeBlockType.setGreen,
+        CodeBlockType.ledOff,
+      ],
+    ),
+    // Challenge 17 – Rainbow Spin (complex multi-loop)
+    LedChallenge(
+      number: 17,
+      levelNumber: 3,
+      title: 'Rainbow Spin',
+      instruction: 'First blink red 2 times, then spin red → green → blue 3 times!',
+      targetDisplay: 'REPEAT 2×: 🔴 blink\nREPEAT 3×: 🔴 → 🟢 → 🔵',
+      availableBlocks: [
+        CodeBlockType.ledRepeat2,
+        CodeBlockType.ledRepeat3,
+        CodeBlockType.setRed,
+        CodeBlockType.setGreen,
+        CodeBlockType.setBlue,
+        CodeBlockType.ledOff,
+      ],
+      correctSequence: [
+        CodeBlockType.ledRepeat2,
+        CodeBlockType.setRed,
+        CodeBlockType.ledOff,
+        CodeBlockType.ledRepeat3,
+        CodeBlockType.setRed,
+        CodeBlockType.setGreen,
+        CodeBlockType.setBlue,
+      ],
     ),
   ];
 }
