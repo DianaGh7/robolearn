@@ -256,6 +256,10 @@ class AdventureMapScreen extends StatelessWidget {
                       value: '${child.completedLevels} / ${child.totalLevels}',
                     ),
                     _Stat(label: 'Attempts', value: '${child.attempts}'),
+                    _Stat(
+                      label: 'Streak',
+                      value: child.streak > 0 ? '🔥 ${child.streak}' : '—',
+                    ),
                     SizedBox(
                       width: 36,
                       height: 36,
