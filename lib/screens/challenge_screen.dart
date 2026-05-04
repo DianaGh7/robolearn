@@ -192,7 +192,18 @@ class _ChallengeScreenState extends State<ChallengeScreen>
   Future<void> _executeCode() async {
     if (isExecuting) return;
     if (!_hasValidStartEndOrder) {
+      setState(() {
+        _progressChild = _progressChild.copyWith(
+          attempts: _progressChild.attempts + 1,
+        );
+      });
       _showFailNotification();
+      final eChildId = _progressChild.childId;
+      if (eChildId != null) {
+        _progressService
+            .registerChallengeFail(childId: eChildId, child: _progressChild)
+            .catchError((_) => _progressChild);
+      }
       return;
     }
 
@@ -274,7 +285,20 @@ class _ChallengeScreenState extends State<ChallengeScreen>
       setState(() => _challengeSuccessfullyCompleted = true);
       _showSuccessNotification();
     } else {
+      // Increment locally first so the count is accurate when the user
+      // navigates back. Persist to Firestore in the background.
+      setState(() {
+        _progressChild = _progressChild.copyWith(
+          attempts: _progressChild.attempts + 1,
+        );
+      });
       _showFailNotification();
+      final childId = _progressChild.childId;
+      if (childId != null) {
+        _progressService
+            .registerChallengeFail(childId: childId, child: _progressChild)
+            .catchError((_) => _progressChild);
+      }
     }
   }
 
@@ -332,7 +356,13 @@ class _ChallengeScreenState extends State<ChallengeScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        Navigator.pop(context, _progressChild);
+      },
+      child: Scaffold(
       body: Stack(
         children: [
           // ── Background gradient ──────────────────────────
@@ -574,7 +604,8 @@ class _ChallengeScreenState extends State<ChallengeScreen>
           ),
         ],
       ),
-    );
+    ), // Scaffold
+  ); // PopScope
   }
 }
 
