@@ -41,6 +41,7 @@ class _LedChallengeScreenState extends State<LedChallengeScreen>
   bool _isExecuting = false;
   bool _showSuccessToast = false;
   bool _showFailToast = false;
+  bool _showConnectedToast = false;
   bool _challengeSuccessfullyCompleted = false;
   int? _activeBlockIndex;
   int? _highlightedLineIndex;
@@ -133,6 +134,14 @@ class _LedChallengeScreenState extends State<LedChallengeScreen>
     });
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) setState(() => _showFailToast = false);
+    });
+  }
+
+  void _showConnectedNotification() {
+    if (!mounted) return;
+    setState(() => _showConnectedToast = true);
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _showConnectedToast = false);
     });
   }
 
@@ -309,30 +318,17 @@ class _LedChallengeScreenState extends State<LedChallengeScreen>
   }
 
   // ── Connection / run ──────────────────────────────────
+  Future<void> _handleConnect() async {
+    if (_connectionStatus != _RobotConnectionStatus.disconnected) return;
+    setState(() => _connectionStatus = _RobotConnectionStatus.connecting);
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+    setState(() => _connectionStatus = _RobotConnectionStatus.connected);
+    _showConnectedNotification();
+  }
+
   Future<void> _handleRobotAction() async {
-    if (_connectionStatus == _RobotConnectionStatus.disconnected) {
-      setState(() => _connectionStatus = _RobotConnectionStatus.connecting);
-      await Future.delayed(const Duration(milliseconds: 900));
-      if (!mounted) return;
-      setState(() => _connectionStatus = _RobotConnectionStatus.connected);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Robot connected successfully.',
-            style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
-          ),
-          backgroundColor: AppTheme.tealDark,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-      return;
-    }
-    if (_connectionStatus == _RobotConnectionStatus.connected) {
-      setState(() => _connectionStatus = _RobotConnectionStatus.executing);
-      await _executeLedSequence();
-      if (mounted) setState(() => _connectionStatus = _RobotConnectionStatus.connected);
-    }
+    await _executeLedSequence();
   }
 
   // ── Navigation ────────────────────────────────────────
@@ -393,7 +389,7 @@ class _LedChallengeScreenState extends State<LedChallengeScreen>
                   child: _progressChild,
                   challenge: widget.challenge,
                   connectionStatus: _connectionStatus,
-                  onRobotActionPressed: _handleRobotAction,
+                  onConnectPressed: _handleConnect,
                   onBackPressed: () => Navigator.pop(context, _progressChild),
                 ),
                 Expanded(
@@ -402,12 +398,8 @@ class _LedChallengeScreenState extends State<LedChallengeScreen>
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final totalHeight = constraints.maxHeight;
-                        final lineCount = (widget.challenge.targetDisplay ?? '')
-                            .split('\n')
-                            .where((l) => l.trim().isNotEmpty)
-                            .length;
-                        final vizHeight = (110.0 + lineCount * 52.0).clamp(200.0, 320.0);
-                        final codeAreaHeight = (totalHeight * 0.62).clamp(340.0, 540.0);
+                        final vizHeight = (totalHeight * 0.30).clamp(170.0, 250.0);
+                        final codeAreaHeight = (totalHeight * 0.62).clamp(360.0, 560.0);
 
                         return SingleChildScrollView(
                           padding: const EdgeInsets.only(bottom: 84),
@@ -417,12 +409,12 @@ class _LedChallengeScreenState extends State<LedChallengeScreen>
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _InstructionCard(instruction: widget.challenge.instruction),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 3),
                                 SizedBox(
                                   height: vizHeight,
                                   child: Center(
                                     child: FractionallySizedBox(
-                                      widthFactor: 0.82,
+                                      widthFactor: 0.96,
                                       child: _LedVisualizationCard(
                                         targetDisplay: widget.challenge.targetDisplay ?? '',
                                         highlightedLineIndex: _highlightedLineIndex,
@@ -432,7 +424,7 @@ class _LedChallengeScreenState extends State<LedChallengeScreen>
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 3),
                                 SizedBox(
                                   height: codeAreaHeight,
                                   child: _CodeBlocksArea(
@@ -444,6 +436,7 @@ class _LedChallengeScreenState extends State<LedChallengeScreen>
                                     onAddBlock: _addBlock,
                                     isExecuting: _isExecuting,
                                     activeBlockIndex: _activeBlockIndex,
+                                    onRun: _handleRobotAction,
                                   ),
                                 ),
                               ],
@@ -463,19 +456,23 @@ class _LedChallengeScreenState extends State<LedChallengeScreen>
             left: 16,
             right: 16,
             child: IgnorePointer(
-              ignoring: !_showSuccessToast && !_showFailToast,
+              ignoring: !_showSuccessToast && !_showFailToast && !_showConnectedToast,
               child: AnimatedSlide(
-                offset: (_showSuccessToast || _showFailToast)
+                offset: (_showSuccessToast || _showFailToast || _showConnectedToast)
                     ? Offset.zero
                     : const Offset(0, -1),
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOut,
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 220),
-                  opacity: (_showSuccessToast || _showFailToast) ? 1 : 0,
+                  opacity: (_showSuccessToast || _showFailToast || _showConnectedToast) ? 1 : 0,
                   child: SafeArea(
                     bottom: false,
-                    child: _showSuccessToast ? const _SuccessBanner() : const _FailBanner(),
+                    child: _showSuccessToast
+                        ? _SuccessBanner(streak: _progressChild.streak, streakRenewed: false)
+                        : _showConnectedToast
+                            ? const _ConnectedBanner()
+                            : const _FailBanner(),
                   ),
                 ),
               ),
@@ -539,7 +536,7 @@ class _LedChallengeScreenState extends State<LedChallengeScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton(
                         onPressed:
@@ -598,15 +595,15 @@ class _HeaderBar extends StatelessWidget {
   final ChildModel child;
   final LedChallenge challenge;
   final _RobotConnectionStatus connectionStatus;
-  final VoidCallback onRobotActionPressed;
   final VoidCallback onBackPressed;
+  final VoidCallback onConnectPressed;
 
   const _HeaderBar({
     required this.child,
     required this.challenge,
     required this.connectionStatus,
-    required this.onRobotActionPressed,
     required this.onBackPressed,
+    required this.onConnectPressed,
   });
 
   @override
@@ -665,16 +662,7 @@ class _HeaderBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          if (child.streak > 0) ...[
-            _StreakBadge(streak: child.streak),
-            const SizedBox(width: 3),
-          ],
           _RobotStatusBadge(status: connectionStatus),
-          const SizedBox(width: 6),
-          _RobotActionMiniButton(
-            status: connectionStatus,
-            onPressed: onRobotActionPressed,
-          ),
           const SizedBox(width: 6),
           Text(
             child.name,
@@ -708,57 +696,6 @@ class _HeaderBar extends StatelessWidget {
             child: ClipOval(child: AvatarFace(seed: child.avatarSeed)),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _RobotActionMiniButton extends StatelessWidget {
-  final _RobotConnectionStatus status;
-  final VoidCallback onPressed;
-
-  const _RobotActionMiniButton({required this.status, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    final busy = status == _RobotConnectionStatus.connecting ||
-        status == _RobotConnectionStatus.executing;
-    final isDisconnected = status == _RobotConnectionStatus.disconnected;
-    final icon = isDisconnected
-        ? Icons.bluetooth_searching_rounded
-        : busy
-            ? Icons.hourglass_top_rounded
-            : Icons.play_arrow_rounded;
-    final label = isDisconnected ? 'Connect' : busy ? 'Running' : 'Run';
-
-    return GestureDetector(
-      onTap: busy ? null : onPressed,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: busy
-              ? const Color(0xFF9CCFC5)
-              : isDisconnected
-                  ? const Color(0xFF5EA1D8)
-                  : AppTheme.tealPrimary,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.white, size: 13),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: GoogleFonts.nunito(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -821,40 +758,6 @@ class _RobotStatusBadge extends StatelessWidget {
       };
 }
 
-class _StreakBadge extends StatelessWidget {
-  final int streak;
-  const _StreakBadge({required this.streak});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFF6B6B).withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: const Color(0xFFFF6B6B).withValues(alpha: 0.4),
-          width: 1.2,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('🔥', style: TextStyle(fontSize: 13)),
-          const SizedBox(width: 3),
-          Text(
-            '$streak',
-            style: GoogleFonts.nunito(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFFFF6B6B),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────
 // Instruction Card
@@ -891,7 +794,7 @@ class _InstructionCard extends StatelessWidget {
             child: Text(
               instruction,
               style: GoogleFonts.nunito(
-                fontSize: 15,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: Colors.black87,
                 height: 1.45,
@@ -945,13 +848,13 @@ class _LedVisualizationCard extends StatelessWidget {
         .toList();
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: AppTheme.tealPrimary.withValues(alpha: 0.15),
-          width: 1.5,
+          color: AppTheme.tealPrimary.withValues(alpha: 0.12),
+          width: 1,
         ),
       ),
       child: Column(
@@ -960,12 +863,10 @@ class _LedVisualizationCard extends StatelessWidget {
           // Header row
           Row(
             children: [
-              const Icon(Icons.lightbulb_rounded, size: 16, color: AppTheme.tealPrimary),
-              const SizedBox(width: 6),
               Text(
-                'LED Display',
+                'Logic to Match',
                 style: GoogleFonts.nunito(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark,
                 ),
@@ -1030,26 +931,7 @@ class _LedVisualizationCard extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 10),
-          Divider(color: Colors.grey.shade200, height: 1),
           const SizedBox(height: 8),
-
-          // Target pattern rows (same style as Level 2)
-          Row(
-            children: [
-              const Icon(Icons.emoji_objects_rounded, size: 14, color: AppTheme.tealPrimary),
-              const SizedBox(width: 5),
-              Text(
-                'Target Pattern',
-                style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.tealDark,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1115,6 +997,7 @@ class _CodeBlocksArea extends StatelessWidget {
   final Function(CodeBlockType) onAddBlock;
   final bool isExecuting;
   final int? activeBlockIndex;
+  final VoidCallback onRun;
 
   const _CodeBlocksArea({
     required this.arrangedBlocks,
@@ -1125,6 +1008,7 @@ class _CodeBlocksArea extends StatelessWidget {
     required this.onAddBlock,
     required this.isExecuting,
     required this.activeBlockIndex,
+    required this.onRun,
   });
 
   @override
@@ -1147,20 +1031,51 @@ class _CodeBlocksArea extends StatelessWidget {
               const Icon(Icons.code_rounded, size: 14, color: AppTheme.tealPrimary),
               const SizedBox(width: 6),
               Text(
-                'Your LED Code',
+                'Your Code',
                 style: GoogleFonts.nunito(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark,
                 ),
               ),
               const Spacer(),
-              Text(
-                '${arrangedBlocks.length} block${arrangedBlocks.length != 1 ? 's' : ''}',
-                style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.tealMid,
+              GestureDetector(
+                onTap: isExecuting ? null : onRun,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: isExecuting ? const Color(0xFF9CCFC5) : AppTheme.tealPrimary,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: isExecuting
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: AppTheme.tealPrimary.withValues(alpha: 0.35),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isExecuting ? Icons.hourglass_top_rounded : Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 15,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isExecuting ? 'Running...' : 'Run',
+                        style: GoogleFonts.nunito(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1177,7 +1092,7 @@ class _CodeBlocksArea extends StatelessWidget {
               ),
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                 child: Column(
                   children: List.generate(arrangedBlocks.length + 1, (index) {
                     if (index == arrangedBlocks.length) {
@@ -1244,7 +1159,7 @@ class _CodeBlocksArea extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
             children: [
               const Icon(Icons.widgets_rounded, size: 14, color: AppTheme.tealPrimary),
@@ -1252,8 +1167,8 @@ class _CodeBlocksArea extends StatelessWidget {
               Text(
                 'Available Blocks',
                 style: GoogleFonts.nunito(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark,
                 ),
               ),
@@ -1261,7 +1176,7 @@ class _CodeBlocksArea extends StatelessWidget {
               Text(
                 '${availableBlocks.length} block${availableBlocks.length != 1 ? 's' : ''}',
                 style: GoogleFonts.nunito(
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.tealMid,
                 ),
@@ -1269,44 +1184,43 @@ class _CodeBlocksArea extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Text(
-            'Tap or drag blocks to build your solution:',
-            style: GoogleFonts.nunito(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey.shade600,
-            ),
-          ),
-          const SizedBox(height: 8),
 
           Expanded(
             flex: 1,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: availableBlocks.map((blockType) {
-                  final color = CodeBlock.typeColors[blockType]!;
-                  final chip = _PaletteChip(blockType: blockType, color: color);
-                  return Draggable<_DragData>(
-                    data: _DragData(type: blockType),
-                    maxSimultaneousDrags: isExecuting ? 0 : 1,
-                    feedback: Material(
-                      color: Colors.transparent,
-                      child: _PaletteChip(blockType: blockType, color: color, elevated: true),
-                    ),
-                    childWhenDragging: Opacity(opacity: 0.3, child: chip),
-                    child: GestureDetector(
-                      onTap: isExecuting ? null : () => onAddBlock(blockType),
-                      child: AnimatedOpacity(
-                        opacity: isExecuting ? 0.45 : 1,
-                        duration: const Duration(milliseconds: 200),
-                        child: chip,
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5FAF9),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.all(8),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: availableBlocks.map((blockType) {
+                    final color = CodeBlock.typeColors[blockType]!;
+                    final chip = _PaletteChip(blockType: blockType, color: color);
+                    return Draggable<_DragData>(
+                      data: _DragData(type: blockType),
+                      maxSimultaneousDrags: isExecuting ? 0 : 1,
+                      feedback: Material(
+                        color: Colors.transparent,
+                        child: _PaletteChip(blockType: blockType, color: color, elevated: true),
                       ),
-                    ),
-                  );
-                }).toList(),
+                      childWhenDragging: Opacity(opacity: 0.3, child: chip),
+                      child: GestureDetector(
+                        onTap: isExecuting ? null : () => onAddBlock(blockType),
+                        child: AnimatedOpacity(
+                          opacity: isExecuting ? 0.45 : 1,
+                          duration: const Duration(milliseconds: 200),
+                          child: chip,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
             ),
           ),
@@ -1333,7 +1247,7 @@ class _BlockWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: block.color,
         borderRadius: BorderRadius.circular(10),
@@ -1348,13 +1262,13 @@ class _BlockWidget extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(_blockIcon(block.type), color: Colors.white.withValues(alpha: 0.9), size: 16),
-          const SizedBox(width: 8),
+          Icon(_blockIcon(block.type), color: Colors.white.withValues(alpha: 0.9), size: 14),
+          const SizedBox(width: 6),
           Expanded(
             child: Text(
               block.label,
               style: GoogleFonts.nunito(
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.w800,
                 color: Colors.white,
               ),
@@ -1409,17 +1323,15 @@ class _DropSlotState extends State<_DropSlot> {
       builder: (context2, candidateData, rejectedData) => AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-        height: _hovering ? 20 : 6,
+        height: _hovering ? 20 : 4,
         decoration: BoxDecoration(
           color: _hovering
               ? AppTheme.tealPrimary.withValues(alpha: 0.18)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: _hovering
-                ? AppTheme.tealPrimary
-                : Colors.grey.withValues(alpha: 0.25),
-          ),
+          border: _hovering
+              ? Border.all(color: AppTheme.tealPrimary)
+              : null,
         ),
       ),
     );
@@ -1440,17 +1352,17 @@ class _PaletteChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
-        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: elevated
             ? [
                 BoxShadow(
-                  color: color.withValues(alpha: 0.35),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  color: color.withValues(alpha: 0.30),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
               ]
             : null,
@@ -1458,12 +1370,12 @@ class _PaletteChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_blockIcon(blockType), size: 14, color: color),
-          const SizedBox(width: 5),
+          Icon(_blockIcon(blockType), size: 13, color: color),
+          const SizedBox(width: 4),
           Text(
             CodeBlock.typeLabels[blockType]!,
             style: GoogleFonts.nunito(
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
               color: color,
             ),
@@ -1484,7 +1396,9 @@ class _DragData {
 // Success / Fail Banners
 // ─────────────────────────────────────────────────────
 class _SuccessBanner extends StatefulWidget {
-  const _SuccessBanner();
+  final int streak;
+  final bool streakRenewed;
+  const _SuccessBanner({required this.streak, required this.streakRenewed});
 
   @override
   State<_SuccessBanner> createState() => _SuccessBannerState();
@@ -1516,6 +1430,9 @@ class _SuccessBannerState extends State<_SuccessBanner>
 
   @override
   Widget build(BuildContext context) {
+    final streakMsg = widget.streakRenewed
+        ? '🔥 Streak: ${widget.streak}!'
+        : 'Keep it up! 🌟';
     return ScaleTransition(
       scale: _scale,
       child: Container(
@@ -1546,13 +1463,25 @@ class _SuccessBannerState extends State<_SuccessBanner>
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                'Challenge Completed! 🎉',
-                style: GoogleFonts.nunito(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF2E7D32),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Challenge Completed! 🎉',
+                    style: GoogleFonts.nunito(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF2E7D32),
+                    ),
+                  ),
+                  Text(
+                    streakMsg,
+                    style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      color: const Color(0xFF388E3C),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1605,6 +1534,63 @@ class _FailBanner extends StatelessWidget {
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFFC62828),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// Connected Banner
+// ─────────────────────────────────────────────────────
+class _ConnectedBanner extends StatelessWidget {
+  const _ConnectedBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFE0F7FA), Color(0xFFB2EBF2)],
+        ),
+        border: Border.all(color: AppTheme.tealPrimary, width: 2),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.tealPrimary,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.bluetooth_connected_rounded, color: Colors.white, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Robot connected!',
+                  style: GoogleFonts.nunito(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.tealDark,
+                  ),
+                ),
+                Text(
+                  'Robot connected successfully.',
+                  style: GoogleFonts.nunito(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.tealPrimary,
                   ),
                 ),
               ],

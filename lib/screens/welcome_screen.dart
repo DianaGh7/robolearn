@@ -139,11 +139,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _FeatureLine(
-                            text: 'Fun and simple for children',
+                            text: 'Fun and simple for children who want to learn programming',
                             color: AppTheme.tealPrimary),
                         const SizedBox(height: 8),
                         _FeatureLine(
-                            text: 'Safe and easy to monitor for parents',
+                            text: 'Safe and easy to monitor for parents who want to support their child\'s learning',
                             color: AppTheme.orange),
                       ],
                     ),
