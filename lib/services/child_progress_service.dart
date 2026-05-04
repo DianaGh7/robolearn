@@ -93,5 +93,30 @@ class ChildProgressService {
       return updated;
     });
   }
+
+  /// Increments the attempts counter when a child runs incorrect code.
+  Future<ChildModel> registerChallengeFail({
+    required String childId,
+    required ChildModel child,
+  }) async {
+    final doc = FirebaseRefs.childDoc(childId);
+
+    return FirebaseRefs.firestore.runTransaction<ChildModel>((tx) async {
+      final snap = await tx.get(doc);
+      final remote = snap.exists ? ChildModel.fromFirestore(snap) : child;
+
+      final updated = remote.copyWith(
+        childId: childId,
+        attempts: remote.attempts + 1,
+      );
+
+      final writeData = updated.toFirestore(includeTimestamps: false);
+      writeData['updatedAt'] = FieldValue.serverTimestamp();
+
+      tx.set(doc, writeData, SetOptions(merge: true));
+
+      return updated;
+    });
+  }
 }
 

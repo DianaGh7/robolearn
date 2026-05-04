@@ -85,6 +85,42 @@ class AdventureMapScreen extends StatelessWidget {
     }
   }
 
+  int _countCompletedLevels(ChildModel child) {
+    int count = 0;
+    for (final level in _levels) {
+      late final List<dynamic> levelChallenges;
+      if (level.number == 2) {
+        levelChallenges = SoundChallenge.soundChallenges;
+      } else if (level.number == 3) {
+        levelChallenges = LedChallenge.ledChallenges;
+      } else {
+        levelChallenges = Challenge.demoChallenge
+            .where((c) => c.levelNumber == level.number)
+            .toList()
+          ..sort((a, b) => a.number.compareTo(b.number));
+      }
+      final int total = levelChallenges.length;
+      if (total == 0) continue;
+      int inferred = 0;
+      for (int i = 0; i < levelChallenges.length; i++) {
+        final challenge = levelChallenges[i];
+        final int num = switch (challenge) {
+          Challenge c => c.number,
+          SoundChallenge c => c.number,
+          LedChallenge c => c.number,
+          _ => 0,
+        };
+        if (child.completedChallengeIds.contains(num)) {
+          inferred = math.max(inferred, i + 1);
+        }
+      }
+      final int saved = child.subLevelProgressByLevel[level.number] ?? 0;
+      final int completed = math.max(saved, inferred).clamp(0, total);
+      if (completed >= total) count++;
+    }
+    return count;
+  }
+
   List<_LevelData> _getLevelsWithLockStatus(ChildModel child) {
     return _levels.map((level) {
       // Levels 1 and 2 are always unlocked (2 kept open for testing).
@@ -253,7 +289,7 @@ class AdventureMapScreen extends StatelessWidget {
                   children: [
                     _Stat(
                       label: 'Completed',
-                      value: '${child.completedLevels} / ${child.totalLevels}',
+                      value: '${_countCompletedLevels(child)} / ${child.totalLevels}',
                     ),
                     _Stat(label: 'Attempts', value: '${child.attempts}'),
                     _Stat(
