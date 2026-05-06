@@ -2,6 +2,7 @@
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/child_model.dart';
+import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'adventure_map_screen.dart';
@@ -97,7 +98,10 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
       transitionsBuilder: (_, anim, _, child) =>
           FadeTransition(opacity: anim, child: child),
       transitionDuration: const Duration(milliseconds: 500),
-    ));
+    )).then((_) async {
+      if (!mounted) return;
+      await _loadChildren();
+    });
   }
 
   Future<void> _showSettingsMenu() async {
@@ -386,6 +390,21 @@ class _ChildCardState extends State<_ChildCard>
     super.dispose();
   }
 
+  int _currentLevel(ChildModel child) {
+    final ids = child.completedChallengeIds;
+    final groups = [
+      Challenge.demoChallenge.where((c) => c.levelNumber == 1).map((c) => c.number).toList(),
+      SoundChallenge.soundChallenges.map((c) => c.number).toList(),
+      LedChallenge.ledChallenges.map((c) => c.number).toList(),
+    ];
+    int level = 1;
+    for (final group in groups) {
+      if (group.isEmpty || !group.every(ids.contains)) break;
+      level++;
+    }
+    return level;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = widget.data.palette;
@@ -498,7 +517,7 @@ class _ChildCardState extends State<_ChildCard>
                           color: Colors.white.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text('Lv ${widget.data.level}',
+                        child: Text('Lv ${_currentLevel(widget.data)}',
                             style: GoogleFonts.nunito(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,

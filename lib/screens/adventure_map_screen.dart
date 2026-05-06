@@ -5,9 +5,9 @@ import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
-import 'challenge_screen.dart';
-import 'sound_challenge_screen.dart';
-import 'led_challenge_screen.dart';
+import 'level_one_screen.dart';
+import 'level_two_screen.dart';
+import 'level_three_screen.dart';
 import 'login_screen.dart';
 
 class AdventureMapScreen extends StatelessWidget {
@@ -70,71 +70,52 @@ class AdventureMapScreen extends StatelessWidget {
     _LevelData(number: 5, title: 'Smart Moves'),
   ];
 
-  // Returns challenge numbers for a given level across all level types.
-  List<int> _challengeNumbersForLevel(int levelNumber) {
-    switch (levelNumber) {
-      case 2:
-        return SoundChallenge.soundChallenges.map((c) => c.number).toList();
-      case 3:
-        return LedChallenge.ledChallenges.map((c) => c.number).toList();
-      default:
-        return Challenge.demoChallenge
-            .where((c) => c.levelNumber == levelNumber)
-            .map((c) => c.number)
-            .toList();
-    }
+  static int _challengeNumber(dynamic c) => switch (c) {
+        Challenge c => c.number,
+        SoundChallenge c => c.number,
+        LedChallenge c => c.number,
+        _ => 0,
+      };
+
+  static List<dynamic> _challengesForLevel(int levelNumber) {
+    if (levelNumber == 2) return SoundChallenge.soundChallenges;
+    if (levelNumber == 3) return LedChallenge.ledChallenges;
+    return Challenge.demoChallenge
+        .where((c) => c.levelNumber == levelNumber)
+        .toList()
+      ..sort((a, b) => a.number.compareTo(b.number));
   }
 
   int _countCompletedLevels(ChildModel child) {
     int count = 0;
     for (final level in _levels) {
-      late final List<dynamic> levelChallenges;
-      if (level.number == 2) {
-        levelChallenges = SoundChallenge.soundChallenges;
-      } else if (level.number == 3) {
-        levelChallenges = LedChallenge.ledChallenges;
-      } else {
-        levelChallenges = Challenge.demoChallenge
-            .where((c) => c.levelNumber == level.number)
-            .toList()
-          ..sort((a, b) => a.number.compareTo(b.number));
-      }
-      final int total = levelChallenges.length;
-      if (total == 0) continue;
-      int inferred = 0;
-      for (int i = 0; i < levelChallenges.length; i++) {
-        final challenge = levelChallenges[i];
-        final int num = switch (challenge) {
-          Challenge c => c.number,
-          SoundChallenge c => c.number,
-          LedChallenge c => c.number,
-          _ => 0,
-        };
-        if (child.completedChallengeIds.contains(num)) {
-          inferred = math.max(inferred, i + 1);
-        }
-      }
-      final int saved = child.subLevelProgressByLevel[level.number] ?? 0;
-      final int completed = math.max(saved, inferred).clamp(0, total);
-      if (completed >= total) count++;
+      final challenges = _challengesForLevel(level.number);
+      if (challenges.isEmpty) continue;
+      final int done = challenges
+          .where((c) => child.completedChallengeIds.contains(_challengeNumber(c)))
+          .length;
+      if (done >= challenges.length) count++;
     }
     return count;
   }
 
   List<_LevelData> _getLevelsWithLockStatus(ChildModel child) {
     return _levels.map((level) {
-      // Levels 1 and 2 are always unlocked (2 kept open for testing).
       if (level.number == 1 || level.number == 2) {
         return _LevelData(number: level.number, title: level.title, unlocked: true);
       }
-      final previousNumbers = _challengeNumbersForLevel(level.number - 1);
-      if (previousNumbers.isEmpty) {
+      final prev = _challengesForLevel(level.number - 1);
+      if (prev.isEmpty) {
         return _LevelData(number: level.number, title: level.title, unlocked: false);
       }
-      final allCompleted = previousNumbers.every(
-        (n) => child.completedChallengeIds.contains(n),
+      final int done = prev
+          .where((c) => child.completedChallengeIds.contains(_challengeNumber(c)))
+          .length;
+      return _LevelData(
+        number: level.number,
+        title: level.title,
+        unlocked: done >= prev.length,
       );
-      return _LevelData(number: level.number, title: level.title, unlocked: allCompleted);
     }).toList();
   }
 
@@ -368,24 +349,20 @@ class _LevelNode extends StatelessWidget {
 
     final int totalSubLevels = levelChallenges.length;
 
-    int inferredProgress = 0;
+    int completedSubLevels = 0;
+    int firstUnsolvedIndex = 0;
+    bool foundUnsolved = false;
     for (int i = 0; i < levelChallenges.length; i++) {
-      final challenge = levelChallenges[i];
-      final int challengeNumber = switch (challenge) {
-        Challenge c => c.number,
-        SoundChallenge c => c.number,
-        LedChallenge c => c.number,
-        _ => 0,
-      };
-      if (child.completedChallengeIds.contains(challengeNumber)) {
-        inferredProgress = math.max(inferredProgress, i + 1);
+      final int num = AdventureMapScreen._challengeNumber(levelChallenges[i]);
+      if (child.completedChallengeIds.contains(num)) {
+        completedSubLevels++;
+      } else if (!foundUnsolved) {
+        firstUnsolvedIndex = i;
+        foundUnsolved = true;
       }
     }
-
-    final int savedProgress = child.subLevelProgressByLevel[data.number] ?? 0;
-    final int completedSubLevels = math
-        .max(savedProgress, inferredProgress)
-        .clamp(0, totalSubLevels);
+    // All solved → restart from beginning
+    if (!foundUnsolved) firstUnsolvedIndex = 0;
     final bool isCompleted = completedSubLevels >= totalSubLevels;
     const List<Color> levelColors = [
       Color(0xFF4DD0C4),
@@ -419,16 +396,13 @@ class _LevelNode extends StatelessWidget {
                         final List<SoundChallenge> soundChallenges =
                             SoundChallenge.soundChallenges;
                         if (soundChallenges.isNotEmpty) {
-                          final int startIndex = completedSubLevels.clamp(
-                            0,
-                            soundChallenges.length - 1,
-                          );
+                          final int startIndex = firstUnsolvedIndex;
                           final SoundChallenge selectedChallenge =
                               soundChallenges[startIndex];
                           Navigator.push<ChildModel>(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => SoundChallengeScreen(
+                              builder: (context) => LevelTwoScreen(
                                 child: child,
                                 challenge: selectedChallenge,
                               ),
@@ -465,14 +439,11 @@ class _LevelNode extends StatelessWidget {
                         // Handle Level 3 (LED Challenges)
                         final List<LedChallenge> ledChallenges =
                             LedChallenge.ledChallenges;
-                        final int startIndex = completedSubLevels.clamp(
-                          0,
-                          ledChallenges.length - 1,
-                        );
+                        final int startIndex = firstUnsolvedIndex;
                         Navigator.push<ChildModel>(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => LedChallengeScreen(
+                            builder: (context) => LevelThreeScreen(
                               child: child,
                               challenge: ledChallenges[startIndex],
                             ),
@@ -489,16 +460,13 @@ class _LevelNode extends StatelessWidget {
                         });
                       } else if (levelChallenges.isNotEmpty) {
                         // Handle other levels (Movement challenges)
-                        final int startIndex = completedSubLevels.clamp(
-                          0,
-                          levelChallenges.length - 1,
-                        );
+                        final int startIndex = firstUnsolvedIndex;
                         final Challenge selectedChallenge =
                             levelChallenges[startIndex];
                         Navigator.push<ChildModel>(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => ChallengeScreen(
+                            builder: (context) => LevelOneScreen(
                               child: child,
                               challenge: selectedChallenge,
                             ),
