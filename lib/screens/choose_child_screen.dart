@@ -1,10 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import '../l10n/app_strings.dart';
+import '../services/language_notifier.dart';
 import 'adventure_map_screen.dart';
 import 'parent_dashboard_screen.dart';
 import 'login_screen.dart';
@@ -56,10 +58,11 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
         _loadingChildren = false;
       });
       if (!mounted) return;
+      final s = AppStrings(LanguageNotifier.instance.isArabic);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Could not load children: $e',
+            '${s.couldNotLoadChildren}: $e',
             style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
           ),
           backgroundColor: Colors.red.shade700,
@@ -82,9 +85,9 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
 
   void _onLetsPlay() {
     if (_selectedIndex == null) {
+      final s = AppStrings(LanguageNotifier.instance.isArabic);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Please choose a child first!',
-            style: GoogleFonts.nunito()),
+        content: Text(s.pleaseChooseChild, style: GoogleFonts.nunito()),
         backgroundColor: AppTheme.tealDark,
         behavior: SnackBarBehavior.floating,
         shape:
@@ -104,11 +107,125 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     });
   }
 
+  Future<bool> _showParentPasswordDialog() async {
+    final s = AppStrings(LanguageNotifier.instance.isArabic);
+    final passwordCtrl = TextEditingController();
+    bool obscure = true;
+    String? errorText;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.lock_rounded, color: AppTheme.tealMid),
+              const SizedBox(width: 8),
+              Text(
+                s.parentsArea,
+                style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                s.enterPasswordToContinue,
+                style: GoogleFonts.nunito(
+                    fontSize: 14, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordCtrl,
+                obscureText: obscure,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: s.password,
+                  errorText: errorText,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                        obscure ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () =>
+                        setDialogState(() => obscure = !obscure),
+                  ),
+                ),
+                onSubmitted: (_) async {
+                  await _verifyAndPopDialog(
+                      ctx, passwordCtrl.text, setDialogState, (err) {
+                    errorText = err;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(s.cancel,
+                  style: GoogleFonts.nunito(color: Colors.grey[600])),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                await _verifyAndPopDialog(
+                    ctx, passwordCtrl.text, setDialogState, (err) {
+                  errorText = err;
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.tealMid,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(s.confirm,
+                  style: GoogleFonts.nunito(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+    passwordCtrl.dispose();
+    return result ?? false;
+  }
+
+  Future<void> _verifyAndPopDialog(
+    BuildContext ctx,
+    String password,
+    StateSetter setDialogState,
+    void Function(String?) setError,
+  ) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email == null) {
+      if (ctx.mounted) Navigator.of(ctx).pop(false);
+      return;
+    }
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: password,
+      );
+      await user.reauthenticateWithCredential(credential);
+      if (ctx.mounted) Navigator.of(ctx).pop(true);
+    } on FirebaseAuthException catch (e) {
+      setDialogState(() {
+        setError(AppStrings(LanguageNotifier.instance.isArabic).authError(e.code));
+      });
+    }
+  }
+
   Future<void> _showSettingsMenu() async {
+    final lang = LangScope.of(context);
+    final s = AppStrings(lang.isArabic);
     final selected = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (ctx) {
         return Container(
           margin: const EdgeInsets.all(12),
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -123,23 +240,45 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
               ),
             ],
           ),
-          child: ListTile(
-            leading: const Icon(Icons.logout_rounded, color: Color(0xFFD84E4E)),
-            title: Text(
-              'Log out',
-              style: GoogleFonts.nunito(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFFD84E4E),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.language_rounded,
+                    color: AppTheme.tealPrimary),
+                title: Text(
+                  s.languageOption,
+                  style: GoogleFonts.nunito(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.tealDark,
+                  ),
+                ),
+                onTap: () => Navigator.pop(ctx, 'lang'),
               ),
-            ),
-            onTap: () => Navigator.pop(context, 'logout'),
+              ListTile(
+                leading: const Icon(Icons.logout_rounded,
+                    color: Color(0xFFD84E4E)),
+                title: Text(
+                  s.logout,
+                  style: GoogleFonts.nunito(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFFD84E4E),
+                  ),
+                ),
+                onTap: () => Navigator.pop(ctx, 'logout'),
+              ),
+            ],
           ),
         );
       },
     );
 
-    if (selected == 'logout' && mounted) {
+    if (!mounted) return;
+    if (selected == 'lang') {
+      await lang.setLanguage(!lang.isArabic);
+    } else if (selected == 'logout') {
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
           pageBuilder: (_, _, _) => const LoginScreen(),
@@ -154,6 +293,7 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     return Scaffold(
       body: Stack(children: [
         Container(decoration: AppTheme.backgroundDecoration),
@@ -199,155 +339,191 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
         SafeArea(
           child: FadeTransition(
             opacity: _ctrl,
-            child: Column(children: [
-              const SizedBox(height: 36),
+            child: Column(
+              children: [
+                // ── Scrollable content area ───────────────────────────────
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 36),
 
-              // ── Title ────────────────────────────────────────────────────
-              Text('Who is playing today? 🎮',
-                  style: GoogleFonts.nunito(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.tealDark)),
-
-              const SizedBox(height: 8),
-
-              Text('Tap a card to select, then press Let\'s Play!',
-                  style: GoogleFonts.nunito(
-                      fontSize: 13, color: AppTheme.tealMid)),
-
-              const SizedBox(height: 32),
-
-              // ── Child cards row ───────────────────────────────────────────
-              if (_loadingChildren)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: CircularProgressIndicator(),
-                )
-              else if (_children.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.78),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.9),
+                        // ── Title ─────────────────────────────────────────
+                        Text(
+                          s.whoIsPlayingToday,
+                          style: GoogleFonts.nunito(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.tealDark,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 14,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
                         ),
-                        child: Column(
-                          children: [
-                            Text(
-                              'No child profiles yet',
-                              style: GoogleFonts.nunito(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                color: AppTheme.tealDark,
+
+                        const SizedBox(height: 8),
+
+                        Text(
+                          s.tapToSelectPrompt,
+                          style: GoogleFonts.nunito(
+                            fontSize: 13,
+                            color: AppTheme.tealMid,
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // ── Child cards (wrap to new rows automatically) ───
+                        if (_loadingChildren)
+                          const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: CircularProgressIndicator(),
+                          )
+                        else if (_children.isEmpty)
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 28),
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        Colors.white.withValues(alpha: 0.78),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: Colors.white
+                                          .withValues(alpha: 0.9),
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black
+                                            .withValues(alpha: 0.06),
+                                        blurRadius: 14,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        s.noChildProfiles,
+                                        style: GoogleFonts.nunito(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w900,
+                                          color: AppTheme.tealDark,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        s.openParentsAreaHint,
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.nunito(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppTheme.tealMid,
+                                          height: 1.35,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16),
+                            child: Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 0,
+                              runSpacing: 16,
+                              children: List.generate(
+                                _children.length,
+                                (i) => _ChildCard(
+                                  data: _children[i],
+                                  isSelected: _selectedIndex == i,
+                                  onTap: () => _onChildTap(i),
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Open Parents Area to add a child profile.\nThen come back here to start playing.',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.nunito(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.tealMid,
-                                height: 1.35,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    _children.length,
-                    (i) => _ChildCard(
-                      data: _children[i],
-                      isSelected: _selectedIndex == i,
-                      onTap: () => _onChildTap(i),
+                          ),
+                      ],
                     ),
                   ),
                 ),
 
-              const SizedBox(height: 40),
-
-              // ── Let's Play button ─────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 48),
-                child: _LetsPlayButton(
-                  enabled: _selectedIndex != null,
-                  onPressed: _onLetsPlay,
+                // ── Let's Play button (always visible at bottom) ──────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(48, 8, 48, 0),
+                  child: _LetsPlayButton(
+                    enabled: _selectedIndex != null,
+                    onPressed: _onLetsPlay,
+                  ),
                 ),
-              ),
 
-              const Spacer(),
-
-              // ── Parents Area ──────────────────────────────────────────────
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 20, bottom: 16),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () async {
-                        await Navigator.of(context).push(
-                          PageRouteBuilder(
-                            pageBuilder: (_, _, _) =>
-                                const ParentDashboardScreen(),
-                            transitionsBuilder: (_, anim, _, child) =>
-                                FadeTransition(opacity: anim, child: child),
-                            transitionDuration:
-                                const Duration(milliseconds: 500),
-                          ),
-                        );
-                        if (!mounted) return;
-                        await _loadChildren();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.75),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
+                // ── Parents Area ──────────────────────────────────────────
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 20, top: 8, bottom: 16),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () async {
+                          final verified =
+                              await _showParentPasswordDialog();
+                          if (!verified) return;
+                          if (!mounted) return;
+                          await Navigator.of(context).push(
+                            PageRouteBuilder(
+                              pageBuilder: (_, _, _) =>
+                                  const ParentDashboardScreen(),
+                              transitionsBuilder: (_, anim, _, child) =>
+                                  FadeTransition(opacity: anim, child: child),
+                              transitionDuration:
+                                  const Duration(milliseconds: 500),
+                            ),
+                          );
+                          if (!mounted) return;
+                          await _loadChildren();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.75),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
                                 color: Colors.teal.withValues(alpha: 0.1),
-                                blurRadius: 8)
-                          ],
-                        ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.lock_outline_rounded,
-                              size: 16, color: AppTheme.tealMid),
-                          const SizedBox(width: 6),
-                          Text('Parents Area',
-                              style: GoogleFonts.nunito(
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.lock_outline_rounded,
+                                  size: 16, color: AppTheme.tealMid),
+                              const SizedBox(width: 6),
+                              Text(
+                                s.parentsArea,
+                                style: GoogleFonts.nunito(
                                   fontSize: 13,
                                   color: AppTheme.tealMid,
-                                  fontWeight: FontWeight.w700)),
-                        ]),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ]),
+              ],
+            ),
           ),
         ),
       ]),
@@ -409,11 +585,11 @@ class _ChildCardState extends State<_ChildCard>
   Widget build(BuildContext context) {
     final colors = widget.data.palette;
     final selected = widget.isSelected;
+    final s = AppStrings.of(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: MouseRegion(
-        // ← hand cursor on hover
         cursor: SystemMouseCursors.click,
         onEnter: (_) => _ctrl.forward(),
         onExit: (_) => _ctrl.reverse(),
@@ -492,7 +668,7 @@ class _ChildCardState extends State<_ChildCard>
                         ),
                         padding: const EdgeInsets.all(5),
                         child: ClipOval(
-                          child: AvatarFace(seed: widget.data.avatarSeed),
+                          child: AvatarFace(seed: widget.data.avatarSeed, gender: widget.data.gender),
                         ),
                       ),
                     ),
@@ -517,7 +693,7 @@ class _ChildCardState extends State<_ChildCard>
                           color: Colors.white.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text('Lv ${_currentLevel(widget.data)}',
+                        child: Text('${s.lvPrefix} ${_currentLevel(widget.data)}',
                             style: GoogleFonts.nunito(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -559,6 +735,7 @@ class _LetsPlayButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       height: 54,
@@ -587,7 +764,7 @@ class _LetsPlayButton extends StatelessWidget {
             const Icon(Icons.videogame_asset_rounded,
                 color: Colors.white, size: 22),
             const SizedBox(width: 10),
-            Text("Let's Play!",
+            Text(s.letsPlay,
                 style: GoogleFonts.nunito(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
