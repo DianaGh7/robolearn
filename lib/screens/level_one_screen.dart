@@ -6,6 +6,8 @@ import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../services/child_progress_service.dart';
+import '../l10n/app_strings.dart';
+import 'level_one_intro_screen.dart';
 
 enum RobotConnectionStatus { disconnected, connecting, connected, executing }
 
@@ -29,7 +31,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
   late ChildModel _progressChild;
   late RobotState currentRobotState;
   bool isExecuting = false;
-  bool _showSuccessToast = false;
+  bool _showCelebrationOverlay = false;
   bool _showFailToast = false;
   bool _showConnectedToast = false;
   bool _challengeSuccessfullyCompleted = false;
@@ -155,18 +157,13 @@ class _LevelOneScreenState extends State<LevelOneScreen>
     if (!mounted) return;
     setState(() {
       _showFailToast = false;
-      _showSuccessToast = true;
-    });
-    Future.delayed(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      setState(() => _showSuccessToast = false);
+      _showCelebrationOverlay = true;
     });
   }
 
   void _showFailNotification() {
     if (!mounted) return;
     setState(() {
-      _showSuccessToast = false;
       _showFailToast = true;
     });
     Future.delayed(const Duration(seconds: 3), () {
@@ -345,6 +342,22 @@ class _LevelOneScreenState extends State<LevelOneScreen>
     }
   }
 
+  void _showTutorial() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context2, animation, secondaryAnimation) =>
+            LevelOneIntroScreen(
+          child: _progressChild,
+          challenge: widget.challenge,
+          isReplay: true,
+        ),
+        transitionsBuilder: (context2, anim, secondaryAnimation, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
+  }
+
   Future<void> _handleConnect() async {
     if (_connectionStatus != RobotConnectionStatus.disconnected) return;
     setState(() => _connectionStatus = RobotConnectionStatus.connecting);
@@ -418,7 +431,10 @@ class _LevelOneScreenState extends State<LevelOneScreen>
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _InstructionCard(
-                                  instruction: widget.challenge.instruction,
+                                  instruction: AppStrings.of(context).challengeInstruction(
+                                    widget.challenge.number,
+                                    widget.challenge.instruction,
+                                  ),
                                 ),
                                 const SizedBox(height: 3),
                                 SizedBox(
@@ -450,6 +466,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
                                     isExecuting: isExecuting,
                                     activeBlockIndex: _activeBlockIndex,
                                     onRun: _executeCode,
+                                    onShowTutorial: _showTutorial,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -469,26 +486,21 @@ class _LevelOneScreenState extends State<LevelOneScreen>
             left: 16,
             right: 16,
             child: IgnorePointer(
-              ignoring: !_showSuccessToast && !_showFailToast && !_showConnectedToast,
+              ignoring: !_showFailToast && !_showConnectedToast,
               child: AnimatedSlide(
-                offset: (_showSuccessToast || _showFailToast || _showConnectedToast)
+                offset: (_showFailToast || _showConnectedToast)
                     ? Offset.zero
                     : const Offset(0, -1),
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOut,
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 220),
-                  opacity: (_showSuccessToast || _showFailToast || _showConnectedToast) ? 1 : 0,
+                  opacity: (_showFailToast || _showConnectedToast) ? 1 : 0,
                   child: SafeArea(
                     bottom: false,
-                    child: _showSuccessToast
-                        ? _SuccessBanner(
-                            streak: _progressChild.streak,
-                            streakRenewed: _streakRenewed,
-                          )
-                        : _showConnectedToast
-                            ? const _ConnectedBanner()
-                            : const _FailBanner(),
+                    child: _showConnectedToast
+                        ? const _ConnectedBanner()
+                        : const _FailBanner(),
                   ),
                 ),
               ),
@@ -541,7 +553,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Previous',
+                              AppStrings.of(context).previous,
                               style: GoogleFonts.nunito(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
@@ -576,7 +588,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'Next',
+                              AppStrings.of(context).next,
                               style: GoogleFonts.nunito(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
@@ -602,6 +614,15 @@ class _LevelOneScreenState extends State<LevelOneScreen>
               ),
             ),
           ),
+          if (_showCelebrationOverlay)
+            CelebrationOverlay(
+              streak: _progressChild.streak,
+              streakRenewed: _streakRenewed,
+              onContinue: () {
+                setState(() => _showCelebrationOverlay = false);
+                _goToNextChallenge();
+              },
+            ),
         ],
       ),
     ), // Scaffold
@@ -671,7 +692,7 @@ class _HeaderBar extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    challenge.title,
+                    AppStrings.of(context).challengeTitle(challenge.number, challenge.title),
                     style: GoogleFonts.nunito(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
@@ -716,7 +737,7 @@ class _HeaderBar extends StatelessWidget {
                     const SizedBox(width: 3),
                     Text(
                       connectionStatus == RobotConnectionStatus.disconnected
-                          ? 'Connect'
+                          ? AppStrings.of(context).connectBtn
                           : '...',
                       style: GoogleFonts.nunito(
                         fontSize: 10,
@@ -759,7 +780,7 @@ class _HeaderBar extends StatelessWidget {
               ],
             ),
             padding: const EdgeInsets.all(2.5),
-            child: ClipOval(child: AvatarFace(seed: child.avatarSeed)),
+            child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender)),
           ),
         ],
       ),
@@ -774,60 +795,57 @@ class _RobotStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = _statusData(status);
+    final s = AppStrings.of(context);
+    final (Color clr, IconData icon, String label) = switch (status) {
+      RobotConnectionStatus.disconnected => (
+        const Color(0xFFD84343),
+        Icons.bluetooth_disabled_rounded,
+        s.offline,
+      ),
+      RobotConnectionStatus.connecting => (
+        const Color(0xFFE7A63D),
+        Icons.bluetooth_searching_rounded,
+        s.connectingStatus,
+      ),
+      RobotConnectionStatus.connected => (
+        const Color(0xFF2A9D7D),
+        Icons.bluetooth_connected_rounded,
+        s.connectedStatus,
+      ),
+      RobotConnectionStatus.executing => (
+        const Color(0xFF4D8ED8),
+        Icons.smart_toy_rounded,
+        s.executingStatus,
+      ),
+    };
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       padding: compact
           ? const EdgeInsets.symmetric(horizontal: 6, vertical: 3)
           : const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: data.$1.withValues(alpha: 0.14),
+        color: clr.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: data.$1.withValues(alpha: 0.34)),
+        border: Border.all(color: clr.withValues(alpha: 0.34)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(data.$2, size: compact ? 11 : 13, color: data.$1),
+          Icon(icon, size: compact ? 11 : 13, color: clr),
           if (!compact) ...[
             const SizedBox(width: 5),
             Text(
-              data.$3,
+              label,
               style: GoogleFonts.nunito(
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
-                color: data.$1,
+                color: clr,
               ),
             ),
           ],
         ],
       ),
     );
-  }
-
-  (Color, IconData, String) _statusData(RobotConnectionStatus status) {
-    switch (status) {
-      case RobotConnectionStatus.disconnected:
-        return (
-          const Color(0xFFD84343),
-          Icons.bluetooth_disabled_rounded,
-          'Offline',
-        );
-      case RobotConnectionStatus.connecting:
-        return (
-          const Color(0xFFE7A63D),
-          Icons.bluetooth_searching_rounded,
-          'Connecting',
-        );
-      case RobotConnectionStatus.connected:
-        return (
-          const Color(0xFF2A9D7D),
-          Icons.bluetooth_connected_rounded,
-          'Connected',
-        );
-      case RobotConnectionStatus.executing:
-        return (const Color(0xFF4D8ED8), Icons.smart_toy_rounded, 'Executing');
-    }
   }
 }
 
@@ -925,7 +943,7 @@ class _RobotGridWidget extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                'Grid',
+                AppStrings.of(context).grid,
                 style: GoogleFonts.nunito(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
@@ -934,9 +952,9 @@ class _RobotGridWidget extends StatelessWidget {
               ),
               const Spacer(),
               // Legend
-              const _LegendDot(color: AppTheme.tealPrimary, label: 'Robot'),
+              _LegendDot(color: AppTheme.tealPrimary, label: AppStrings.of(context).robot),
               const SizedBox(width: 10),
-              _LegendDot(color: Colors.amber.shade400, label: 'Target'),
+              _LegendDot(color: Colors.amber.shade400, label: AppStrings.of(context).target),
             ],
           ),
           const SizedBox(height: 8),
@@ -1130,6 +1148,7 @@ class _CodeBlocksArea extends StatelessWidget {
   final bool isExecuting;
   final int? activeBlockIndex;
   final VoidCallback onRun;
+  final VoidCallback onShowTutorial;
 
   const _CodeBlocksArea({
     required this.arrangedBlocks,
@@ -1141,6 +1160,7 @@ class _CodeBlocksArea extends StatelessWidget {
     required this.isExecuting,
     required this.activeBlockIndex,
     required this.onRun,
+    required this.onShowTutorial,
   });
 
   @override
@@ -1167,7 +1187,7 @@ class _CodeBlocksArea extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                'Your Code',
+                AppStrings.of(context).yourCode,
                 style: GoogleFonts.nunito(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
@@ -1175,6 +1195,26 @@ class _CodeBlocksArea extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+              // Tutorial replay button
+              GestureDetector(
+                onTap: onShowTutorial,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C4DFF).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF7C4DFF).withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.ondemand_video_rounded,
+                    color: Color(0xFF7C4DFF),
+                    size: 16,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: isExecuting ? null : onRun,
                 child: AnimatedContainer(
@@ -1207,7 +1247,7 @@ class _CodeBlocksArea extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        isExecuting ? 'Running...' : 'Run',
+                        isExecuting ? AppStrings.of(context).running : AppStrings.of(context).run,
                         style: GoogleFonts.nunito(
                           fontSize: 13,
                           fontWeight: FontWeight.w900,
@@ -1314,7 +1354,7 @@ class _CodeBlocksArea extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                'Available Blocks',
+                AppStrings.of(context).availableBlocks,
                 style: GoogleFonts.nunito(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
@@ -1323,7 +1363,7 @@ class _CodeBlocksArea extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${availableBlocks.length} block${availableBlocks.length != 1 ? 's' : ''}',
+                AppStrings.of(context).blocksCount(availableBlocks.length),
                 style: GoogleFonts.nunito(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -1334,7 +1374,7 @@ class _CodeBlocksArea extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Tap or drag blocks to build your solution:',
+            AppStrings.of(context).tapOrDrag,
             style: GoogleFonts.nunito(
               fontSize: 13,
               fontWeight: FontWeight.w700,
@@ -1606,111 +1646,6 @@ IconData _blockIcon(CodeBlockType type) {
   }
 }
 
-// ─────────────────────────────────────────────────────
-// Success Banner
-// ─────────────────────────────────────────────────────
-class _SuccessBanner extends StatefulWidget {
-  final int streak;
-  final bool streakRenewed;
-
-  const _SuccessBanner({required this.streak, required this.streakRenewed});
-
-  @override
-  State<_SuccessBanner> createState() => _SuccessBannerState();
-}
-
-class _SuccessBannerState extends State<_SuccessBanner>
-    with TickerProviderStateMixin {
-  late AnimationController _scaleController;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
-    );
-    _scaleController.forward();
-  }
-
-  @override
-  void dispose() {
-    _scaleController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final streakMessage = widget.streakRenewed
-        ? '🔥 Streak: ${widget.streak}!'
-        : 'Excellent work! Keep it up 🌟';
-
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
-          ),
-          border: Border.all(color: const Color(0xFF4CAF50), width: 2),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Color(0xFF4CAF50),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Challenge Completed! 🎉',
-                    style: GoogleFonts.nunito(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF2E7D32),
-                    ),
-                  ),
-                  Text(
-                    streakMessage,
-                    style: GoogleFonts.nunito(
-                      fontSize: 12,
-                      color: const Color(0xFF388E3C),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _ConnectedBanner extends StatelessWidget {
   const _ConnectedBanner();
 
@@ -1741,7 +1676,7 @@ class _ConnectedBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Robot connected!',
+                  AppStrings.of(context).robotConnectedTitle,
                   style: GoogleFonts.nunito(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
@@ -1749,7 +1684,7 @@ class _ConnectedBanner extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Robot connected successfully.',
+                  AppStrings.of(context).robotConnectedSub,
                   style: GoogleFonts.nunito(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -1799,7 +1734,7 @@ class _FailBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Try again',
+                  AppStrings.of(context).tryAgain,
                   style: GoogleFonts.nunito(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
@@ -1807,7 +1742,7 @@ class _FailBanner extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Wrong order or wrong solution. Fix it and run again.',
+                  AppStrings.of(context).wrongOrderMsg,
                   style: GoogleFonts.nunito(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,

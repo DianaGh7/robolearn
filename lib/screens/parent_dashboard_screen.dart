@@ -741,7 +741,7 @@ class _ChildProgressCard extends StatelessWidget {
                         blurRadius: 8)
                   ],
                 ),
-                child: AvatarFace(seed: child.avatarSeed),
+                child: AvatarFace(seed: child.avatarSeed, gender: child.gender),
               ),
               const SizedBox(width: 12),
               Expanded(

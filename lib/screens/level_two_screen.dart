@@ -8,6 +8,7 @@ import 'package:robolearn/models/child_model.dart';
 import 'package:robolearn/widgets/shared_widgets.dart';
 import 'package:robolearn/services/child_firestore_service.dart';
 import 'package:robolearn/services/child_progress_service.dart';
+import 'package:robolearn/l10n/app_strings.dart';
 
 class LevelTwoScreen extends StatefulWidget {
   final ChildModel child;
@@ -29,7 +30,7 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
   late AnimationController _waveController;
   final ChildProgressService _progressService = ChildProgressService();
   bool _isExecuting = false;
-  bool _showSuccessToast = false;
+  bool _showCelebrationOverlay = false;
   bool _showFailToast = false;
   bool _showConnectedToast = false;
   bool _challengeSuccessfullyCompleted = false;
@@ -141,18 +142,13 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
     if (!mounted) return;
     setState(() {
       _showFailToast = false;
-      _showSuccessToast = true;
-    });
-    Future.delayed(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      setState(() => _showSuccessToast = false);
+      _showCelebrationOverlay = true;
     });
   }
 
   void _showFailNotification() {
     if (!mounted) return;
     setState(() {
-      _showSuccessToast = false;
       _showFailToast = true;
     });
     Future.delayed(const Duration(seconds: 3), () {
@@ -427,7 +423,10 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _InstructionCard(
-                                  instruction: widget.challenge.instruction,
+                                  instruction: AppStrings.of(context).challengeInstruction(
+                                    widget.challenge.number,
+                                    widget.challenge.instruction,
+                                  ),
                                 ),
                                 if (widget.challenge.targetDisplay != null) ...[
                                   const SizedBox(height: 3),
@@ -479,23 +478,21 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
             left: 16,
             right: 16,
             child: IgnorePointer(
-              ignoring: !_showSuccessToast && !_showFailToast && !_showConnectedToast,
+              ignoring: !_showFailToast && !_showConnectedToast,
               child: AnimatedSlide(
-                offset: (_showSuccessToast || _showFailToast || _showConnectedToast)
+                offset: (_showFailToast || _showConnectedToast)
                     ? Offset.zero
                     : const Offset(0, -1),
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOut,
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 220),
-                  opacity: (_showSuccessToast || _showFailToast || _showConnectedToast) ? 1 : 0,
+                  opacity: (_showFailToast || _showConnectedToast) ? 1 : 0,
                   child: SafeArea(
                     bottom: false,
-                    child: _showSuccessToast
-                        ? _SuccessBanner(streak: _progressChild.streak, streakRenewed: false)
-                        : _showConnectedToast
-                            ? const _ConnectedBanner()
-                            : const _FailBanner(),
+                    child: _showConnectedToast
+                        ? const _ConnectedBanner()
+                        : const _FailBanner(),
                   ),
                 ),
               ),
@@ -547,7 +544,7 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Previous',
+                              AppStrings.of(context).previous,
                               style: GoogleFonts.nunito(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
@@ -581,7 +578,7 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'Next',
+                              AppStrings.of(context).next,
                               style: GoogleFonts.nunito(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
@@ -607,6 +604,15 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
               ),
             ),
           ),
+          if (_showCelebrationOverlay)
+            CelebrationOverlay(
+              streak: _progressChild.streak,
+              streakRenewed: false,
+              onContinue: () {
+                setState(() => _showCelebrationOverlay = false);
+                _goToNextChallenge();
+              },
+            ),
         ],
       ),
     );
@@ -672,7 +678,7 @@ class _HeaderBar extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    challenge.title,
+                    AppStrings.of(context).challengeTitle(challenge.number, challenge.title),
                     style: GoogleFonts.nunito(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
@@ -717,7 +723,7 @@ class _HeaderBar extends StatelessWidget {
                     const SizedBox(width: 3),
                     Text(
                       connectionStatus == RobotConnectionStatus.disconnected
-                          ? 'Connect'
+                          ? AppStrings.of(context).connectBtn
                           : '...',
                       style: GoogleFonts.nunito(
                         fontSize: 10,
@@ -760,7 +766,7 @@ class _HeaderBar extends StatelessWidget {
               ],
             ),
             padding: const EdgeInsets.all(2.5),
-            child: ClipOval(child: AvatarFace(seed: child.avatarSeed)),
+            child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender)),
           ),
         ],
       ),
@@ -775,7 +781,7 @@ class _RobotStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = _statusData(status);
+    final data = _statusData(context, status);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       padding: compact
@@ -806,29 +812,14 @@ class _RobotStatusBadge extends StatelessWidget {
     );
   }
 
-  (Color, IconData, String) _statusData(RobotConnectionStatus status) {
-    switch (status) {
-      case RobotConnectionStatus.disconnected:
-        return (
-          const Color(0xFFD84343),
-          Icons.bluetooth_disabled_rounded,
-          'Offline',
-        );
-      case RobotConnectionStatus.connecting:
-        return (
-          const Color(0xFFE7A63D),
-          Icons.bluetooth_searching_rounded,
-          'Connecting',
-        );
-      case RobotConnectionStatus.connected:
-        return (
-          const Color(0xFF2A9D7D),
-          Icons.bluetooth_connected_rounded,
-          'Connected',
-        );
-      case RobotConnectionStatus.executing:
-        return (const Color(0xFF4D8ED8), Icons.smart_toy_rounded, 'Executing');
-    }
+  (Color, IconData, String) _statusData(BuildContext context, RobotConnectionStatus status) {
+    final s = AppStrings.of(context);
+    return switch (status) {
+      RobotConnectionStatus.disconnected => (const Color(0xFFD84343), Icons.bluetooth_disabled_rounded, s.offline),
+      RobotConnectionStatus.connecting => (const Color(0xFFE7A63D), Icons.bluetooth_searching_rounded, s.connectingStatus),
+      RobotConnectionStatus.connected => (const Color(0xFF2A9D7D), Icons.bluetooth_connected_rounded, s.connectedStatus),
+      RobotConnectionStatus.executing => (const Color(0xFF4D8ED8), Icons.smart_toy_rounded, s.executingStatus),
+    };
   }
 }
 
@@ -928,7 +919,7 @@ class _SoundVisualizationCard extends StatelessWidget {
               const Icon(Icons.emoji_objects_rounded, size: 13, color: AppTheme.tealPrimary),
               const SizedBox(width: 5),
               Text(
-                'Logic to Match',
+                AppStrings.of(context).logicToMatch,
                 style: GoogleFonts.nunito(
                   fontSize: 13,
                   fontWeight: FontWeight.w900,
@@ -1034,7 +1025,7 @@ class _CodeBlocksArea extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                'Your Code',
+                AppStrings.of(context).yourCode,
                 style: GoogleFonts.nunito(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
@@ -1070,7 +1061,7 @@ class _CodeBlocksArea extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        isExecuting ? 'Running...' : 'Run',
+                        isExecuting ? AppStrings.of(context).running : AppStrings.of(context).run,
                         style: GoogleFonts.nunito(
                           fontSize: 13,
                           fontWeight: FontWeight.w900,
@@ -1173,7 +1164,7 @@ class _CodeBlocksArea extends StatelessWidget {
                 const Icon(Icons.widgets_rounded, size: 13, color: AppTheme.tealPrimary),
                 const SizedBox(width: 5),
                 Text(
-                  'Available Blocks',
+                  AppStrings.of(context).availableBlocks,
                   style: GoogleFonts.nunito(
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
@@ -1394,106 +1385,6 @@ class _PaletteChip extends StatelessWidget {
   }
 }
 
-class _SuccessBanner extends StatefulWidget {
-  final int streak;
-  final bool streakRenewed;
-  const _SuccessBanner({required this.streak, required this.streakRenewed});
-
-  @override
-  State<_SuccessBanner> createState() => _SuccessBannerState();
-}
-
-class _SuccessBannerState extends State<_SuccessBanner>
-    with TickerProviderStateMixin {
-  late AnimationController _scaleController;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
-    );
-    _scaleController.forward();
-  }
-
-  @override
-  void dispose() {
-    _scaleController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final streakMsg = widget.streakRenewed
-        ? '🔥 Streak: ${widget.streak}!'
-        : 'Keep it up! 🌟';
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
-          ),
-          border: Border.all(color: const Color(0xFF4CAF50), width: 2),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Color(0xFF4CAF50),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Challenge Completed! 🎉',
-                    style: GoogleFonts.nunito(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF2E7D32),
-                    ),
-                  ),
-                  Text(
-                    streakMsg,
-                    style: GoogleFonts.nunito(
-                      fontSize: 12,
-                      color: const Color(0xFF388E3C),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _ConnectedBanner extends StatelessWidget {
   const _ConnectedBanner();
 
@@ -1521,11 +1412,11 @@ class _ConnectedBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Robot connected!',
+                  AppStrings.of(context).robotConnectedTitle,
                   style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.tealDark),
                 ),
                 Text(
-                  'Robot connected successfully.',
+                  AppStrings.of(context).robotConnectedSub,
                   style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.tealPrimary),
                 ),
               ],
@@ -1571,7 +1462,7 @@ class _FailBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Try again',
+                  AppStrings.of(context).tryAgain,
                   style: GoogleFonts.nunito(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
@@ -1579,7 +1470,7 @@ class _FailBanner extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Check the target sequence and try again.',
+                  AppStrings.of(context).checkSequenceMsg,
                   style: GoogleFonts.nunito(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
