@@ -706,7 +706,8 @@ class _HeaderBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          _RobotStatusBadge(status: connectionStatus, compact: true),
+          if (connectionStatus != RobotConnectionStatus.disconnected)
+            _RobotStatusBadge(status: connectionStatus, compact: true),
           if (connectionStatus == RobotConnectionStatus.disconnected ||
               connectionStatus == RobotConnectionStatus.connecting) ...[
             const SizedBox(width: 4),
@@ -750,15 +751,6 @@ class _HeaderBar extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(width: 6),
-          Text(
-            child.name,
-            style: GoogleFonts.nunito(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.tealMid,
-            ),
-          ),
           const SizedBox(width: 6),
           Container(
             width: 34,

@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../l10n/app_strings.dart';
@@ -29,6 +32,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isPasswordVisible = false;
   bool _isFormValid       = false;
   bool _isLoading         = false;
+  bool _isGoogleLoading   = false;
   final _resetEmailCtrl   = TextEditingController();
 
   // ── Animation ──────────────────────────────────────────────────────────────
@@ -150,6 +154,76 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  // Web client ID — required on Android to obtain the idToken Firebase needs.
+  static const _webClientId =
+      '570232335671-4riqb2etbno8pajv5tmcq3fpp0tphtmu.apps.googleusercontent.com';
+
+  Future<void> _onGoogleSignIn() async {
+    setState(() => _isGoogleLoading = true);
+    try {
+      UserCredential userCred;
+
+      if (kIsWeb) {
+        // Web: Firebase handles the Google popup natively — no google_sign_in needed.
+        final provider = GoogleAuthProvider();
+        userCred = await FirebaseAuth.instance.signInWithPopup(provider);
+      } else {
+        // Android / iOS: use the google_sign_in package.
+        final googleUser = await GoogleSignIn(
+          serverClientId: _webClientId,
+        ).signIn();
+        if (googleUser == null) return; // user cancelled
+        final googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        userCred = await FirebaseAuth.instance.signInWithCredential(credential);
+      }
+
+      final user = userCred.user;
+      if (user != null) {
+        await ParentService().upsertParentProfile(
+          uid: user.uid,
+          email: user.email ?? '',
+          displayName: user.displayName,
+        );
+      }
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(PageRouteBuilder(
+        pageBuilder: (_, _, _) => const ChooseChildScreen(),
+        transitionsBuilder: (_, anim, _, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 500),
+      ));
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'popup-closed-by-user') return; // user dismissed — do nothing
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_authErrorMessage(e), style: GoogleFonts.nunito()),
+        backgroundColor: Colors.red.shade700,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          msg.length > 80 ? '${msg.substring(0, 80)}…' : msg,
+          style: GoogleFonts.nunito(fontSize: 12),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        backgroundColor: Colors.red.shade700,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ));
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
+  }
+
   void _goToSignUp() {
     Navigator.of(context).push(PageRouteBuilder(
       pageBuilder: (_, _, _) => const SignUpScreen(),
@@ -165,77 +239,93 @@ class _LoginScreenState extends State<LoginScreen>
       context: context,
       barrierColor: Colors.black26,
       builder: (dialogContext) {
-        final s = AppStrings.of(dialogContext);
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-          title: Text(s.forgotPassword,
-              style: GoogleFonts.nunito(
-                  fontWeight: FontWeight.w800, color: AppTheme.tealDark)),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(
-              s.forgotPasswordDialogBody,
-              style: GoogleFonts.nunito(fontSize: 14, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 16),
-            _ThemedField(
-              hint: s.yourEmail,
-              icon: Icons.mail_outline_rounded,
-              controller: _resetEmailCtrl,
-              keyboardType: TextInputType.emailAddress,
-            ),
-          ]),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(s.cancel,
-                  style: GoogleFonts.nunito(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.tealPrimary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-              ),
-              onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                final navigator = Navigator.of(dialogContext);
-                final email = _resetEmailCtrl.text.trim().toLowerCase();
-                final errStr = AppStrings(LanguageNotifier.instance.isArabic);
-                try {
-                  if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$')
-                      .hasMatch(email)) {
-                    throw FirebaseAuthException(
-                      code: 'invalid-email',
-                      message: 'The email address format is invalid.',
-                    );
-                  }
-                  await FirebaseAuth.instance
-                      .sendPasswordResetEmail(email: email);
-                  navigator.pop();
-                  messenger.showSnackBar(SnackBar(
-                    content: Text(errStr.resetEmailSent,
-                        style: GoogleFonts.nunito()),
+        bool sending = false;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final s = AppStrings.of(ctx);
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+              title: Text(s.forgotPassword,
+                  style: GoogleFonts.nunito(
+                      fontWeight: FontWeight.w800, color: AppTheme.tealDark)),
+              content: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(
+                  s.forgotPasswordDialogBody,
+                  style: GoogleFonts.nunito(fontSize: 14, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 16),
+                _ThemedField(
+                  hint: s.yourEmail,
+                  icon: Icons.mail_outline_rounded,
+                  controller: _resetEmailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                ),
+              ]),
+              actions: [
+                TextButton(
+                  onPressed: sending ? null : () => Navigator.pop(dialogContext),
+                  child: Text(s.cancel,
+                      style: GoogleFonts.nunito(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.tealPrimary,
-                    behavior: SnackBarBehavior.floating,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ));
-                } on FirebaseAuthException catch (e) {
-                  messenger.showSnackBar(SnackBar(
-                    content: Text(errStr.authError(e.code),
-                        style: GoogleFonts.nunito()),
-                    backgroundColor: Colors.red.shade700,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ));
-                }
-              },
-              child: Text(s.sendLink,
-                  style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
-            ),
-          ],
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: sending
+                      ? null
+                      : () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final navigator = Navigator.of(dialogContext);
+                          final email = _resetEmailCtrl.text.trim().toLowerCase();
+                          final errStr = AppStrings(LanguageNotifier.instance.isArabic);
+                          try {
+                            if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$')
+                                .hasMatch(email)) {
+                              throw FirebaseAuthException(
+                                code: 'invalid-email',
+                                message: 'The email address format is invalid.',
+                              );
+                            }
+                            setDialogState(() => sending = true);
+                            await FirebaseAuth.instance
+                                .sendPasswordResetEmail(email: email);
+                            navigator.pop();
+                            messenger.showSnackBar(SnackBar(
+                              content: Text(errStr.resetEmailSent,
+                                  style: GoogleFonts.nunito()),
+                              backgroundColor: AppTheme.tealPrimary,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ));
+                          } on FirebaseAuthException catch (e) {
+                            setDialogState(() => sending = false);
+                            messenger.showSnackBar(SnackBar(
+                              content: Text(errStr.authError(e.code),
+                                  style: GoogleFonts.nunito()),
+                              backgroundColor: Colors.red.shade700,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ));
+                          }
+                        },
+                  child: sending
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(s.sendLink,
+                          style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -379,6 +469,53 @@ class _LoginScreenState extends State<LoginScreen>
                                   color: Colors.white.withValues(alpha: 0.7),
                                   thickness: 1)),
                         ]),
+
+                        const SizedBox(height: 20),
+
+                        // ── Google Sign In ─────────────────────────────────────
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: (_isLoading || _isGoogleLoading)
+                                ? null
+                                : _onGoogleSignIn,
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black87,
+                              disabledForegroundColor:
+                                  Colors.black38,
+                              side: BorderSide(
+                                  color: Colors.grey.shade300, width: 1.2),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14)),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 13),
+                            ),
+                            child: _isGoogleLoading
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppTheme.tealPrimary),
+                                  )
+                                : Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
+                                    children: [
+                                      const FaIcon(FontAwesomeIcons.google, color: Color(0xFF4285F4), size: 20),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        s.continueWithGoogle,
+                                        style: GoogleFonts.nunito(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
 
                         const SizedBox(height: 20),
 
@@ -616,3 +753,4 @@ class _GradientButton extends StatelessWidget {
     );
   }
 }
+
