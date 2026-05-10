@@ -54,12 +54,14 @@ class CodeBlock {
   final CodeBlockType type;
   final String label;
   final Color color;
+  final int nesting;
 
   const CodeBlock({
     required this.id,
     required this.type,
     required this.label,
     required this.color,
+    this.nesting = 0,
   });
 
   static const Map<CodeBlockType, String> typeLabels = {
@@ -148,12 +150,13 @@ class CodeBlock {
     CodeBlockType.ledRepeat2: Color(0xFF5E35B1),
   };
 
-  factory CodeBlock.fromType(CodeBlockType type) {
+  factory CodeBlock.fromType(CodeBlockType type, {int nesting = 0}) {
     return CodeBlock(
       id: '${type.toString()}_${DateTime.now().millisecondsSinceEpoch}',
       type: type,
       label: typeLabels[type]!,
       color: typeColors[type]!,
+      nesting: nesting,
     );
   }
 }

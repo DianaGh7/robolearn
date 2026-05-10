@@ -257,12 +257,20 @@ class _LoginScreenState extends State<LoginScreen>
                   child: SingleChildScrollView(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 20),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: MediaQuery.of(context).size.height
+                            - MediaQuery.of(context).padding.top
+                            - MediaQuery.of(context).padding.bottom
+                            - 40,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.max,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
 
-                        // ── Logo ───────────────────────────────────────────────
+                          // ── Logo ───────────────────────────────────────────────
                         Container(
                           width: 90,
                           height: 90,
@@ -398,12 +406,12 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                         ),
 
-                        const SizedBox(height: 30),
                       ],
                     ),
                   ),
                 ),
               ),
+            ),
 
               // ── Settings / language gear ───────────────────────────────────
               Positioned(

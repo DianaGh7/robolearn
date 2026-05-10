@@ -72,7 +72,15 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
   void _addBlock(CodeBlockType type) {
     if (_isExecuting) return;
     setState(() {
-      arrangedBlocks.add(CodeBlock.fromType(type));
+      if (type != CodeBlockType.end &&
+          arrangedBlocks.isNotEmpty &&
+          arrangedBlocks.last.type == CodeBlockType.end) {
+        // Always keep END last — insert new block before it
+        arrangedBlocks.insert(
+            arrangedBlocks.length - 1, CodeBlock.fromType(type));
+      } else {
+        arrangedBlocks.add(CodeBlock.fromType(type));
+      }
     });
   }
 
@@ -83,15 +91,15 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
     });
   }
 
-  void _insertBlockAt(CodeBlockType type, int index) {
+  void _insertBlockAt(CodeBlockType type, int index, [int nesting = 0]) {
     if (_isExecuting) return;
     setState(() {
       final targetIndex = index.clamp(0, arrangedBlocks.length);
-      arrangedBlocks.insert(targetIndex, CodeBlock.fromType(type));
+      arrangedBlocks.insert(targetIndex, CodeBlock.fromType(type, nesting: nesting));
     });
   }
 
-  void _moveBlock(int fromIndex, int toIndex) {
+  void _moveBlock(int fromIndex, int toIndex, [int newNesting = 0]) {
     if (_isExecuting ||
         fromIndex == toIndex ||
         fromIndex < 0 ||
@@ -104,7 +112,10 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
     setState(() {
       final block = arrangedBlocks.removeAt(fromIndex);
       final adjustedTarget = fromIndex < toIndex ? toIndex - 1 : toIndex;
-      arrangedBlocks.insert(adjustedTarget, block);
+      final updated = block.nesting != newNesting
+          ? CodeBlock(id: block.id, type: block.type, label: block.label, color: block.color, nesting: newNesting)
+          : block;
+      arrangedBlocks.insert(adjustedTarget, updated);
     });
   }
 
@@ -978,11 +989,24 @@ class _SoundVisualizationCard extends StatelessWidget {
   }
 }
 
+bool _isIfHeader(CodeBlockType type) => const {
+  CodeBlockType.ifHappy,
+  CodeBlockType.ifSad,
+  CodeBlockType.ifMoon,
+  CodeBlockType.elseIfSun,
+  CodeBlockType.ifStreak5,
+  CodeBlockType.elseIfStreak2,
+  CodeBlockType.elseBlock,
+  CodeBlockType.ifBig,
+  CodeBlockType.ifHasTrunk,
+  CodeBlockType.ifFluffy,
+}.contains(type);
+
 class _CodeBlocksArea extends StatelessWidget {
   final List<CodeBlock> arrangedBlocks;
   final Function(int) onRemoveBlock;
-  final Function(int, int) onMoveBlock;
-  final Function(CodeBlockType, int) onInsertBlockAt;
+  final Function(int, int, int) onMoveBlock;
+  final Function(CodeBlockType, int, int) onInsertBlockAt;
   final List<CodeBlockType> availableBlocks;
   final Function(CodeBlockType) onAddBlock;
   final bool isExecuting;
@@ -1087,71 +1111,7 @@ class _CodeBlocksArea extends StatelessWidget {
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
                 child: Column(
-                  children: List.generate(arrangedBlocks.length + 1, (index) {
-                    if (index == arrangedBlocks.length) {
-                      return _DropSlot(
-                        isExecuting: isExecuting,
-                        onAccept: (data) {
-                          if (data.fromIndex != null) {
-                            onMoveBlock(data.fromIndex!, index);
-                          } else if (data.type != null) {
-                            onInsertBlockAt(data.type!, index);
-                          }
-                        },
-                      );
-                    }
-
-                    final block = arrangedBlocks[index];
-                    final isActive = activeBlockIndex == index;
-                    return Column(
-                      children: [
-                        _DropSlot(
-                          isExecuting: isExecuting,
-                          onAccept: (data) {
-                            if (data.fromIndex != null) {
-                              onMoveBlock(data.fromIndex!, index);
-                            } else if (data.type != null) {
-                              onInsertBlockAt(data.type!, index);
-                            }
-                          },
-                        ),
-                        Draggable<_DraggedBlockData>(
-                          data: _DraggedBlockData(fromIndex: index),
-                          maxSimultaneousDrags: isExecuting ? 0 : 1,
-                          feedback: Material(
-                            color: Colors.transparent,
-                            child: SizedBox(
-                              width: MediaQuery.of(context).size.width - 72,
-                              child: _CodeBlockWidget(
-                                block: block,
-                                isExecuting: true,
-                                isHighlighted: isActive,
-                              ),
-                            ),
-                          ),
-                          childWhenDragging: Opacity(
-                            opacity: 0.25,
-                            child: _CodeBlockWidget(
-                              block: block,
-                              onRemove: isExecuting
-                                  ? null
-                                  : () => onRemoveBlock(index),
-                              isExecuting: isExecuting,
-                              isHighlighted: isActive,
-                            ),
-                          ),
-                          child: _CodeBlockWidget(
-                            block: block,
-                            onRemove: isExecuting
-                                ? null
-                                : () => onRemoveBlock(index),
-                            isExecuting: isExecuting,
-                            isHighlighted: isActive,
-                          ),
-                        ),
-                      ],
-                    );
-                  }),
+                  children: _buildGroupedBlocks(context),
                 ),
               ),
             ),
@@ -1212,6 +1172,190 @@ class _CodeBlocksArea extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  List<Widget> _buildGroupedBlocks(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (arrangedBlocks.isEmpty) {
+      return [_DropSlot(
+        isExecuting: isExecuting,
+        onAccept: (data) {
+          if (data.fromIndex != null) {
+            onMoveBlock(data.fromIndex!, 0, 0);
+          } else if (data.type != null) {
+            onInsertBlockAt(data.type!, 0, 0);
+          }
+        },
+      )];
+    }
+    return _buildBlocksInRange(context, screenWidth, 0, arrangedBlocks.length, 0);
+  }
+
+  // Recursively renders blocks in arrangedBlocks[startIdx..endIdx) at the given nesting level.
+  // Blocks whose .nesting == nestingLevel are rendered at this level;
+  // _isIfHeader blocks at this level create C-brackets whose bodies are
+  // blocks with .nesting > nestingLevel, rendered via recursive calls.
+  List<Widget> _buildBlocksInRange(
+    BuildContext context,
+    double screenWidth,
+    int startIdx,
+    int endIdx,
+    int nestingLevel, {
+    Color? parentColor,
+  }) {
+    _DropSlot makeDropSlot(int idx) => _DropSlot(
+      isExecuting: isExecuting,
+      onAccept: (data) {
+        if (data.fromIndex != null) {
+          onMoveBlock(data.fromIndex!, idx, nestingLevel);
+        } else if (data.type != null) {
+          onInsertBlockAt(data.type!, idx, nestingLevel);
+        }
+      },
+    );
+
+    Widget makeDraggable(int idx) {
+      final block = arrangedBlocks[idx];
+      final isActive = activeBlockIndex == idx;
+      return Draggable<_DraggedBlockData>(
+        data: _DraggedBlockData(fromIndex: idx),
+        maxSimultaneousDrags: isExecuting ? 0 : 1,
+        feedback: Material(
+          color: Colors.transparent,
+          child: SizedBox(
+            width: screenWidth - 72,
+            child: _CodeBlockWidget(block: block, isExecuting: true, isHighlighted: isActive),
+          ),
+        ),
+        childWhenDragging: Opacity(
+          opacity: 0.25,
+          child: _CodeBlockWidget(
+            block: block,
+            onRemove: isExecuting ? null : () => onRemoveBlock(idx),
+            isExecuting: isExecuting,
+            isHighlighted: isActive,
+          ),
+        ),
+        child: _CodeBlockWidget(
+          block: block,
+          onRemove: isExecuting ? null : () => onRemoveBlock(idx),
+          isExecuting: isExecuting,
+          isHighlighted: isActive,
+        ),
+      );
+    }
+
+    if (startIdx >= endIdx) return [makeDropSlot(startIdx)];
+
+    final widgets = <Widget>[];
+    int i = startIdx;
+    bool needLeadingDropSlot = true;
+
+    while (i < endIdx) {
+      final block = arrangedBlocks[i];
+
+      if (_isIfHeader(block.type) && block.nesting == nestingLevel) {
+        if (needLeadingDropSlot) widgets.add(makeDropSlot(i));
+
+        // Body = consecutive blocks with nesting > nestingLevel
+        final bodyStart = i + 1;
+        int bodyEnd = bodyStart;
+        while (bodyEnd < endIdx && arrangedBlocks[bodyEnd].nesting > nestingLevel) {
+          bodyEnd++;
+        }
+
+        final isActive = activeBlockIndex == i;
+
+        final List<Widget> bodyChildren;
+        if (bodyStart == bodyEnd) {
+          bodyChildren = [_BodyDropHint(
+            isExecuting: isExecuting,
+            color: block.color,
+            onInsert: (data) {
+              if (data.fromIndex != null) {
+                onMoveBlock(data.fromIndex!, bodyStart, nestingLevel + 1);
+              } else if (data.type != null) {
+                onInsertBlockAt(data.type!, bodyStart, nestingLevel + 1);
+              }
+            },
+          )];
+        } else {
+          bodyChildren = _buildBlocksInRange(
+            context, screenWidth, bodyStart, bodyEnd, nestingLevel + 1,
+            parentColor: block.color,
+          );
+        }
+
+        final headerRow = Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          child: Row(children: [
+            Icon(_blockIcon(block.type), color: Colors.white.withValues(alpha: 0.9), size: 14),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(block.label, style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+            ),
+            if (!isExecuting)
+              GestureDetector(
+                onTap: () => onRemoveBlock(i),
+                child: Container(
+                  margin: const EdgeInsets.only(left: 6),
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(5)),
+                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
+                ),
+              ),
+          ]),
+        );
+
+        widgets.add(Container(
+          margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: block.color,
+            borderRadius: BorderRadius.circular(10),
+            border: isActive ? Border.all(color: Colors.white, width: 2.4) : null,
+            boxShadow: [BoxShadow(color: block.color.withValues(alpha: 0.3), blurRadius: isActive ? 10 : 6, offset: const Offset(0, 2))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Draggable<_DraggedBlockData>(
+                data: _DraggedBlockData(fromIndex: i),
+                maxSimultaneousDrags: isExecuting ? 0 : 1,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: SizedBox(width: screenWidth - 72, child: _CodeBlockWidget(block: block, isExecuting: true, isHighlighted: isActive)),
+                ),
+                childWhenDragging: Opacity(opacity: 0.25, child: headerRow),
+                child: headerRow,
+              ),
+              Container(
+                margin: const EdgeInsets.only(left: 22, right: 4, bottom: 8),
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                decoration: BoxDecoration(color: const Color(0xFFF5FAF9), borderRadius: BorderRadius.circular(8)),
+                child: Column(children: bodyChildren),
+              ),
+            ],
+          ),
+        ));
+
+        i = bodyEnd;
+        needLeadingDropSlot = true;
+      } else {
+        if (needLeadingDropSlot) widgets.add(makeDropSlot(i));
+        widgets.add(makeDraggable(i));
+        i++;
+        needLeadingDropSlot = true;
+      }
+    }
+
+    // Always emit a trailing slot inside a body (even when the last item was a
+    // nested C-bracket which set needLeadingDropSlot=false), so users can drop
+    // blocks below any existing body content.
+    if (parentColor != null || needLeadingDropSlot) {
+      widgets.add(makeDropSlot(endIdx));
+    }
+
+    return widgets;
   }
 }
 
@@ -1542,6 +1686,82 @@ IconData _blockIcon(CodeBlockType type) {
       return Icons.graphic_eq_rounded;
     default:
       return Icons.code_rounded;
+  }
+}
+
+class _BodyDropHint extends StatefulWidget {
+  final bool isExecuting;
+  final Color color;
+  final ValueChanged<_DraggedBlockData> onInsert;
+
+  const _BodyDropHint({
+    required this.isExecuting,
+    required this.color,
+    required this.onInsert,
+  });
+
+  @override
+  State<_BodyDropHint> createState() => _BodyDropHintState();
+}
+
+class _BodyDropHintState extends State<_BodyDropHint> {
+  bool _isHovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return DragTarget<_DraggedBlockData>(
+      onWillAcceptWithDetails: (_) {
+        if (widget.isExecuting) return false;
+        if (!mounted) return false;
+        setState(() => _isHovering = true);
+        return true;
+      },
+      onLeave: (_) {
+        if (mounted) setState(() => _isHovering = false);
+      },
+      onAcceptWithDetails: (details) {
+        if (mounted) setState(() => _isHovering = false);
+        widget.onInsert(details.data);
+      },
+      builder: (context, _, _) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          height: 44,
+          decoration: BoxDecoration(
+            color: _isHovering
+                ? widget.color.withValues(alpha: 0.18)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: widget.color.withValues(alpha: _isHovering ? 0.8 : 0.4),
+              width: _isHovering ? 2 : 1.5,
+            ),
+          ),
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.add_rounded,
+                  size: 14,
+                  color: widget.color.withValues(alpha: _isHovering ? 0.9 : 0.5),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'drop block here',
+                  style: GoogleFonts.nunito(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: widget.color.withValues(alpha: _isHovering ? 0.9 : 0.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
