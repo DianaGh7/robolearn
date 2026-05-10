@@ -64,7 +64,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           ],
         ),
         child: ListTile(
-          leading: const Icon(Icons.language_rounded, color: AppTheme.tealPrimary),
+          leading: const Icon(Icons.language_rounded,
+              color: AppTheme.tealPrimary),
           title: Text(
             s.languageOption,
             style: GoogleFonts.nunito(
@@ -88,18 +89,21 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: Stack(
-            children: [
-              SlideTransition(
-                position: _slide,
-                child: FadeTransition(
-                  opacity: _ctrl,
-                  child: SingleChildScrollView(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    child: Column(children: [
-                      // Header
-                      Row(children: [
+          child: SlideTransition(
+            position: _slide,
+            child: FadeTransition(
+              opacity: _ctrl,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // ── Header row: logo + title + settings ──────
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
                         Container(
                           width: 56,
                           height: 56,
@@ -114,130 +118,147 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                           child: const RobotLogoIcon(),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 12),
+                        // Expanded prevents text from flowing under the settings icon
                         Expanded(
                           child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(s.welcomeTo,
-                                    style: GoogleFonts.nunito(
-                                        fontSize: 15,
-                                        color: AppTheme.tealMid,
-                                        fontWeight: FontWeight.w600)),
-                                Text('RoboLearn',
-                                    style: GoogleFonts.nunito(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w900,
-                                        color: AppTheme.tealDark)),
-                                Text(s.tagline,
-                                    style: GoogleFonts.nunito(
-                                        fontSize: 13,
-                                        height: 1.4,
-                                        color: AppTheme.tealMid)),
-                              ]),
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                s.welcomeTo,
+                                style: GoogleFonts.nunito(
+                                    fontSize: 14,
+                                    color: AppTheme.tealMid,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                              Text(
+                                'RoboLearn',
+                                style: GoogleFonts.nunito(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppTheme.tealDark,
+                                    height: 1.1),
+                              ),
+                              Text(
+                                s.tagline,
+                                style: GoogleFonts.nunito(
+                                    fontSize: 12,
+                                    height: 1.4,
+                                    color: AppTheme.tealMid),
+                              ),
+                            ],
+                          ),
                         ),
-                        // spacer so gear doesn't overlap text
-                        const SizedBox(width: 44),
-                      ]),
-                      const SizedBox(height: 22),
-                      InfoCard(
-                        title: s.whatIsRoboLearn,
-                        icon: Icons.info_outline_rounded,
-                        color: AppTheme.tealPrimary,
-                        child: Text(
-                          s.roboLearnDesc,
-                          style: GoogleFonts.nunito(
-                              fontSize: 15,
-                              color: const Color(0xFF2A5A58),
-                              height: 1.6),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      InfoCard(
-                        title: s.howItWorks,
-                        icon: Icons.settings_outlined,
-                        color: AppTheme.skyBlue,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _Step(
-                                icon: Icons.send_rounded,
-                                label: s.stepSendLabel,
-                                desc: s.stepSendDesc,
-                                color: AppTheme.tealPrimary),
-                            _Step(
-                                icon: Icons.play_circle_fill_rounded,
-                                label: s.stepExecuteLabel,
-                                desc: s.stepExecuteDesc,
-                                color: AppTheme.skyBlue),
-                            _Step(
-                                icon: Icons.school_rounded,
-                                label: s.stepLearnLabel,
-                                desc: s.stepLearnDesc,
-                                color: AppTheme.orange),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      InfoCard(
-                        title: s.whyFamilies,
-                        icon: Icons.people_outline_rounded,
-                        color: AppTheme.orange,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _FeatureLine(
-                                text: s.featureChildren,
-                                color: AppTheme.tealPrimary),
-                            const SizedBox(height: 8),
-                            _FeatureLine(
-                                text: s.featureParents,
-                                color: AppTheme.orange),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 26),
-                      Text(s.readyToStart,
-                          style: GoogleFonts.nunito(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.tealDark)),
-                      const SizedBox(height: 14),
-                      PrimaryButton(label: s.getStarted, onPressed: _goToLogin),
-                      const SizedBox(height: 20),
-                    ]),
-                  ),
-                ),
-              ),
-              // ── Settings / language gear ───────────────────
-              Positioned(
-                top: 8,
-                right: 16,
-                child: GestureDetector(
-                  onTap: _showLangMenu,
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.82),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.teal.withValues(alpha: 0.12),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+                        const SizedBox(width: 10),
+                        // Settings icon sits in the row — never overlaps text
+                        GestureDetector(
+                          onTap: _showLangMenu,
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.82),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.teal.withValues(alpha: 0.12),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.settings_outlined,
+                              color: AppTheme.tealMid,
+                              size: 21,
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.settings_outlined,
-                      color: AppTheme.tealMid,
-                      size: 21,
+
+                    const SizedBox(height: 20),
+
+                    // ── What is RoboLearn ─────────────────────────
+                    InfoCard(
+                      title: s.whatIsRoboLearn,
+                      icon: Icons.info_outline_rounded,
+                      color: AppTheme.tealPrimary,
+                      child: Text(
+                        s.roboLearnDesc,
+                        style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            color: const Color(0xFF2A5A58),
+                            height: 1.55),
+                      ),
                     ),
-                  ),
+
+                    const SizedBox(height: 12),
+
+                    // ── How It Works ──────────────────────────────
+                    InfoCard(
+                      title: s.howItWorks,
+                      icon: Icons.settings_outlined,
+                      color: AppTheme.skyBlue,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _Step(
+                              icon: Icons.send_rounded,
+                              label: s.stepSendLabel,
+                              desc: s.stepSendDesc,
+                              color: AppTheme.tealPrimary),
+                          _Step(
+                              icon: Icons.play_circle_fill_rounded,
+                              label: s.stepExecuteLabel,
+                              desc: s.stepExecuteDesc,
+                              color: AppTheme.skyBlue),
+                          _Step(
+                              icon: Icons.school_rounded,
+                              label: s.stepLearnLabel,
+                              desc: s.stepLearnDesc,
+                              color: AppTheme.orange),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // ── Why families ──────────────────────────────
+                    InfoCard(
+                      title: s.whyFamilies,
+                      icon: Icons.people_outline_rounded,
+                      color: AppTheme.orange,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _FeatureLine(
+                              text: s.featureChildren,
+                              color: AppTheme.tealPrimary),
+                          const SizedBox(height: 8),
+                          _FeatureLine(
+                              text: s.featureParents, color: AppTheme.orange),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // ── CTA ───────────────────────────────────────
+                    Text(
+                      s.readyToStart,
+                      style: GoogleFonts.nunito(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.tealDark),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 10),
+                    PrimaryButton(label: s.getStarted, onPressed: _goToLogin),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -262,24 +283,24 @@ class _Step extends StatelessWidget {
       width: 92,
       child: Column(children: [
         Container(
-          width: 50,
-          height: 50,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
               color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(14)),
-          child: Icon(icon, color: color, size: 26),
+          child: Icon(icon, color: color, size: 24),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(label,
             style: GoogleFonts.nunito(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w800,
                 color: AppTheme.tealDark)),
-        const SizedBox(height: 5),
+        const SizedBox(height: 3),
         Text(desc,
             style: GoogleFonts.nunito(
                 fontSize: 11,
-                height: 1.35,
+                height: 1.3,
                 color: const Color(0xFF5A9A95)),
             textAlign: TextAlign.center),
       ]),
@@ -297,13 +318,13 @@ class _FeatureLine extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.check_circle_rounded, color: color, size: 18),
+        Icon(Icons.check_circle_rounded, color: color, size: 17),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
             style: GoogleFonts.nunito(
-              fontSize: 14,
+              fontSize: 13,
               height: 1.4,
               color: const Color(0xFF4A7A75),
               fontWeight: FontWeight.w700,
