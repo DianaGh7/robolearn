@@ -270,14 +270,13 @@ class SoundChallenge {
 
   // Level 2 Sound Challenges (internal numbers start at 7 to avoid collision with Level 1)
   static final List<SoundChallenge> soundChallenges = [
-    // Challenge 1 – highlights matching Logic to Match row on execution
+    // Challenge 1 – shows emoji cue only; child solves independently
     const SoundChallenge(
       number: 7,
       levelNumber: 2,
       title: 'Happy Music',
-      instruction: 'Build the logic when a happy emoji appears:',
-      targetDisplay: 'IF 😊 happy\n→ 🎵 play music',
-      lineForBlock: [0, 1], // ifHappy→line0, music→line1
+      instruction: 'Help the robot react when a happy emoji appears.',
+      targetDisplay: '😊',
       availableBlocks: [
         CodeBlockType.start,
         CodeBlockType.ifHappy,
@@ -291,7 +290,7 @@ class SoundChallenge {
       number: 8,
       levelNumber: 2,
       title: 'Sad Reaction',
-      instruction: 'Build the logic when a sad emoji appears:',
+      instruction: 'Help the robot react when a sad emoji appears.',
       targetDisplay: '😢',
       availableBlocks: [
         CodeBlockType.start,
@@ -301,15 +300,13 @@ class SoundChallenge {
       ],
       correctSequence: [CodeBlockType.ifSad, CodeBlockType.cry],
     ),
-    // Challenge 3 – highlights matching row on execution
+    // Challenge 3 – time-based: executes moon branch at night, sun branch during day
     const SoundChallenge(
       number: 9,
       levelNumber: 2,
       title: 'Day and Night',
-      instruction:
-          'Represent the following logic with appropriate code blocks:',
+      instruction: 'Help the robot react based on the time of day.',
       targetDisplay: '🌙 → 🌃 night\n☀️ → 🌅 morning',
-      lineForBlock: [0, 0, 1, 1], // ifMoon/thenNight→line0, elseIfSun/thenMorning→line1
       availableBlocks: [
         CodeBlockType.start,
         CodeBlockType.ifMoon,
@@ -330,9 +327,8 @@ class SoundChallenge {
       number: 10,
       levelNumber: 2,
       title: 'Streaks',
-      instruction: 'Build the streak reward system using code blocks!',
+      instruction: 'Help the robot reward you based on your streak.',
       targetDisplay: 'streak >= 5  →  🎉\nstreak >= 2  →  👏\nelse  →  keep going! 💪',
-      lineForBlock: [0, 0, 1, 1, 2, 2], // ifStreak5/cheering→0, elseIfStreak2/clap→1, elseBlock/encourage→2
       availableBlocks: [
         CodeBlockType.start,
         CodeBlockType.ifStreak5,
@@ -357,17 +353,12 @@ class SoundChallenge {
       number: 11,
       levelNumber: 2,
       title: 'Guess the Animal',
-      instruction: 'Guess the animal using nested if blocks:',
+      instruction: 'Help the robot guess which animal appears.',
       targetDisplay:
           'big + trunk  →  🐘 elephant\n'
           'big, no trunk  →  🦁 lion\n'
           'small + fluffy  →  🐱 cat\n'
           'small, not fluffy  →  🐶 dog',
-      // ifBig→0, ifHasTrunk→0, elephant→0,
-      // ELSE(no trunk)→1, lion→1,
-      // ELSE(small)→2, ifFluffy→2, cat→2,
-      // ELSE(not fluffy)→3, dog→3
-      lineForBlock: [0, 0, 0, 1, 1, 2, 2, 2, 3, 3],
       availableBlocks: [
         CodeBlockType.start,
         CodeBlockType.ifBig,
