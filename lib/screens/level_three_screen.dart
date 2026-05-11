@@ -1170,7 +1170,7 @@ class _CodeBlocksArea extends StatelessWidget {
               ),
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
                 child: Column(
                   children: _buildGroupedBlocks(context),
                 ),
@@ -1179,43 +1179,28 @@ class _CodeBlocksArea extends StatelessWidget {
           ),
 
           const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(Icons.widgets_rounded, size: 14, color: AppTheme.tealPrimary),
-              const SizedBox(width: 6),
-              Text(
-                AppStrings.of(context).availableBlocks,
-                style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.tealDark,
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 6),
+            child: Row(
+              children: [
+                const Icon(Icons.widgets_rounded, size: 13, color: AppTheme.tealPrimary),
+                const SizedBox(width: 5),
+                Text(
+                  AppStrings.of(context).availableBlocks,
+                  style: GoogleFonts.nunito(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.tealDark,
+                  ),
                 ),
-              ),
-              const Spacer(),
-              Text(
-                AppStrings.of(context).blocksCount(availableBlocks.length),
-                style: GoogleFonts.nunito(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.tealMid,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
-
           Expanded(
             flex: 1,
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5FAF9),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.all(8),
-                child: Wrap(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: availableBlocks.map((blockType) {
@@ -1239,7 +1224,6 @@ class _CodeBlocksArea extends StatelessWidget {
                       ),
                     );
                   }).toList(),
-                ),
               ),
             ),
           ),
