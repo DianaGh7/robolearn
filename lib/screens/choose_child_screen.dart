@@ -108,6 +108,13 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
   }
 
   Future<bool> _showParentPasswordDialog() async {
+    // Google-authenticated users are already securely verified — let them through.
+    final user = FirebaseAuth.instance.currentUser;
+    final isGoogleUser = user?.providerData
+            .any((p) => p.providerId == 'google.com') ??
+        false;
+    if (isGoogleUser) return true;
+
     final s = AppStrings(LanguageNotifier.instance.isArabic);
     final passwordCtrl = TextEditingController();
     bool obscure = true;

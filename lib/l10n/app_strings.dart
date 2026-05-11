@@ -151,6 +151,11 @@ class AppStrings {
   String get resetEmailSent => isArabic
       ? 'إذا كان البريد موجودًا، تم إرسال رابط الإعادة.'
       : 'If this email exists, a reset link has been sent.';
+  String get continueWithGoogle =>
+      isArabic ? 'المتابعة بحساب Google' : 'Continue with Google';
+  String get googleSignInFailed => isArabic
+      ? 'فشل تسجيل الدخول بـ Google. حاول مجددًا.'
+      : 'Google sign-in failed. Please try again.';
 
   // ── Auth error messages ───────────────────────────────────
   String authError(String code) {
@@ -202,22 +207,38 @@ class AppStrings {
   String get createAccount => isArabic ? 'إنشاء حساب' : 'Create Account';
   String get alreadyHaveAccount =>
       isArabic ? 'لديك حساب بالفعل؟ ' : 'Already have an account? ';
-  String get termsDialogTitle => isArabic ? 'شروط روبوليرن' : 'RoboLearn Terms';
+  String get termsDialogTitle => isArabic ? 'الشروط والخصوصية' : 'Terms & Privacy';
   String get termsDialogBody => isArabic
-      ? 'مرحبًا في روبوليرن! باستخدامك لهذا التطبيق، فأنت توافق على:\n\n'
-          '1. الحفاظ على أمان بيانات حسابك.\n'
-          '2. عدم استخدام التطبيق في أي أنشطة غير قانونية.\n'
-          '3. احترام حقوق الملكية الفكرية لمحتوانا.\n'
-          '4. يتحمل الآباء مسؤولية مراقبة استخدام أطفالهم.\n\n'
-          'نحن نقدّر خصوصيتك ونحمي بياناتك وفق سياستنا. '
-          'روبوليرن مصمم لتوفير بيئة تعلّم آمنة وممتعة للأطفال.'
-      : 'Welcome to RoboLearn! By using this app, you agree to:\n\n'
-          '1. Keep your account details secure.\n'
-          '2. Not use the app for any illegal activities.\n'
-          '3. Respect the intellectual property of our content.\n'
-          "4. Parents are responsible for monitoring their children's usage.\n\n"
-          'We value your privacy and protect your data according to our policy. '
-          'RoboLearn is designed to provide a safe and fun learning environment for children.';
+      ? 'الشروط والأحكام وسياسة الخصوصية\n'
+          'آخر تحديث: مايو 2025\n\n'
+          '1. القبول والاستخدام\n'
+          'باستخدامك لتطبيق روبوليرن، فأنت تؤكد موافقتك على هذه الشروط، سواء كنت ولي أمر أو مشرفًا على الطفل، أو طفلًا يمتلك الوعي الكافي للاستخدام المستقل.\n\n'
+          '2. إنشاء الحساب\n'
+          'يمكن لأي شخص إنشاء حساب على التطبيق، بما في ذلك الأطفال الذين لديهم القدرة على فهم طبيعة التطبيق والتعامل معه بشكل مسؤول. ويُنصح الآباء بمرافقة أطفالهم الصغار خلال التجربة.\n\n'
+          '3. البيانات التي نجمعها\n'
+          'نجمع بريدك الإلكتروني واسمك عند التسجيل، وبيانات تقدّم الأطفال (المستويات المكتملة والمحاولات) لعرضها لك. لا نجمع أي بيانات حساسة أو نشاركها مع أطراف خارجية لأغراض تجارية.\n\n'
+          '4. أمان الحساب\n'
+          'أنت مسؤول عن الحفاظ على سرية بيانات دخولك. في حال الاشتباه بأي وصول غير مصرح به، يرجى تغيير كلمة المرور فورًا.\n\n'
+          '5. منطقة الآباء\n'
+          'منطقة الآباء محمية بكلمة مرور لضمان ألا يتمكن الأطفال من تعديل الإعدادات أو الاطلاع على بيانات الحساب.\n\n'
+          '6. التعديلات\n'
+          'نحتفظ بحق تحديث هذه الشروط في أي وقت. سيتم إعلامك بأي تغييرات جوهرية عبر التطبيق.\n\n'
+          'robolearnapp1@gmail.com'
+      : 'Terms & Conditions and Privacy Policy\n'
+          'Last updated: May 2025\n\n'
+          '1. Acceptance of Terms\n'
+          'By using RoboLearn, you confirm that you agree to these terms — whether you are a parent or guardian supervising a child, or a child who is mature enough to use the app independently.\n\n'
+          '2. Account Creation\n'
+          'Anyone may create an account on RoboLearn, including children who have a sufficient understanding of the app and can engage with it responsibly. Parents are encouraged to accompany younger children throughout the experience.\n\n'
+          '3. Data We Collect\n'
+          'We collect your email address and name upon registration, and your child\'s progress data (completed levels and attempts) to display to you. We do not collect sensitive data or share it with third parties for commercial purposes.\n\n'
+          '4. Account Security\n'
+          'You are responsible for keeping your login credentials confidential. If you suspect unauthorized access, please change your password immediately.\n\n'
+          '5. Parents Area\n'
+          'The Parents Area is password-protected to ensure children cannot modify settings or access account information.\n\n'
+          '6. Changes to These Terms\n'
+          'We reserve the right to update these terms at any time. You will be notified of any material changes through the app.\n\n'
+          'robolearnapp1@gmail.com';
   String get gotIt => isArabic ? 'حسنًا! ✓' : 'Got it! ✓';
 
   // ── Choose child screen ───────────────────────────────────
