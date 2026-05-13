@@ -65,6 +65,22 @@ class _LevelOneScreenState extends State<LevelOneScreen>
     _pulseAnim = Tween<double>(begin: 0.95, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    // Auto-show intro the first time a child opens Level 1 without any
+    // completed Level 1 challenges.
+    final bool isFirstLevel1Visit =
+        widget.challenge.levelNumber == 1 &&
+        widget.challenge.number == 1 &&
+        !Challenge.demoChallenge
+            .where((c) => c.levelNumber == 1)
+            .any((c) => widget.child.completedChallengeIds.contains(c.number));
+
+    if (isFirstLevel1Visit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _showTutorial();
+      });
+    }
   }
 
   ChildModel _markChallengeCompleted() {
@@ -425,6 +441,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
                         );
 
                         return SingleChildScrollView(
+                          padding: const EdgeInsets.only(bottom: 84),
                           child: ConstrainedBox(
                             constraints: BoxConstraints(minHeight: totalHeight),
                             child: Column(
@@ -618,6 +635,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
             CelebrationOverlay(
               streak: _progressChild.streak,
               streakRenewed: _streakRenewed,
+              onDismiss: () => setState(() => _showCelebrationOverlay = false),
               onContinue: () {
                 setState(() => _showCelebrationOverlay = false);
                 _goToNextChallenge();
@@ -682,7 +700,7 @@ class _HeaderBar extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  '${challenge.number}',
+                  '${challenge.number})',
                   style: GoogleFonts.nunito(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
@@ -718,12 +736,12 @@ class _HeaderBar extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                 decoration: BoxDecoration(
                   color: connectionStatus == RobotConnectionStatus.disconnected
                       ? const Color(0xFF5EA1D8)
                       : const Color(0xFF9CCFC5),
-                  borderRadius: BorderRadius.circular(7),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -733,15 +751,15 @@ class _HeaderBar extends StatelessWidget {
                           ? Icons.bluetooth_searching_rounded
                           : Icons.hourglass_top_rounded,
                       color: Colors.white,
-                      size: 11,
+                      size: 13,
                     ),
-                    const SizedBox(width: 3),
+                    const SizedBox(width: 4),
                     Text(
                       connectionStatus == RobotConnectionStatus.disconnected
                           ? AppStrings.of(context).connectBtn
                           : '...',
                       style: GoogleFonts.nunito(
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                       ),
@@ -880,7 +898,7 @@ class _InstructionCard extends StatelessWidget {
             child: Text(
               instruction,
               style: GoogleFonts.nunito(
-                fontSize: 13,
+                fontSize: 17,
                 fontWeight: FontWeight.w700,
                 color: Colors.black87,
                 height: 1.45,
@@ -1181,8 +1199,8 @@ class _CodeBlocksArea extends StatelessWidget {
               Text(
                 AppStrings.of(context).yourCode,
                 style: GoogleFonts.nunito(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark,
                 ),
               ),
@@ -1336,44 +1354,24 @@ class _CodeBlocksArea extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              const Icon(
-                Icons.widgets_rounded,
-                size: 14,
-                color: AppTheme.tealPrimary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                AppStrings.of(context).availableBlocks,
-                style: GoogleFonts.nunito(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.tealDark,
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 6),
+            child: Row(
+              children: [
+                const Icon(Icons.widgets_rounded, size: 13, color: AppTheme.tealPrimary),
+                const SizedBox(width: 5),
+                Text(
+                  AppStrings.of(context).availableBlocks,
+                  style: GoogleFonts.nunito(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.tealDark,
+                  ),
                 ),
-              ),
-              const Spacer(),
-              Text(
-                AppStrings.of(context).blocksCount(availableBlocks.length),
-                style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.tealMid,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            AppStrings.of(context).tapOrDrag,
-            style: GoogleFonts.nunito(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey.shade600,
+              ],
             ),
           ),
-          const SizedBox(height: 8),
 
           Expanded(
             flex: 1,
@@ -1558,17 +1556,17 @@ class _PaletteChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
-        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: elevated
             ? [
                 BoxShadow(
-                  color: color.withValues(alpha: 0.35),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  color: color.withValues(alpha: 0.28),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
               ]
             : null,
@@ -1576,12 +1574,12 @@ class _PaletteChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_blockIcon(blockType), size: 14, color: color),
-          const SizedBox(width: 5),
+          Icon(_blockIcon(blockType), size: 13, color: color),
+          const SizedBox(width: 4),
           Text(
             CodeBlock.typeLabels[blockType]!,
             style: GoogleFonts.nunito(
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
               color: color,
             ),

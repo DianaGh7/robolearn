@@ -19,6 +19,7 @@ class AppStrings {
   String get logout => isArabic ? 'تسجيل الخروج' : 'Log out';
   String get languageOption =>
       isArabic ? 'Switch to English 🌐' : 'التبديل إلى العربية 🌐';
+  String get languageLabel => isArabic ? 'اللغة' : 'Language';
   String get level => isArabic ? 'المستوى' : 'Level';
 
   String levelTitle(int n) {
@@ -269,11 +270,11 @@ class AppStrings {
     // Level 1 – Movement
     1: {
       'title': 'تحرك للأمام',
-      'instruction': 'حاول تحريك روبوتك خطوة واحدة إلى الأمام',
+      'instruction': 'حاول تحريك روبوتك خطوة واحدة إلى الأمام ⬆️',
     },
     2: {
       'title': 'تحرك للخلف',
-      'instruction': 'حاول تحريك روبوتك خطوة واحدة إلى الخلف',
+      'instruction': 'حاول تحريك روبوتك خطوة واحدة إلى الخلف ⬇️',
     },
     3: {
       'title': 'تحرك لليمين',

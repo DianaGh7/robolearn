@@ -7,7 +7,6 @@ import 'package:robolearn/theme/app_theme.dart';
 import 'package:robolearn/models/challenge_model.dart';
 import 'package:robolearn/models/child_model.dart';
 import 'package:robolearn/widgets/shared_widgets.dart';
-import 'package:robolearn/services/child_firestore_service.dart';
 import 'package:robolearn/services/child_progress_service.dart';
 import 'package:robolearn/l10n/app_strings.dart';
 
@@ -35,6 +34,7 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
   bool _showFailToast = false;
   bool _showConnectedToast = false;
   bool _challengeSuccessfullyCompleted = false;
+  bool _streakRenewed = false;
   int? _activeBlockIndex;
   int? _highlightedLineIndex;
   late List<CodeBlockType> _availableBlocks;
@@ -242,15 +242,13 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
 
     final mapping = widget.challenge.lineForBlock;
 
-    // Type-based blocks to skip entirely (challenges 9 & 10).
+    // Type-based blocks to skip entirely (challenges 8, 9 & 10).
     final Set<CodeBlockType> skipByType = () {
-      if (widget.challenge.number == 9) {
-        final isDay = DateTime.now().hour >= 6 && DateTime.now().hour < 18;
-        return isDay
-            ? {CodeBlockType.ifMoon, CodeBlockType.thenNight}
-            : {CodeBlockType.elseIfSun, CodeBlockType.thenMorning};
+      if (widget.challenge.number == 8) {
+        // Input is always 😢, so always take the if-sad branch; skip else.
+        return {CodeBlockType.elseBlock, CodeBlockType.happy};
       }
-      if (widget.challenge.number == 10) {
+      if (widget.challenge.number == 9) {
         final s = _progressChild.streak;
         if (s >= 5) {
           return {
@@ -268,6 +266,12 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
             CodeBlockType.elseIfStreak2, CodeBlockType.clap,
           };
         }
+      }
+      if (widget.challenge.number == 10) {
+        final isDay = DateTime.now().hour >= 6 && DateTime.now().hour < 18;
+        return isDay
+            ? {CodeBlockType.ifMoon, CodeBlockType.thenNight}
+            : {CodeBlockType.elseIfSun, CodeBlockType.thenMorning};
       }
       return <CodeBlockType>{};
     }();
@@ -338,15 +342,35 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
     setState(() => _isExecuting = false);
 
     if (isCorrect) {
-      _progressChild = _markChallengeCompleted();
-      setState(() => _challengeSuccessfullyCompleted = true);
-      _showSuccessNotification();
+      final streakBefore = _progressChild.streak;
+      final challenges = SoundChallenge.soundChallenges;
+      int reachedIndex = 0;
+      for (int i = 0; i < challenges.length; i++) {
+        if (challenges[i].number == widget.challenge.number) {
+          reachedIndex = i + 1;
+          break;
+        }
+      }
       final childId = _progressChild.childId;
       if (childId != null) {
-        ChildFirestoreService()
-            .saveChild(childId: childId, child: _progressChild)
-            .catchError((_) {});
+        try {
+          _progressChild = await _progressService.registerChallengeSuccessForLevel(
+            childId: childId,
+            child: _progressChild,
+            challengeNumber: widget.challenge.number,
+            levelNumber: widget.challenge.levelNumber,
+            reachedIndex: reachedIndex,
+            totalChallengesInLevel: challenges.length,
+          );
+        } catch (_) {
+          _progressChild = _markChallengeCompleted();
+        }
+      } else {
+        _progressChild = _markChallengeCompleted();
       }
+      _streakRenewed = _progressChild.streak > streakBefore;
+      setState(() => _challengeSuccessfullyCompleted = true);
+      _showSuccessNotification();
     } else {
       setState(() {
         _progressChild = _progressChild.copyWith(
@@ -513,13 +537,13 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                             DateTime.now().hour < 18;
                         final streak = _progressChild.streak;
                         final effectiveDisplay = widget.challenge.number == 9
-                            ? (isDay ? '☀️' : '🌙')
+                            ? (streak >= 5
+                                ? '🎉'
+                                : streak >= 2
+                                    ? '👏'
+                                    : '💪')
                             : widget.challenge.number == 10
-                                ? (streak >= 5
-                                    ? '🎉'
-                                    : streak >= 2
-                                        ? '👏'
-                                        : '💪')
+                                ? (isDay ? '☀️' : '🌙')
                                 : widget.challenge.number == 11
                                     ? const {
                                         'elephant': '🐘',
@@ -734,7 +758,8 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
           if (_showCelebrationOverlay)
             CelebrationOverlay(
               streak: _progressChild.streak,
-              streakRenewed: false,
+              streakRenewed: _streakRenewed,
+              onDismiss: () => setState(() => _showCelebrationOverlay = false),
               onContinue: () {
                 setState(() => _showCelebrationOverlay = false);
                 _goToNextChallenge();
@@ -795,7 +820,7 @@ class _HeaderBar extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  '${challenge.displayNumber}',
+                  '${challenge.displayNumber})',
                   style: GoogleFonts.nunito(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
@@ -831,12 +856,12 @@ class _HeaderBar extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                 decoration: BoxDecoration(
                   color: connectionStatus == RobotConnectionStatus.disconnected
                       ? const Color(0xFF5EA1D8)
                       : const Color(0xFF9CCFC5),
-                  borderRadius: BorderRadius.circular(7),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -846,15 +871,15 @@ class _HeaderBar extends StatelessWidget {
                           ? Icons.bluetooth_searching_rounded
                           : Icons.hourglass_top_rounded,
                       color: Colors.white,
-                      size: 11,
+                      size: 13,
                     ),
-                    const SizedBox(width: 3),
+                    const SizedBox(width: 4),
                     Text(
                       connectionStatus == RobotConnectionStatus.disconnected
                           ? AppStrings.of(context).connectBtn
                           : '...',
                       style: GoogleFonts.nunito(
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                       ),
@@ -979,7 +1004,7 @@ class _InstructionCard extends StatelessWidget {
             child: Text(
               instruction,
               style: GoogleFonts.nunito(
-                fontSize: 13,
+                fontSize: 17,
                 fontWeight: FontWeight.w700,
                 color: Colors.black87,
                 height: 1.45,
@@ -1444,6 +1469,7 @@ class _CodeBlocksArea extends StatelessWidget {
       if (_isIfHeader(block.type) && block.nesting == nestingLevel) {
         if (needLeadingDropSlot) widgets.add(makeDropSlot(i));
 
+        final headerIndex = i; // capture before i changes
         // Body = consecutive blocks with nesting > nestingLevel
         final bodyStart = i + 1;
         int bodyEnd = bodyStart;
@@ -1483,7 +1509,7 @@ class _CodeBlocksArea extends StatelessWidget {
             ),
             if (!isExecuting)
               GestureDetector(
-                onTap: () => onRemoveBlock(i),
+                onTap: () => onRemoveBlock(headerIndex),
                 child: Container(
                   margin: const EdgeInsets.only(left: 6),
                   padding: const EdgeInsets.all(4),
