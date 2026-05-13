@@ -6,7 +6,6 @@ import 'package:robolearn/theme/app_theme.dart';
 import 'package:robolearn/models/challenge_model.dart';
 import 'package:robolearn/models/child_model.dart';
 import 'package:robolearn/widgets/shared_widgets.dart';
-import 'package:robolearn/services/child_firestore_service.dart';
 import 'package:robolearn/services/child_progress_service.dart';
 import 'package:robolearn/l10n/app_strings.dart';
 
@@ -47,6 +46,7 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
   bool _showFailToast = false;
   bool _showConnectedToast = false;
   bool _challengeSuccessfullyCompleted = false;
+  bool _streakRenewed = false;
   int? _activeBlockIndex;
   int? _highlightedLineIndex;
   late List<CodeBlockType> _availableBlocks;
@@ -323,15 +323,35 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
         );
 
     if (isCorrect) {
-      _progressChild = _markChallengeCompleted();
-      setState(() => _challengeSuccessfullyCompleted = true);
-      _showSuccessNotification();
+      final streakBefore = _progressChild.streak;
+      final challenges = LedChallenge.ledChallenges;
+      int reachedIndex = 0;
+      for (int i = 0; i < challenges.length; i++) {
+        if (challenges[i].number == widget.challenge.number) {
+          reachedIndex = i + 1;
+          break;
+        }
+      }
       final childId = _progressChild.childId;
       if (childId != null) {
-        ChildFirestoreService()
-            .saveChild(childId: childId, child: _progressChild)
-            .catchError((_) {});
+        try {
+          _progressChild = await _progressService.registerChallengeSuccessForLevel(
+            childId: childId,
+            child: _progressChild,
+            challengeNumber: widget.challenge.number,
+            levelNumber: widget.challenge.levelNumber,
+            reachedIndex: reachedIndex,
+            totalChallengesInLevel: challenges.length,
+          );
+        } catch (_) {
+          _progressChild = _markChallengeCompleted();
+        }
+      } else {
+        _progressChild = _markChallengeCompleted();
       }
+      _streakRenewed = _progressChild.streak > streakBefore;
+      setState(() => _challengeSuccessfullyCompleted = true);
+      _showSuccessNotification();
     } else {
       setState(() {
         _progressChild = _progressChild.copyWith(
@@ -619,7 +639,8 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
           if (_showCelebrationOverlay)
             CelebrationOverlay(
               streak: _progressChild.streak,
-              streakRenewed: false,
+              streakRenewed: _streakRenewed,
+              onDismiss: () => setState(() => _showCelebrationOverlay = false),
               onContinue: () {
                 setState(() => _showCelebrationOverlay = false);
                 _goToNextChallenge();
@@ -681,7 +702,7 @@ class _HeaderBar extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  '${challenge.displayNumber}',
+                  '${challenge.displayNumber})',
                   style: GoogleFonts.nunito(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
@@ -717,12 +738,12 @@ class _HeaderBar extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                 decoration: BoxDecoration(
                   color: connectionStatus == _RobotConnectionStatus.disconnected
                       ? const Color(0xFF5EA1D8)
                       : const Color(0xFF9CCFC5),
-                  borderRadius: BorderRadius.circular(7),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -732,15 +753,15 @@ class _HeaderBar extends StatelessWidget {
                           ? Icons.bluetooth_searching_rounded
                           : Icons.hourglass_top_rounded,
                       color: Colors.white,
-                      size: 11,
+                      size: 13,
                     ),
-                    const SizedBox(width: 3),
+                    const SizedBox(width: 4),
                     Text(
                       connectionStatus == _RobotConnectionStatus.disconnected
                           ? AppStrings.of(context).connectBtn
                           : '...',
                       style: GoogleFonts.nunito(
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                       ),
@@ -864,7 +885,7 @@ class _InstructionCard extends StatelessWidget {
             child: Text(
               instruction,
               style: GoogleFonts.nunito(
-                fontSize: 13,
+                fontSize: 17,
                 fontWeight: FontWeight.w700,
                 color: Colors.black87,
                 height: 1.45,
@@ -1004,49 +1025,54 @@ class _LedVisualizationCard extends StatelessWidget {
           const SizedBox(height: 8),
           Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: lines.asMap().entries.map((entry) {
-                final lineIdx = entry.key;
-                final color = _rowColors[lineIdx % _rowColors.length];
-                final isHighlighted = highlightedLineIndex == lineIdx;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: isHighlighted ? 9 : 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isHighlighted
-                        ? color.withValues(alpha: 0.22)
-                        : color.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(
-                      color: isHighlighted ? color : color.withValues(alpha: 0.5),
-                      width: isHighlighted ? 2.5 : 1.5,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (final entry in lines.asMap().entries) ...[
+                  if (entry.key > 0) const SizedBox(height: 6),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: entry.key == highlightedLineIndex ? 9 : 6,
                     ),
-                    boxShadow: isHighlighted
-                        ? [
-                            BoxShadow(
-                              color: color.withValues(alpha: 0.30),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Text(
-                    entry.value,
-                    style: GoogleFonts.nunito(
-                      fontSize: lines.length == 1 ? 16 : 13,
-                      fontWeight:
-                          isHighlighted ? FontWeight.w900 : FontWeight.w800,
-                      color: isHighlighted ? color : AppTheme.tealDark,
+                    decoration: BoxDecoration(
+                      color: entry.key == highlightedLineIndex
+                          ? _rowColors[entry.key % _rowColors.length].withValues(alpha: 0.22)
+                          : _rowColors[entry.key % _rowColors.length].withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(
+                        color: entry.key == highlightedLineIndex
+                            ? _rowColors[entry.key % _rowColors.length]
+                            : _rowColors[entry.key % _rowColors.length].withValues(alpha: 0.5),
+                        width: entry.key == highlightedLineIndex ? 2.5 : 1.5,
+                      ),
+                      boxShadow: entry.key == highlightedLineIndex
+                          ? [
+                              BoxShadow(
+                                color: _rowColors[entry.key % _rowColors.length].withValues(alpha: 0.30),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          : null,
                     ),
-                    textAlign: TextAlign.center,
+                    child: Text(
+                      entry.value,
+                      style: GoogleFonts.nunito(
+                        fontSize: lines.length == 1 ? 16 : 13,
+                        fontWeight: entry.key == highlightedLineIndex
+                            ? FontWeight.w900
+                            : FontWeight.w800,
+                        color: entry.key == highlightedLineIndex
+                            ? _rowColors[entry.key % _rowColors.length]
+                            : AppTheme.tealDark,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                );
-              }).toList(),
+                ],
+              ],
             ),
           ),
         ],
@@ -1162,7 +1188,7 @@ class _CodeBlocksArea extends StatelessWidget {
               ),
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
                 child: Column(
                   children: _buildGroupedBlocks(context),
                 ),
@@ -1171,43 +1197,28 @@ class _CodeBlocksArea extends StatelessWidget {
           ),
 
           const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(Icons.widgets_rounded, size: 14, color: AppTheme.tealPrimary),
-              const SizedBox(width: 6),
-              Text(
-                AppStrings.of(context).availableBlocks,
-                style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.tealDark,
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 6),
+            child: Row(
+              children: [
+                const Icon(Icons.widgets_rounded, size: 13, color: AppTheme.tealPrimary),
+                const SizedBox(width: 5),
+                Text(
+                  AppStrings.of(context).availableBlocks,
+                  style: GoogleFonts.nunito(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.tealDark,
+                  ),
                 ),
-              ),
-              const Spacer(),
-              Text(
-                AppStrings.of(context).blocksCount(availableBlocks.length),
-                style: GoogleFonts.nunito(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.tealMid,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
-
           Expanded(
             flex: 1,
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5FAF9),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.all(8),
-                child: Wrap(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: availableBlocks.map((blockType) {
@@ -1231,7 +1242,6 @@ class _CodeBlocksArea extends StatelessWidget {
                       ),
                     );
                   }).toList(),
-                ),
               ),
             ),
           ),
@@ -1319,6 +1329,7 @@ class _CodeBlocksArea extends StatelessWidget {
       if (_isRepeatBlock(block.type) && block.nesting == nestingLevel) {
         if (needLeadingDropSlot) widgets.add(makeDropSlot(i));
 
+        final headerIndex = i; // capture before i changes
         final bodyStart = i + 1;
         int bodyEnd = bodyStart;
         while (bodyEnd < endIdx && arrangedBlocks[bodyEnd].nesting > nestingLevel) {
@@ -1357,7 +1368,7 @@ class _CodeBlocksArea extends StatelessWidget {
             ),
             if (!isExecuting)
               GestureDetector(
-                onTap: () => onRemoveBlock(i),
+                onTap: () => onRemoveBlock(headerIndex),
                 child: Container(
                   margin: const EdgeInsets.only(left: 6),
                   padding: const EdgeInsets.all(4),

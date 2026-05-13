@@ -19,6 +19,7 @@ class AppStrings {
   String get logout => isArabic ? 'تسجيل الخروج' : 'Log out';
   String get languageOption =>
       isArabic ? 'Switch to English 🌐' : 'التبديل إلى العربية 🌐';
+  String get languageLabel => isArabic ? 'اللغة' : 'Language';
   String get level => isArabic ? 'المستوى' : 'Level';
 
   String levelTitle(int n) {
@@ -64,6 +65,7 @@ class AppStrings {
 
   // ── Visualization labels ──────────────────────────────────
   String get logicToMatch => isArabic ? 'المنطق المطلوب' : 'Logic to Match';
+  String get currentEmoji => isArabic ? 'الرمز الحالي' : 'Current Emoji';
 
   // ── Navigation ────────────────────────────────────────────
   String get previous => isArabic ? 'السابق' : 'Previous';
@@ -225,7 +227,7 @@ class AppStrings {
           'نحتفظ بحق تحديث هذه الشروط في أي وقت. سيتم إعلامك بأي تغييرات جوهرية عبر التطبيق.\n\n'
           'robolearnapp1@gmail.com'
       : 'Terms & Conditions and Privacy Policy\n'
-          'Last updated: May 2025\n\n'
+          'Last updated: May 2026\n\n'
           '1. Acceptance of Terms\n'
           'By using RoboLearn, you confirm that you agree to these terms — whether you are a parent or guardian supervising a child, or a child who is mature enough to use the app independently.\n\n'
           '2. Account Creation\n'
@@ -268,11 +270,11 @@ class AppStrings {
     // Level 1 – Movement
     1: {
       'title': 'تحرك للأمام',
-      'instruction': 'حاول تحريك روبوتك خطوة واحدة إلى الأمام',
+      'instruction': 'حاول تحريك روبوتك خطوة واحدة إلى الأمام ⬆️',
     },
     2: {
       'title': 'تحرك للخلف',
-      'instruction': 'حاول تحريك روبوتك خطوة واحدة إلى الخلف',
+      'instruction': 'حاول تحريك روبوتك خطوة واحدة إلى الخلف ⬇️',
     },
     3: {
       'title': 'تحرك لليمين',
@@ -293,23 +295,23 @@ class AppStrings {
     // Level 2 – Sound logic
     7: {
       'title': 'موسيقى سعيدة',
-      'instruction': 'ابنِ المنطق عندما يظهر رمز السعادة:',
+      'instruction': 'ساعد الروبوت على الرد عندما يظهر رمز السعادة.',
     },
     8: {
       'title': 'ردّ فعل حزين',
-      'instruction': 'ابنِ المنطق عندما يظهر رمز الحزن:',
+      'instruction': 'ساعد الروبوت على الرد عندما يظهر رمز الحزن.',
     },
     9: {
       'title': 'النهار والليل',
-      'instruction': 'مثّل المنطق التالي ببلوكات الكود المناسبة:',
+      'instruction': 'ساعد الروبوت على الرد بناءً على وقت اليوم.',
     },
     10: {
       'title': 'السلاسل',
-      'instruction': 'ابنِ نظام مكافأة السلاسل باستخدام بلوكات الكود!',
+      'instruction': 'ساعد الروبوت على مكافأتك بناءً على سلسلتك.',
     },
     11: {
       'title': 'خمّن الحيوان',
-      'instruction': 'خمّن الحيوان باستخدام بلوكات IF المتداخلة:',
+      'instruction': 'ساعد الروبوت على تخمين الحيوان الذي يظهر.',
     },
     // Level 3 – LED
     12: {

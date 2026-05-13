@@ -250,19 +250,37 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                leading: const Icon(Icons.language_rounded,
-                    color: AppTheme.tealPrimary),
-                title: Text(
-                  s.languageOption,
-                  style: GoogleFonts.nunito(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.tealDark,
-                  ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.language_rounded,
+                        color: AppTheme.tealPrimary, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      s.languageLabel,
+                      style: GoogleFonts.nunito(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
                 ),
-                onTap: () => Navigator.pop(ctx, 'lang'),
               ),
+              _LangOptionTile(
+                label: 'العربية',
+                flag: '🇸🇦',
+                isSelected: lang.isArabic,
+                onTap: () => Navigator.pop(ctx, 'ar'),
+              ),
+              _LangOptionTile(
+                label: 'English',
+                flag: '🇬🇧',
+                isSelected: !lang.isArabic,
+                onTap: () => Navigator.pop(ctx, 'en'),
+              ),
+              const Divider(height: 1, indent: 16, endIndent: 16),
               ListTile(
                 leading: const Icon(Icons.logout_rounded,
                     color: Color(0xFFD84E4E)),
@@ -283,8 +301,10 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     );
 
     if (!mounted) return;
-    if (selected == 'lang') {
-      await lang.setLanguage(!lang.isArabic);
+    if (selected == 'ar') {
+      await lang.setLanguage(true);
+    } else if (selected == 'en') {
+      await lang.setLanguage(false);
     } else if (selected == 'logout') {
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
@@ -779,6 +799,42 @@ class _LetsPlayButton extends StatelessWidget {
           ]),
         ),
       ),
+    );
+  }
+}
+
+// ─── Language option tile ─────────────────────────────────────────────────────
+
+class _LangOptionTile extends StatelessWidget {
+  final String label;
+  final String flag;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _LangOptionTile({
+    required this.label,
+    required this.flag,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Text(flag, style: const TextStyle(fontSize: 22)),
+      title: Text(
+        label,
+        style: GoogleFonts.nunito(
+          fontSize: 15,
+          fontWeight: FontWeight.w800,
+          color: isSelected ? AppTheme.tealDark : Colors.grey[700],
+        ),
+      ),
+      trailing: isSelected
+          ? const Icon(Icons.check_circle_rounded,
+              color: AppTheme.tealPrimary, size: 22)
+          : null,
+      onTap: onTap,
     );
   }
 }

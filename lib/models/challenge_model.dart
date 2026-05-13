@@ -75,7 +75,7 @@ class CodeBlock {
     CodeBlockType.end: 'END',
     CodeBlockType.beep: 'beep 🔊',
     CodeBlockType.clap: 'clap 👏',
-    CodeBlockType.happy: 'happy 😊',
+    CodeBlockType.happy: 'smile 😊',
     CodeBlockType.repeat: 'repeat',
     CodeBlockType.ifHappy: 'IF happy 😊',
     CodeBlockType.music: 'play music 🎵',
@@ -91,7 +91,7 @@ class CodeBlock {
     CodeBlockType.elseBlock: 'ELSE',
     CodeBlockType.encourage: 'keep going! 💪',
     CodeBlockType.ifBig: 'IF big 🐾',
-    CodeBlockType.ifHasTrunk: 'IF has trunk 🦣',
+    CodeBlockType.ifHasTrunk: 'IF big nose 🐽',
     CodeBlockType.elephantSound: 'elephant 🐘',
     CodeBlockType.lionSound: 'lion 🦁',
     CodeBlockType.ifFluffy: 'IF fluffy 🐱',
@@ -245,6 +245,8 @@ class SoundChallenge {
   final String title;
   final String instruction;
   final String? targetDisplay;
+  // Optional separate logic card shown below the emoji display.
+  final String? logicDisplay;
   // Maps each correctSequence index to a targetDisplay line index for highlighting.
   // null means no per-line highlighting.
   final List<int>? lineForBlock;
@@ -257,6 +259,7 @@ class SoundChallenge {
     required this.title,
     required this.instruction,
     this.targetDisplay,
+    this.logicDisplay,
     this.lineForBlock,
     required this.availableBlocks,
     required this.correctSequence,
@@ -270,14 +273,13 @@ class SoundChallenge {
 
   // Level 2 Sound Challenges (internal numbers start at 7 to avoid collision with Level 1)
   static final List<SoundChallenge> soundChallenges = [
-    // Challenge 1 – highlights matching Logic to Match row on execution
+    // Challenge 1 – shows emoji cue only; child solves independently
     const SoundChallenge(
       number: 7,
       levelNumber: 2,
       title: 'Happy Music',
-      instruction: 'Build the logic when a happy emoji appears:',
-      targetDisplay: 'IF 😊 happy\n→ 🎵 play music',
-      lineForBlock: [0, 1], // ifHappy→line0, music→line1
+      instruction: 'Help the robot react when a happy emoji appears.',
+      targetDisplay: '😊',
       availableBlocks: [
         CodeBlockType.start,
         CodeBlockType.ifHappy,
@@ -286,70 +288,75 @@ class SoundChallenge {
       ],
       correctSequence: [CodeBlockType.ifHappy, CodeBlockType.music],
     ),
-    // Challenge 2 – shows emoji cue only; child solves independently
+    // Challenge 2 – if sad → cry, else → happy
     const SoundChallenge(
       number: 8,
       levelNumber: 2,
       title: 'Sad Reaction',
-      instruction: 'Build the logic when a sad emoji appears:',
+      instruction: 'Help the robot react when a sad emoji appears.',
       targetDisplay: '😢',
+      lineForBlock: [0, 0, 1, 1],
       availableBlocks: [
         CodeBlockType.start,
         CodeBlockType.ifSad,
         CodeBlockType.cry,
+        CodeBlockType.elseBlock,
+        CodeBlockType.happy,
         CodeBlockType.end,
       ],
-      correctSequence: [CodeBlockType.ifSad, CodeBlockType.cry],
+      correctSequence: [
+        CodeBlockType.ifSad,
+        CodeBlockType.cry,
+        CodeBlockType.elseBlock,
+        CodeBlockType.happy,
+      ],
     ),
     // Challenge 3 – highlights matching row on execution
     const SoundChallenge(
       number: 9,
       levelNumber: 2,
-      title: 'Day and Night',
-      instruction:
-          'Represent the following logic with appropriate code blocks:',
-      targetDisplay: '🌙 → 🌃 night\n☀️ → 🌅 morning',
-      lineForBlock: [0, 0, 1, 1], // ifMoon/thenNight→line0, elseIfSun/thenMorning→line1
+      title: 'Streaks',
+      instruction: '🤖 Mission: Help the robot cheer you on!\n• Big streak? → Celebrate! 🎉\n• Medium streak? → Clap! 👏\n• Small streak? → Encourage the robot! 💪',
+      targetDisplay: '🔥 streak 5+  →  Celebrate! 🎉\n📈 streak 2+  →  Clap! 👏\n💪 else  →  Keep going!',
       availableBlocks: [
         CodeBlockType.start,
-        CodeBlockType.ifMoon,
-        CodeBlockType.thenNight,
-        CodeBlockType.elseIfSun,
-        CodeBlockType.thenMorning,
+        CodeBlockType.ifStreak5,
+        CodeBlockType.cheering,
+        CodeBlockType.elseIfStreak2,
+        CodeBlockType.clap,
+        CodeBlockType.elseBlock,
+        CodeBlockType.encourage,
         CodeBlockType.end,
       ],
       correctSequence: [
-        CodeBlockType.ifMoon,
-        CodeBlockType.thenNight,
-        CodeBlockType.elseIfSun,
-        CodeBlockType.thenMorning,
+        CodeBlockType.ifStreak5,
+        CodeBlockType.cheering,
+        CodeBlockType.elseIfStreak2,
+        CodeBlockType.clap,
+        CodeBlockType.elseBlock,
+        CodeBlockType.encourage,
       ],
     ),
-    // Challenge 4 – highlights matching row on execution
+    // Challenge 4 – time-based: executes moon branch at night, sun branch during day
     const SoundChallenge(
       number: 10,
       levelNumber: 2,
-      title: 'Streaks',
-      instruction: 'Build the streak reward system using code blocks!',
-      targetDisplay: 'streak >= 5  →  🎉\nstreak >= 2  →  👏\nelse  →  keep going! 💪',
-      lineForBlock: [0, 0, 1, 1, 2, 2], // ifStreak5/cheering→0, elseIfStreak2/clap→1, elseBlock/encourage→2
+      title: 'Day and Night',
+      instruction: 'Help the robot react based on the time of day.',
+      targetDisplay: '🌙 → 🌃 night\n☀️ → 🌅 morning',
       availableBlocks: [
         CodeBlockType.start,
-        CodeBlockType.ifStreak5,
-        CodeBlockType.cheering,
-        CodeBlockType.elseIfStreak2,
-        CodeBlockType.clap,
-        CodeBlockType.elseBlock,
-        CodeBlockType.encourage,
+        CodeBlockType.ifMoon,
+        CodeBlockType.thenNight,
+        CodeBlockType.elseIfSun,
+        CodeBlockType.thenMorning,
         CodeBlockType.end,
       ],
       correctSequence: [
-        CodeBlockType.ifStreak5,
-        CodeBlockType.cheering,
-        CodeBlockType.elseIfStreak2,
-        CodeBlockType.clap,
-        CodeBlockType.elseBlock,
-        CodeBlockType.encourage,
+        CodeBlockType.ifMoon,
+        CodeBlockType.thenNight,
+        CodeBlockType.elseIfSun,
+        CodeBlockType.thenMorning,
       ],
     ),
     // Challenge 5 – Guess the Animal (nested if)
@@ -357,17 +364,12 @@ class SoundChallenge {
       number: 11,
       levelNumber: 2,
       title: 'Guess the Animal',
-      instruction: 'Guess the animal using nested if blocks:',
+      instruction: '🐾 Can the robot guess the animal?\n\nIf it\'s big:\n  • Big nose? → 🐘 Elephant\n  • Otherwise → 🦁 Lion\n\nIf it\'s not big:\n  • Fluffy? → 🐱 Cat\n  • Otherwise → 🐶 Dog',
       targetDisplay:
-          'big + trunk  →  🐘 elephant\n'
-          'big, no trunk  →  🦁 lion\n'
+          'big + big nose  →  🐘 elephant\n'
+          'big, no nose  →  🦁 lion\n'
           'small + fluffy  →  🐱 cat\n'
           'small, not fluffy  →  🐶 dog',
-      // ifBig→0, ifHasTrunk→0, elephant→0,
-      // ELSE(no trunk)→1, lion→1,
-      // ELSE(small)→2, ifFluffy→2, cat→2,
-      // ELSE(not fluffy)→3, dog→3
-      lineForBlock: [0, 0, 0, 1, 1, 2, 2, 2, 3, 3],
       availableBlocks: [
         CodeBlockType.start,
         CodeBlockType.ifBig,
@@ -426,7 +428,7 @@ class Challenge {
       number: 1,
       levelNumber: 1,
       title: 'Move Forward',
-      instruction: 'Try to move your robot one block forward',
+      instruction: 'Try to move your robot one block forward ⬆️',
       initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
       targetRobotState: RobotState(x: 2, y: 1, direction: Direction.up),
       gridWidth: 5,
@@ -437,7 +439,7 @@ class Challenge {
       number: 2,
       levelNumber: 1,
       title: 'Move Backward',
-      instruction: 'Try to move your robot one block backward',
+      instruction: 'Try to move your robot one block backward ⬇️',
       initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
       targetRobotState: RobotState(x: 2, y: 3, direction: Direction.up),
       gridWidth: 5,
@@ -473,17 +475,6 @@ class Challenge {
       instruction: 'Move your robot to the left',
       initialRobotState: RobotState(x: 4, y: 2, direction: Direction.up),
       targetRobotState: RobotState(x: 3, y: 2, direction: Direction.left),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [CodeBlockType.turnLeft, CodeBlockType.moveForward],
-    ),
-    const Challenge(
-      number: 6,
-      levelNumber: 1,
-      title: 'Move Left - Multiple',
-      instruction: 'Move your robot 2 blocks to the left',
-      initialRobotState: RobotState(x: 4, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 2, y: 2, direction: Direction.left),
       gridWidth: 5,
       gridHeight: 5,
       availableBlocks: [CodeBlockType.turnLeft, CodeBlockType.moveForward],
@@ -574,24 +565,6 @@ class LedChallenge {
         CodeBlockType.setRed,
         CodeBlockType.setGreen,
         CodeBlockType.setBlue,
-      ],
-    ),
-    // Challenge 15 – Yellow Blink (repeat 2×, different count)
-    LedChallenge(
-      number: 15,
-      levelNumber: 3,
-      title: 'Yellow Blink',
-      instruction: 'Blink the yellow LED 2 times using REPEAT 2×!',
-      targetDisplay: 'REPEAT 2×\n🟡 on → ⚫ off',
-      availableBlocks: [
-        CodeBlockType.ledRepeat2,
-        CodeBlockType.setYellow,
-        CodeBlockType.ledOff,
-      ],
-      correctSequence: [
-        CodeBlockType.ledRepeat2,
-        CodeBlockType.setYellow,
-        CodeBlockType.ledOff,
       ],
     ),
     // Challenge 16 – Traffic Light (chaining two loops)

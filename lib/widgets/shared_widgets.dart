@@ -254,8 +254,9 @@ class _AvatarFacePainter extends CustomPainter {
   final String gender;
   const _AvatarFacePainter({required this.seed, this.gender = ''});
 
-  static const _hair = [Color(0xFF5A3A1A), Color(0xFF1A2A3A), Color(0xFFB84040)];
+  static const _hair = [Color(0xFF5A3A1A), Color(0xFF2C1A47), Color(0xFFB84040)];
   static const _skin = [Color(0xFFF5C5A3), Color(0xFFDDA87A), Color(0xFFEFC090)];
+  static const _iris = [Color(0xFF4A7C59), Color(0xFF4A6FA5), Color(0xFF8B5E3C)];
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -264,50 +265,149 @@ class _AvatarFacePainter extends CustomPainter {
     final cx = w / 2, cy = h / 2;
     final s = seed % 3;
     final isGirl = gender == 'girl';
+    final skin = _skin[s];
+    final hair = _hair[s];
+    final hairP = Paint()..color = hair;
 
-    canvas.drawCircle(
-        Offset(cx, cy + h * .05), w * .35, Paint()..color = _skin[s]);
+    // ── Neck ──────────────────────────────────────────────────────────────────
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(cx - w * .10, cy + h * .30, w * .20, h * .16),
+        const Radius.circular(6),
+      ),
+      Paint()..color = skin,
+    );
 
-    final hairP = Paint()..color = _hair[s];
-    canvas.drawCircle(Offset(cx, cy - h * .05), w * .35, hairP);
+    // ── Ears ──────────────────────────────────────────────────────────────────
+    final earP = Paint()..color = skin;
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * .36, cy + h * .02), width: w * .12, height: h * .16), earP);
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * .36, cy + h * .02), width: w * .12, height: h * .16), earP);
+    final innerEar = Paint()..color = Color.fromARGB(120, ((skin.r * 255).round() - 15).clamp(0, 255), ((skin.g * 255).round() - 20).clamp(0, 255), ((skin.b * 255).round() - 20).clamp(0, 255));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * .36, cy + h * .02), width: w * .06, height: h * .09), innerEar);
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * .36, cy + h * .02), width: w * .06, height: h * .09), innerEar);
+
+    // ── Girl hair back strands (behind face) ───────────────────────────────────
     if (isGirl) {
-      // Long hair sides for girls
-      canvas.drawRect(Rect.fromLTWH(cx - w * .35, cy, w * .14, h * .3), hairP);
-      canvas.drawRect(Rect.fromLTWH(cx + w * .21, cy, w * .14, h * .3), hairP);
-    } else {
-      // Short hair for boys
-      canvas.drawRect(
-          Rect.fromLTWH(cx - w * .35, cy - h * .1, w * .70, h * .15), hairP);
+      final leftStrand = Path()
+        ..moveTo(cx - w * .34, cy - h * .08)
+        ..quadraticBezierTo(cx - w * .44, cy + h * .22, cx - w * .28, cy + h * .48)
+        ..lineTo(cx - w * .18, cy + h * .48)
+        ..quadraticBezierTo(cx - w * .30, cy + h * .18, cx - w * .22, cy - h * .06)
+        ..close();
+      final rightStrand = Path()
+        ..moveTo(cx + w * .34, cy - h * .08)
+        ..quadraticBezierTo(cx + w * .44, cy + h * .22, cx + w * .28, cy + h * .48)
+        ..lineTo(cx + w * .18, cy + h * .48)
+        ..quadraticBezierTo(cx + w * .30, cy + h * .18, cx + w * .22, cy - h * .06)
+        ..close();
+      canvas.drawPath(leftStrand, hairP);
+      canvas.drawPath(rightStrand, hairP);
     }
 
-    final eyeP = Paint()..color = const Color(0xFF1A1A2E);
-    canvas.drawCircle(Offset(cx - w * .10, cy + h * .04), w * .055, eyeP);
-    canvas.drawCircle(Offset(cx + w * .10, cy + h * .04), w * .055, eyeP);
+    // ── Face oval ─────────────────────────────────────────────────────────────
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx, cy + h * .04), width: w * .72, height: h * .76),
+      Paint()..color = skin,
+    );
 
-    final shineP = Paint()..color = Colors.white;
-    canvas.drawCircle(Offset(cx - w * .085, cy + h * .022), w * .02, shineP);
-    canvas.drawCircle(Offset(cx + w * .115, cy + h * .022), w * .02, shineP);
+    // ── Hair top ──────────────────────────────────────────────────────────────
+    if (isGirl) {
+      final top = Path()
+        ..moveTo(cx - w * .35, cy - h * .04)
+        ..quadraticBezierTo(cx - w * .37, cy - h * .44, cx, cy - h * .46)
+        ..quadraticBezierTo(cx + w * .37, cy - h * .44, cx + w * .35, cy - h * .04)
+        ..quadraticBezierTo(cx + w * .18, cy - h * .10, cx, cy - h * .12)
+        ..quadraticBezierTo(cx - w * .18, cy - h * .10, cx - w * .35, cy - h * .04)
+        ..close();
+      canvas.drawPath(top, hairP);
+      // Hair clip
+      final clipP = Paint()..color = const Color(0xFFE8A0BF);
+      canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * .19, cy - h * .27), width: w * .15, height: h * .09), clipP);
+      canvas.drawCircle(Offset(cx + w * .19, cy - h * .27), w * .028, Paint()..color = Colors.white);
+    } else {
+      final top = Path()
+        ..moveTo(cx - w * .36, cy - h * .02)
+        ..quadraticBezierTo(cx - w * .37, cy - h * .44, cx, cy - h * .47)
+        ..quadraticBezierTo(cx + w * .37, cy - h * .44, cx + w * .36, cy - h * .02)
+        ..quadraticBezierTo(cx + w * .12, cy - h * .08, cx, cy - h * .10)
+        ..quadraticBezierTo(cx - w * .12, cy - h * .08, cx - w * .36, cy - h * .02)
+        ..close();
+      canvas.drawPath(top, hairP);
+      // Sideburns
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * .36, cy - h * .03, w * .08, h * .11), const Radius.circular(3)), hairP);
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + w * .28, cy - h * .03, w * .08, h * .11), const Radius.circular(3)), hairP);
+    }
 
-    final smileP = Paint()
-      ..color = const Color(0xFFC0705A)
+    // ── Eyebrows ──────────────────────────────────────────────────────────────
+    final browP = Paint()
+      ..color = Color.fromARGB(210, (hair.r * 255).round(), (hair.g * 255).round(), (hair.b * 255).round())
       ..style = PaintingStyle.stroke
-      ..strokeWidth = w * .03
+      ..strokeWidth = w * .033
       ..strokeCap = StrokeCap.round;
-    final smilePath = Path()
-      ..moveTo(cx - w * .08, cy + h * .12)
-      ..quadraticBezierTo(cx, cy + h * .19, cx + w * .08, cy + h * .12);
-    canvas.drawPath(smilePath, smileP);
-
     if (isGirl) {
-      // Pink bow for girls
-      canvas.drawCircle(Offset(cx + w * .22, cy - h * .18), w * .09,
-          Paint()..color = const Color(0xFFE8A0BF));
+      canvas.drawPath(Path()..moveTo(cx - w * .18, cy - h * .09)..quadraticBezierTo(cx - w * .10, cy - h * .145, cx - w * .03, cy - h * .11), browP);
+      canvas.drawPath(Path()..moveTo(cx + w * .18, cy - h * .09)..quadraticBezierTo(cx + w * .10, cy - h * .145, cx + w * .03, cy - h * .11), browP);
     } else {
-      // Teal headband for boys
-      canvas.drawRect(
-          Rect.fromLTWH(cx - w * .36, cy - h * .14, w * .72, h * .08),
-          Paint()..color = const Color(0xFF4DD0C4));
+      canvas.drawPath(Path()..moveTo(cx - w * .19, cy - h * .105)..quadraticBezierTo(cx - w * .10, cy - h * .135, cx - w * .02, cy - h * .11), browP);
+      canvas.drawPath(Path()..moveTo(cx + w * .19, cy - h * .105)..quadraticBezierTo(cx + w * .10, cy - h * .135, cx + w * .02, cy - h * .11), browP);
     }
+
+    // ── Eyes: sclera ──────────────────────────────────────────────────────────
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * .12, cy + h * .02), width: w * .16, height: h * .13), Paint()..color = Colors.white);
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * .12, cy + h * .02), width: w * .16, height: h * .13), Paint()..color = Colors.white);
+
+    // Iris
+    canvas.drawCircle(Offset(cx - w * .12, cy + h * .024), w * .054, Paint()..color = _iris[s]);
+    canvas.drawCircle(Offset(cx + w * .12, cy + h * .024), w * .054, Paint()..color = _iris[s]);
+
+    // Pupil
+    canvas.drawCircle(Offset(cx - w * .12, cy + h * .024), w * .030, Paint()..color = const Color(0xFF1A1A2E));
+    canvas.drawCircle(Offset(cx + w * .12, cy + h * .024), w * .030, Paint()..color = const Color(0xFF1A1A2E));
+
+    // Shine
+    canvas.drawCircle(Offset(cx - w * .107, cy + h * .009), w * .013, Paint()..color = Colors.white);
+    canvas.drawCircle(Offset(cx + w * .133, cy + h * .009), w * .013, Paint()..color = Colors.white);
+
+    // Eyelid line
+    final lidP = Paint()
+      ..color = Color.fromARGB(80, (hair.r * 255).round(), (hair.g * 255).round(), (hair.b * 255).round())
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w * .020
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(Rect.fromCenter(center: Offset(cx - w * .12, cy + h * .02), width: w * .17, height: h * .14), 3.45, 2.80, false, lidP);
+    canvas.drawArc(Rect.fromCenter(center: Offset(cx + w * .12, cy + h * .02), width: w * .17, height: h * .14), 3.45, 2.80, false, lidP);
+
+    // ── Nose (subtle) ─────────────────────────────────────────────────────────
+    final noseShade = Paint()
+      ..color = Color.fromARGB(100, ((skin.r * 255).round() - 25).clamp(0, 255), ((skin.g * 255).round() - 30).clamp(0, 255), ((skin.b * 255).round() - 30).clamp(0, 255))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w * .020
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(
+      Path()
+        ..moveTo(cx - w * .04, cy + h * .07)
+        ..quadraticBezierTo(cx - w * .07, cy + h * .13, cx - w * .04, cy + h * .15)
+        ..quadraticBezierTo(cx, cy + h * .165, cx + w * .04, cy + h * .15)
+        ..quadraticBezierTo(cx + w * .07, cy + h * .13, cx + w * .04, cy + h * .07),
+      noseShade,
+    );
+
+    // ── Cheek blush ───────────────────────────────────────────────────────────
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * .24, cy + h * .10), width: w * .18, height: h * .10), Paint()..color = const Color(0x4DFF9999));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * .24, cy + h * .10), width: w * .18, height: h * .10), Paint()..color = const Color(0x4DFF9999));
+
+    // ── Mouth ─────────────────────────────────────────────────────────────────
+    canvas.drawPath(
+      Path()..moveTo(cx - w * .10, cy + h * .21)..quadraticBezierTo(cx, cy + h * .275, cx + w * .10, cy + h * .21),
+      Paint()..color = const Color(0xFFC0705A)..style = PaintingStyle.stroke..strokeWidth = w * .028..strokeCap = StrokeCap.round,
+    );
+    canvas.drawPath(
+      Path()..moveTo(cx - w * .10, cy + h * .21)..quadraticBezierTo(cx - w * .04, cy + h * .19, cx, cy + h * .20)..quadraticBezierTo(cx + w * .04, cy + h * .19, cx + w * .10, cy + h * .21),
+      Paint()..color = const Color(0xFFC0705A)..style = PaintingStyle.stroke..strokeWidth = w * .016..strokeCap = StrokeCap.round,
+    );
+    // Dimples
+    canvas.drawCircle(Offset(cx - w * .13, cy + h * .235), w * .014, Paint()..color = const Color(0x66D4A090));
+    canvas.drawCircle(Offset(cx + w * .13, cy + h * .235), w * .014, Paint()..color = const Color(0x66D4A090));
   }
 
   @override
@@ -361,12 +461,14 @@ class CelebrationOverlay extends StatefulWidget {
   final int streak;
   final bool streakRenewed;
   final VoidCallback onContinue;
+  final VoidCallback? onDismiss;
 
   const CelebrationOverlay({
     super.key,
     required this.streak,
     required this.streakRenewed,
     required this.onContinue,
+    this.onDismiss,
   });
 
   @override
@@ -461,7 +563,7 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
       builder: (context, _) => Stack(
         children: [
           GestureDetector(
-            onTap: () {},
+            onTap: widget.onDismiss,
             child: Container(
               width: double.infinity,
               height: double.infinity,

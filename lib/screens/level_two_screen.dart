@@ -2,11 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:robolearn/services/sound_service.dart';
 import 'package:robolearn/theme/app_theme.dart';
 import 'package:robolearn/models/challenge_model.dart';
 import 'package:robolearn/models/child_model.dart';
 import 'package:robolearn/widgets/shared_widgets.dart';
-import 'package:robolearn/services/child_firestore_service.dart';
 import 'package:robolearn/services/child_progress_service.dart';
 import 'package:robolearn/l10n/app_strings.dart';
 
@@ -34,10 +34,14 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
   bool _showFailToast = false;
   bool _showConnectedToast = false;
   bool _challengeSuccessfullyCompleted = false;
+  bool _streakRenewed = false;
   int? _activeBlockIndex;
   int? _highlightedLineIndex;
   late List<CodeBlockType> _availableBlocks;
   RobotConnectionStatus _connectionStatus = RobotConnectionStatus.disconnected;
+  String _animalChallenge11 = 'elephant';
+  final SoundService _soundService = SoundService();
+  bool _isArabic = false;
 
   @override
   void initState() {
@@ -60,10 +64,36 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
+    if (widget.challenge.number == 11) {
+      const animals = ['elephant', 'lion', 'cat', 'dog'];
+      _animalChallenge11 = animals[math.Random().nextInt(animals.length)];
+    }
+
+    final td = widget.challenge.targetDisplay ?? '';
+    final isEmojiOnlyChallenge =
+        (!td.contains('\n') && !td.contains(' ') && td.trim().isNotEmpty) ||
+        widget.challenge.number == 9 ||
+        widget.challenge.number == 10 ||
+        widget.challenge.number == 11;
+    if (isEmojiOnlyChallenge) {
+      _waveController.repeat(reverse: true);
+    }
+
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final arabic = AppStrings.of(context).isArabic;
+    if (arabic != _isArabic) {
+      _isArabic = arabic;
+      _soundService.setLanguage(arabic ? 'ar' : 'en-US');
+    }
   }
 
   @override
   void dispose() {
+    _soundService.dispose();
     _pulseController.dispose();
     _waveController.dispose();
     super.dispose();
@@ -194,6 +224,16 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
       return;
     }
 
+    // Pre-validate so we know whether to play sounds before animations begin.
+    final preCheckSeq = arrangedBlocks
+        .map((b) => b.type)
+        .where((t) =>
+            t != CodeBlockType.start &&
+            t != CodeBlockType.end &&
+            t != CodeBlockType.repeat)
+        .toList();
+    final solutionIsCorrect = _validateSequence(preCheckSeq);
+
     setState(() {
       _isExecuting = true;
       _activeBlockIndex = null;
@@ -201,29 +241,85 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
     });
 
     final mapping = widget.challenge.lineForBlock;
+
+    // Type-based blocks to skip entirely (challenges 8, 9 & 10).
+    final Set<CodeBlockType> skipByType = () {
+      if (widget.challenge.number == 8) {
+        // Input is always 😢, so always take the if-sad branch; skip else.
+        return {CodeBlockType.elseBlock, CodeBlockType.happy};
+      }
+      if (widget.challenge.number == 9) {
+        final s = _progressChild.streak;
+        if (s >= 5) {
+          return {
+            CodeBlockType.elseIfStreak2, CodeBlockType.clap,
+            CodeBlockType.elseBlock, CodeBlockType.encourage,
+          };
+        } else if (s >= 2) {
+          return {
+            CodeBlockType.ifStreak5, CodeBlockType.cheering,
+            CodeBlockType.elseBlock, CodeBlockType.encourage,
+          };
+        } else {
+          return {
+            CodeBlockType.ifStreak5, CodeBlockType.cheering,
+            CodeBlockType.elseIfStreak2, CodeBlockType.clap,
+          };
+        }
+      }
+      if (widget.challenge.number == 10) {
+        final isDay = DateTime.now().hour >= 6 && DateTime.now().hour < 18;
+        return isDay
+            ? {CodeBlockType.ifMoon, CodeBlockType.thenNight}
+            : {CodeBlockType.elseIfSun, CodeBlockType.thenMorning};
+      }
+      return <CodeBlockType>{};
+    }();
+
+    // Index-based execution set for challenge 11 (needed because elseBlock
+    // appears three times, so type-based skipping can't distinguish them).
+    // Indices correspond to positions in correctSequence.
+    final Set<int>? executeByIndex = widget.challenge.number == 11
+        ? const {
+            'elephant': {0, 1, 2},  // ifBig, ifHasTrunk, elephantSound
+            'lion':     {0, 3, 4},  // ifBig, elseBlock(no trunk), lionSound
+            'cat':      {5, 6, 7},  // elseBlock(small), ifFluffy, catSound
+            'dog':      {5, 8, 9},  // elseBlock(small), elseBlock(not fluffy), dogSound
+          }[_animalChallenge11]
+        : null;
+
     int seqIdx = 0;
 
     for (int i = 0; i < arrangedBlocks.length; i++) {
       final blockType = arrangedBlocks[i].type;
-      final isExecutable = blockType != CodeBlockType.start &&
-          blockType != CodeBlockType.end &&
-          blockType != CodeBlockType.repeat;
+      final isControl = blockType == CodeBlockType.start ||
+          blockType == CodeBlockType.end ||
+          blockType == CodeBlockType.repeat;
+
+      final bool shouldExecute;
+      if (isControl) {
+        shouldExecute = false;
+      } else if (executeByIndex != null) {
+        shouldExecute = executeByIndex.contains(seqIdx);
+      } else {
+        shouldExecute = !skipByType.contains(blockType);
+      }
 
       setState(() {
         _activeBlockIndex = i;
-        _highlightedLineIndex = isExecutable &&
+        _highlightedLineIndex = shouldExecute &&
                 mapping != null &&
                 seqIdx < mapping.length
             ? mapping[seqIdx]
             : null;
       });
 
-      if (isExecutable) {
-        await _executeSound(blockType);
-        seqIdx++;
+      if (shouldExecute) {
+        await _executeSound(blockType, playSound: solutionIsCorrect);
       } else {
         await Future.delayed(const Duration(milliseconds: 250));
       }
+      if (!isControl) seqIdx++;
       await Future.delayed(const Duration(milliseconds: 150));
     }
 
@@ -246,15 +342,35 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
     setState(() => _isExecuting = false);
 
     if (isCorrect) {
-      _progressChild = _markChallengeCompleted();
-      setState(() => _challengeSuccessfullyCompleted = true);
-      _showSuccessNotification();
+      final streakBefore = _progressChild.streak;
+      final challenges = SoundChallenge.soundChallenges;
+      int reachedIndex = 0;
+      for (int i = 0; i < challenges.length; i++) {
+        if (challenges[i].number == widget.challenge.number) {
+          reachedIndex = i + 1;
+          break;
+        }
+      }
       final childId = _progressChild.childId;
       if (childId != null) {
-        ChildFirestoreService()
-            .saveChild(childId: childId, child: _progressChild)
-            .catchError((_) {});
+        try {
+          _progressChild = await _progressService.registerChallengeSuccessForLevel(
+            childId: childId,
+            child: _progressChild,
+            challengeNumber: widget.challenge.number,
+            levelNumber: widget.challenge.levelNumber,
+            reachedIndex: reachedIndex,
+            totalChallengesInLevel: challenges.length,
+          );
+        } catch (_) {
+          _progressChild = _markChallengeCompleted();
+        }
+      } else {
+        _progressChild = _markChallengeCompleted();
       }
+      _streakRenewed = _progressChild.streak > streakBefore;
+      setState(() => _challengeSuccessfullyCompleted = true);
+      _showSuccessNotification();
     } else {
       setState(() {
         _progressChild = _progressChild.copyWith(
@@ -278,29 +394,31 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
         );
   }
 
-  Future<void> _executeSound(CodeBlockType type) async {
+  Future<void> _executeSound(CodeBlockType type, {bool playSound = false}) async {
+    // Fire sound concurrently with animation; only plays if solution is correct.
+    if (playSound) {
+      _soundService.playForBlock(type.name, isArabic: _isArabic);
+    }
+
     switch (type) {
       case CodeBlockType.beep:
+      case CodeBlockType.elephantSound:
         await _triggerBeepAnimation();
         break;
       case CodeBlockType.clap:
       case CodeBlockType.cheering:
       case CodeBlockType.encourage:
+      case CodeBlockType.lionSound:
+      case CodeBlockType.dogSound:
         await _triggerClapAnimation();
         break;
       case CodeBlockType.happy:
       case CodeBlockType.music:
+      case CodeBlockType.cry:
       case CodeBlockType.thenNight:
       case CodeBlockType.thenMorning:
       case CodeBlockType.catSound:
         await _triggerHappyAnimation();
-        break;
-      case CodeBlockType.elephantSound:
-        await _triggerBeepAnimation();
-        break;
-      case CodeBlockType.lionSound:
-      case CodeBlockType.dogSound:
-        await _triggerClapAnimation();
         break;
       default:
         await Future.delayed(const Duration(milliseconds: 300));
@@ -415,12 +533,35 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final totalHeight = constraints.maxHeight;
-                        final lineCount = (widget.challenge.targetDisplay ?? '')
+                        final isDay = DateTime.now().hour >= 6 &&
+                            DateTime.now().hour < 18;
+                        final streak = _progressChild.streak;
+                        final effectiveDisplay = widget.challenge.number == 9
+                            ? (streak >= 5
+                                ? '🎉'
+                                : streak >= 2
+                                    ? '👏'
+                                    : '💪')
+                            : widget.challenge.number == 10
+                                ? (isDay ? '☀️' : '🌙')
+                                : widget.challenge.number == 11
+                                    ? const {
+                                        'elephant': '🐘',
+                                        'lion': '🦁',
+                                        'cat': '🐱',
+                                        'dog': '🐶',
+                                      }[_animalChallenge11]!
+                                    : (widget.challenge.targetDisplay ?? '');
+                        final lineCount = effectiveDisplay
                             .split('\n')
                             .where((l) => l.trim().isNotEmpty)
                             .length;
-                        final visualizationHeight =
-                            (46.0 + lineCount * 48.0).clamp(110.0, 230.0);
+                        final isEmojiOnly = effectiveDisplay.isNotEmpty &&
+                            !effectiveDisplay.contains('\n') &&
+                            !effectiveDisplay.contains(' ');
+                        final visualizationHeight = isEmojiOnly
+                            ? 145.0
+                            : (46.0 + lineCount * 48.0).clamp(110.0, 230.0);
                         final codeAreaHeight = (totalHeight * 0.65).clamp(
                           360.0,
                           560.0,
@@ -439,7 +580,7 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                                     widget.challenge.instruction,
                                   ),
                                 ),
-                                if (widget.challenge.targetDisplay != null) ...[
+                                if (effectiveDisplay.isNotEmpty) ...[
                                   const SizedBox(height: 3),
                                   SizedBox(
                                     height: visualizationHeight,
@@ -447,8 +588,7 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                                       child: FractionallySizedBox(
                                         widthFactor: 0.95,
                                         child: _SoundVisualizationCard(
-                                          targetDisplay:
-                                              widget.challenge.targetDisplay!,
+                                          targetDisplay: effectiveDisplay,
                                           highlightedLineIndex:
                                               _highlightedLineIndex,
                                           pulseController: _pulseController,
@@ -618,7 +758,8 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
           if (_showCelebrationOverlay)
             CelebrationOverlay(
               streak: _progressChild.streak,
-              streakRenewed: false,
+              streakRenewed: _streakRenewed,
+              onDismiss: () => setState(() => _showCelebrationOverlay = false),
               onContinue: () {
                 setState(() => _showCelebrationOverlay = false);
                 _goToNextChallenge();
@@ -679,7 +820,7 @@ class _HeaderBar extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  '${challenge.displayNumber}',
+                  '${challenge.displayNumber})',
                   style: GoogleFonts.nunito(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
@@ -715,12 +856,12 @@ class _HeaderBar extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                 decoration: BoxDecoration(
                   color: connectionStatus == RobotConnectionStatus.disconnected
                       ? const Color(0xFF5EA1D8)
                       : const Color(0xFF9CCFC5),
-                  borderRadius: BorderRadius.circular(7),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -730,15 +871,15 @@ class _HeaderBar extends StatelessWidget {
                           ? Icons.bluetooth_searching_rounded
                           : Icons.hourglass_top_rounded,
                       color: Colors.white,
-                      size: 11,
+                      size: 13,
                     ),
-                    const SizedBox(width: 3),
+                    const SizedBox(width: 4),
                     Text(
                       connectionStatus == RobotConnectionStatus.disconnected
                           ? AppStrings.of(context).connectBtn
                           : '...',
                       style: GoogleFonts.nunito(
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                       ),
@@ -863,7 +1004,7 @@ class _InstructionCard extends StatelessWidget {
             child: Text(
               instruction,
               style: GoogleFonts.nunito(
-                fontSize: 13,
+                fontSize: 17,
                 fontWeight: FontWeight.w700,
                 color: Colors.black87,
                 height: 1.45,
@@ -896,6 +1037,11 @@ class _SoundVisualizationCard extends StatelessWidget {
     Color(0xFFE573B9),
   ];
 
+  bool get _isEmojiOnly {
+    final t = targetDisplay.trim();
+    return t.isNotEmpty && !t.contains('\n') && !t.contains(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final lines = targetDisplay
@@ -913,70 +1059,144 @@ class _SoundVisualizationCard extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.emoji_objects_rounded, size: 13, color: AppTheme.tealPrimary),
-              const SizedBox(width: 5),
-              Text(
-                AppStrings.of(context).logicToMatch,
-                style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.tealDark,
+      child: _isEmojiOnly
+          ? _buildEmojiDisplay(context, lines[0])
+          : _buildLogicDisplay(context, lines),
+    );
+  }
+
+  Widget _buildEmojiDisplay(BuildContext context, String emoji) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppTheme.tealPrimary,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            AppStrings.of(context).currentEmoji,
+            style: GoogleFonts.nunito(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        AnimatedBuilder(
+          animation: waveController,
+          builder: (ctx, _) {
+            final t = waveController.value * math.pi * 2;
+            final a1 = (0.3 + 0.5 * math.sin(t)).clamp(0.0, 1.0);
+            final a2 = (0.3 + 0.5 * math.sin(t + math.pi / 3)).clamp(0.0, 1.0);
+            final a3 = (0.3 + 0.5 * math.sin(t + 2 * math.pi / 3)).clamp(0.0, 1.0);
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildWaveBars(a1, a2, a3),
+                const SizedBox(width: 12),
+                Text(emoji, style: const TextStyle(fontSize: 46)),
+                const SizedBox(width: 12),
+                _buildWaveBars(a1, a2, a3),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWaveBars(double a1, double a2, double a3) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _waveBar(14, a1),
+        const SizedBox(height: 4),
+        _waveBar(20, a2),
+        const SizedBox(height: 4),
+        _waveBar(14, a3),
+      ],
+    );
+  }
+
+  Widget _waveBar(double width, double alpha) {
+    return Container(
+      width: width,
+      height: 3,
+      decoration: BoxDecoration(
+        color: AppTheme.tealPrimary.withValues(alpha: alpha),
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+
+  Widget _buildLogicDisplay(BuildContext context, List<String> lines) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.emoji_objects_rounded, size: 13, color: AppTheme.tealPrimary),
+            const SizedBox(width: 5),
+            Text(
+              AppStrings.of(context).logicToMatch,
+              style: GoogleFonts.nunito(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.tealDark,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: lines.asMap().entries.map((entry) {
+            final lineIdx = entry.key;
+            final color = _rowColors[lineIdx % _rowColors.length];
+            final isHighlighted = highlightedLineIndex == lineIdx;
+            final fontSize = lines.length == 1 ? 15.0 : 13.0;
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: lineIdx < lines.length - 1 ? 5 : 0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: isHighlighted ? 7 : 5,
+                ),
+                decoration: BoxDecoration(
+                  color: isHighlighted
+                      ? color.withValues(alpha: 0.22)
+                      : color.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isHighlighted ? color : color.withValues(alpha: 0.45),
+                    width: isHighlighted ? 2 : 1,
+                  ),
+                  boxShadow: isHighlighted
+                      ? [BoxShadow(color: color.withValues(alpha: 0.28), blurRadius: 6)]
+                      : null,
+                ),
+                child: Text(
+                  entry.value,
+                  style: GoogleFonts.nunito(
+                    fontSize: fontSize,
+                    fontWeight: isHighlighted ? FontWeight.w900 : FontWeight.w700,
+                    color: isHighlighted ? color : AppTheme.tealDark,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: lines.asMap().entries.map((entry) {
-              final lineIdx = entry.key;
-              final color = _rowColors[lineIdx % _rowColors.length];
-              final isHighlighted = highlightedLineIndex == lineIdx;
-              final fontSize = lines.length == 1 ? 15.0 : 13.0;
-
-              return Padding(
-                padding: EdgeInsets.only(bottom: lineIdx < lines.length - 1 ? 5 : 0),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: isHighlighted ? 7 : 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isHighlighted
-                        ? color.withValues(alpha: 0.22)
-                        : color.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isHighlighted ? color : color.withValues(alpha: 0.45),
-                      width: isHighlighted ? 2 : 1,
-                    ),
-                    boxShadow: isHighlighted
-                        ? [BoxShadow(color: color.withValues(alpha: 0.28), blurRadius: 6)]
-                        : null,
-                  ),
-                  child: Text(
-                    entry.value,
-                    style: GoogleFonts.nunito(
-                      fontSize: fontSize,
-                      fontWeight: isHighlighted ? FontWeight.w900 : FontWeight.w700,
-                      color: isHighlighted ? color : AppTheme.tealDark,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }
@@ -1249,6 +1469,7 @@ class _CodeBlocksArea extends StatelessWidget {
       if (_isIfHeader(block.type) && block.nesting == nestingLevel) {
         if (needLeadingDropSlot) widgets.add(makeDropSlot(i));
 
+        final headerIndex = i; // capture before i changes
         // Body = consecutive blocks with nesting > nestingLevel
         final bodyStart = i + 1;
         int bodyEnd = bodyStart;
@@ -1288,7 +1509,7 @@ class _CodeBlocksArea extends StatelessWidget {
             ),
             if (!isExecuting)
               GestureDetector(
-                onTap: () => onRemoveBlock(i),
+                onTap: () => onRemoveBlock(headerIndex),
                 child: Container(
                   margin: const EdgeInsets.only(left: 6),
                   padding: const EdgeInsets.all(4),

@@ -4,14 +4,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
+import '../theme/app_theme.dart';
 import 'level_one_screen.dart';
-
-// ── Main intro screen ──────────────────────────────────────────────────────────
 
 class LevelOneIntroScreen extends StatefulWidget {
   final ChildModel child;
   final Challenge challenge;
-  // When true the final button pops back instead of replacing with LevelOneScreen.
   final bool isReplay;
 
   const LevelOneIntroScreen({
@@ -27,42 +25,59 @@ class LevelOneIntroScreen extends StatefulWidget {
 
 class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
     with TickerProviderStateMixin {
+
+  // ── Sequence ───────────────────────────────────────────────────────────────
   int _phase = 0;
-  double _robotStep = 0.0; // 0 = start, 1 = mid, 2 = end
+
+  // Grid robot: 0.0 = row 2 (start), 1.0 = row 1 (target)
+  double _robotStep = 0.0;
+
+  // Code blocks visibility: [START, MOVE FORWARD, END]
+  final List<bool> _commandVisible = [false, false, false];
   int _activeCommandIndex = -1;
-  final List<bool> _commandVisible = [false, false, false, false];
+
+  // Speech bubble
   String _speechText = '';
   bool _showSpeech = false;
+
+  // Celebration / end
   bool _celebrating = false;
   bool _showPlayButton = false;
 
+  // ── Hand animation ─────────────────────────────────────────────────────────
+  // 0.0 → 0.55 : drag from palette to code area
+  // 0.55 → 1.0 : move to Run button and press it
+  double _handAnimValue = 0.0;
+  bool _showHand = false;
+  bool _runButtonPressed = false; // visual "pressed" state for Run button
+
+  // ── Persistent animation controllers ──────────────────────────────────────
   late AnimationController _bounceController;
   late Animation<double> _bounceAnim;
+
   late AnimationController _celebrateController;
   late Animation<double> _celebrateAnim;
-  late AnimationController _walkController;
-  late Animation<double> _walkAnim;
+
   late AnimationController _glowController;
   late Animation<double> _glowAnim;
 
-  static const _commandLabels = [
-    'START',
-    'MOVE FORWARD',
-    'MOVE FORWARD',
-    'END',
-  ];
+  late AnimationController _runPulseController;
+  late Animation<double> _runPulseAnim;
+
+  // ── Tutorial block data ────────────────────────────────────────────────────
+  static const _commandLabels = ['START', 'Move Forward', 'END'];
   static const _commandColors = [
-    Color(0xFF43A047),
-    Color(0xFF1E88E5),
-    Color(0xFF1E88E5),
-    Color(0xFFEF6C00),
+    Color(0xFF4CAF50),
+    Color(0xFF2196F3),
+    Color(0xFF9C27B0),
   ];
   static const _commandIcons = [
     Icons.play_arrow_rounded,
     Icons.arrow_upward_rounded,
-    Icons.arrow_upward_rounded,
-    Icons.flag_rounded,
+    Icons.stop_rounded,
   ];
+
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   @override
   void initState() {
@@ -70,9 +85,9 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
 
     _bounceController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _bounceAnim = Tween<double>(begin: 0, end: -7).animate(
+    _bounceAnim = Tween<double>(begin: 0, end: -6).animate(
       CurvedAnimation(parent: _bounceController, curve: Curves.easeInOut),
     );
 
@@ -80,106 +95,66 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _celebrateAnim = Tween<double>(begin: 1.0, end: 1.25).animate(
+    _celebrateAnim = Tween<double>(begin: 1.0, end: 1.3).animate(
       CurvedAnimation(parent: _celebrateController, curve: Curves.elasticOut),
-    );
-
-    _walkController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 320),
-    )..repeat(reverse: true);
-    _walkAnim = Tween<double>(begin: -1.0, end: 1.0).animate(
-      CurvedAnimation(parent: _walkController, curve: Curves.easeInOut),
     );
 
     _glowController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
-    _glowAnim = Tween<double>(begin: 0.25, end: 0.85).animate(
+    _glowAnim = Tween<double>(begin: 0.2, end: 0.8).animate(
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    );
+
+    _runPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    )..repeat(reverse: true);
+    _runPulseAnim = Tween<double>(begin: 1.0, end: 1.12).animate(
+      CurvedAnimation(parent: _runPulseController, curve: Curves.easeInOut),
     );
 
     _startSequence();
   }
 
-  void _startSequence() async {
-    await Future.delayed(const Duration(milliseconds: 1000));
+  @override
+  void dispose() {
+    _bounceController.dispose();
+    _celebrateController.dispose();
+    _glowController.dispose();
+    _runPulseController.dispose();
+    super.dispose();
+  }
 
-    // Phase 1 — greeting
+  // ── Sequence helpers ───────────────────────────────────────────────────────
+
+  Future<void> _delay(int ms) => Future.delayed(Duration(milliseconds: ms));
+
+  void _setSpeech(String text) {
     if (!mounted) return;
-    setState(() {
-      _phase = 1;
-      _speechText = "Hi! I'm Robo! 🤖";
-      _showSpeech = true;
-    });
-    await Future.delayed(const Duration(milliseconds: 2800));
-    if (!mounted) return;
-    setState(() => _speechText = "I follow commands\nin the RIGHT order!");
-    await Future.delayed(const Duration(milliseconds: 3200));
+    setState(() { _speechText = text; _showSpeech = true; });
+  }
+
+  void _hideSpeech() {
     if (!mounted) return;
     setState(() => _showSpeech = false);
-    await Future.delayed(const Duration(milliseconds: 700));
+  }
 
-    // Phase 2 — commands appear one by one (top to bottom)
-    if (!mounted) return;
-    setState(() => _phase = 2);
-    for (int i = 0; i < 4; i++) {
-      await Future.delayed(const Duration(milliseconds: 1000));
-      if (!mounted) return;
-      setState(() => _commandVisible[i] = true);
-    }
-    await Future.delayed(const Duration(milliseconds: 1000));
-    if (!mounted) return;
-    setState(() {
-      _speechText = "Watch me run\neach command! ▶";
-      _showSpeech = true;
+  /// Animates `_handAnimValue` from [from] to [to] over [durationMs].
+  Future<void> _animateHand(double from, double to, int durationMs) async {
+    final ctrl = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: durationMs),
+    );
+    final anim = Tween<double>(begin: from, end: to).animate(
+      CurvedAnimation(parent: ctrl, curve: Curves.easeInOut),
+    );
+    anim.addListener(() {
+      if (mounted) setState(() => _handAnimValue = anim.value);
     });
-    await Future.delayed(const Duration(milliseconds: 3000));
-    if (!mounted) return;
-    setState(() => _showSpeech = false);
-    await Future.delayed(const Duration(milliseconds: 600));
-
-    // Phase 3 — execute commands one by one
-    if (!mounted) return;
-    setState(() => _phase = 3);
-
-    setState(() => _activeCommandIndex = 0);
-    await Future.delayed(const Duration(milliseconds: 1600));
-
-    if (!mounted) return;
-    setState(() => _activeCommandIndex = 1);
-    _animateRobotTo(1.0);
-    await Future.delayed(const Duration(milliseconds: 2200));
-
-    if (!mounted) return;
-    setState(() => _activeCommandIndex = 2);
-    _animateRobotTo(2.0);
-    await Future.delayed(const Duration(milliseconds: 2200));
-
-    if (!mounted) return;
-    setState(() => _activeCommandIndex = 3);
-    await Future.delayed(const Duration(milliseconds: 1200));
-
-    // Phase 4 — celebrate
-    if (!mounted) return;
-    _bounceController.stop();
-    _walkController.stop();
-    setState(() {
-      _phase = 4;
-      _celebrating = true;
-      _speechText = "Goal reached! 🎉\nOrder matters!";
-      _showSpeech = true;
-    });
-    _celebrateController.forward();
-    await Future.delayed(const Duration(milliseconds: 4000));
-
-    // Phase 5 — show play button
-    if (!mounted) return;
-    setState(() {
-      _showSpeech = false;
-      _showPlayButton = true;
-    });
+    await ctrl.forward();
+    ctrl.dispose();
   }
 
   void _animateRobotTo(double target) {
@@ -197,13 +172,95 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
     ctrl.forward().then((_) => ctrl.dispose());
   }
 
-  @override
-  void dispose() {
-    _bounceController.dispose();
-    _celebrateController.dispose();
-    _walkController.dispose();
-    _glowController.dispose();
-    super.dispose();
+  // ── Main animation sequence ────────────────────────────────────────────────
+
+  void _startSequence() async {
+    await _delay(700);
+
+    // ── Phase 1: Greeting ──────────────────────────────────────────────────
+    if (!mounted) return;
+    setState(() => _phase = 1);
+    _setSpeech("Hi! I'm Robo! 🤖");
+    await _delay(2400);
+    if (!mounted) return;
+    _setSpeech("Watch me teach you\nhow to code! 🎯");
+    await _delay(2900);
+    _hideSpeech();
+    await _delay(450);
+
+    // ── Phase 2: Grid + challenge ─────────────────────────────────────────
+    if (!mounted) return;
+    setState(() => _phase = 2);
+    await _delay(250);
+    _setSpeech("The robot must reach\nits goal! ⬆️");
+    await _delay(3000);
+    _hideSpeech();
+    await _delay(450);
+
+    // ── Phase 3: Palette appears ──────────────────────────────────────────
+    if (!mounted) return;
+    setState(() {
+      _phase = 3;
+      _commandVisible[0] = true; // START
+      _commandVisible[2] = true; // END
+    });
+    _setSpeech("Step 1: Drag 'Move Forward'\nto your code! 📦");
+    await _delay(1000);
+
+    // Hand appears at the Move Forward palette chip, then drags it up
+    if (!mounted) return;
+    setState(() => _showHand = true);
+    await _animateHand(0.0, 0.55, 2400);   // drag: palette → code area
+
+    // Block lands in code area
+    if (!mounted) return;
+    setState(() { _commandVisible[1] = true; _phase = 4; });
+    _hideSpeech();
+    await _delay(600);
+
+    // ── Phase 5: Step 2 – press Run ───────────────────────────────────────
+    if (!mounted) return;
+    setState(() => _phase = 5);
+    _setSpeech("Step 2: Press Run ▶️\nWatch what happens!");
+    await _delay(1000);
+
+    // Hand moves from code area to Run button, then taps
+    await _animateHand(0.55, 1.0, 2000);   // move to Run → tap
+
+    // Visual "tap" on the Run button
+    if (!mounted) return;
+    setState(() => _runButtonPressed = true);
+    await _delay(320);
+    setState(() => _runButtonPressed = false);
+    _hideSpeech();
+    await _delay(250);
+    setState(() => _showHand = false);
+
+    // ── Phase 6: Execute – robot moves ────────────────────────────────────
+    if (!mounted) return;
+    setState(() => _phase = 6);
+    setState(() => _activeCommandIndex = 0);
+    await _delay(1200);
+
+    if (!mounted) return;
+    setState(() => _activeCommandIndex = 1);
+    _animateRobotTo(1.0);
+    await _delay(2200);
+
+    if (!mounted) return;
+    setState(() => _activeCommandIndex = 2);
+    await _delay(900);
+
+    // ── Phase 7: Celebrate ────────────────────────────────────────────────
+    if (!mounted) return;
+    _bounceController.stop();
+    setState(() { _phase = 7; _celebrating = true; });
+    _setSpeech("Goal reached! 🎉\nOrder matters!");
+    _celebrateController.forward();
+    await _delay(4000);
+
+    if (!mounted) return;
+    setState(() { _showSpeech = false; _showPlayButton = true; });
   }
 
   void _onPlay() {
@@ -213,16 +270,16 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
     }
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (context2, animation, secondaryAnimation) => LevelOneScreen(
-          child: widget.child,
-          challenge: widget.challenge,
-        ),
-        transitionsBuilder: (context2, anim, secondaryAnimation, child) =>
+        pageBuilder: (ctx2, anim, _) =>
+            LevelOneScreen(child: widget.child, challenge: widget.challenge),
+        transitionsBuilder: (ctx2, anim, _, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 500),
       ),
     );
   }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -235,14 +292,13 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
             child: Column(
               children: [
                 _buildHeader(),
-                const SizedBox(height: 6),
-                // Speech bubble — AnimatedSize so it takes no space when hidden
+                const SizedBox(height: 4),
                 AnimatedSize(
-                  duration: const Duration(milliseconds: 320),
+                  duration: const Duration(milliseconds: 300),
                   curve: Curves.easeInOut,
                   child: _showSpeech
                       ? Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+                          padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
                           child: _SpeechBubble(
                             key: ValueKey(_speechText),
                             text: _speechText,
@@ -250,14 +306,11 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                         )
                       : const SizedBox.shrink(),
                 ),
+                const SizedBox(height: 6),
+                _buildGridScene(),
                 const SizedBox(height: 8),
-                // Robot scene — fixed height
-                _buildScene(),
-                const SizedBox(height: 10),
-                // Code panel — expands to fill remaining space
                 Expanded(child: _buildCodePanel()),
-                // Bottom spacer for play button overlay
-                SizedBox(height: _showPlayButton ? 82 + bottomPad : 16),
+                SizedBox(height: _showPlayButton ? 82 + bottomPad : 14),
               ],
             ),
           ),
@@ -268,343 +321,696 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
     );
   }
 
-  // ── Background ────────────────────────────────────────────────────────────────
+  // ── Background ─────────────────────────────────────────────────────────────
 
   Widget _buildBackground() {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
+          colors: [Color(0xFFD4F5EE), Color(0xFFB0ECD9), Color(0xFFCAF0FC)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF0D1B2A), Color(0xFF1B2A4A), Color(0xFF0D2340)],
         ),
       ),
     );
   }
 
-  // ── Header ────────────────────────────────────────────────────────────────────
+  // ── Header ─────────────────────────────────────────────────────────────────
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFF4DD0C4).withValues(alpha: 0.15),
+              color: AppTheme.tealPrimary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: const Color(0xFF4DD0C4).withValues(alpha: 0.5),
-              ),
+              border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.4)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.star_rounded,
-                    color: Color(0xFFFFD700), size: 16),
-                const SizedBox(width: 6),
-                Text(
-                  'Level 1',
-                  style: GoogleFonts.nunito(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+                const Icon(Icons.star_rounded, color: Color(0xFFFFB300), size: 15),
+                const SizedBox(width: 5),
+                Text('Level 1',
+                    style: GoogleFonts.nunito(
+                        color: AppTheme.tealDark,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800)),
               ],
             ),
           ),
           const Spacer(),
-          Text(
-            'Sequential Logic',
-            style: GoogleFonts.nunito(
-              color: Colors.white.withValues(alpha: 0.6),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.4, end: 0);
-  }
-
-  // ── Robot scene (path) ────────────────────────────────────────────────────────
-
-  Widget _buildScene() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        height: 128,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
-        ),
-        child: LayoutBuilder(builder: (ctx, box) {
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              ..._buildStarfield(box.maxWidth, box.maxHeight),
-              Positioned(
-                left: 20,
-                right: 20,
-                bottom: 20,
-                child: _buildPath(box.maxWidth - 40),
-              ),
-            ],
-          );
-        }),
-      ).animate().fadeIn(duration: 700.ms, delay: 200.ms),
-    );
-  }
-
-  List<Widget> _buildStarfield(double w, double h) {
-    final rng = math.Random(77);
-    return List.generate(12, (i) {
-      final x = rng.nextDouble() * w;
-      final y = rng.nextDouble() * (h * 0.45);
-      final sz = 1.2 + rng.nextDouble() * 2.0;
-      return Positioned(
-        left: x,
-        top: y,
-        child: AnimatedBuilder(
-          animation: _glowAnim,
-          builder: (context2, child) => Container(
-            width: sz,
-            height: sz,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: _glowAnim.value * 0.55),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-      );
-    });
-  }
-
-  Widget _buildPath(double pathWidth) {
-    final robotFrac = (_robotStep / 2.0).clamp(0.0, 1.0);
-    // Usable travel = total width minus both marker widths (44px each) minus offsets
-    final usable = pathWidth - 88.0;
-
-    return SizedBox(
-      height: 90,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Ground strip
-          Positioned(
-            left: 40,
-            right: 40,
-            top: 38,
+          Text('Sequential Logic',
+              style: GoogleFonts.nunito(
+                  color: AppTheme.tealMid,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600)),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: _onPlay,
             child: Container(
-              height: 12,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A3A5C),
-                borderRadius: BorderRadius.circular(6),
+                color: Colors.white.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
               ),
+              child: Text('Skip',
+                  style: GoogleFonts.nunito(
+                      color: AppTheme.tealDark,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700)),
             ),
-          ),
-          // Dashed centre line
-          Positioned(
-            left: 40,
-            right: 40,
-            top: 43,
-            child: CustomPaint(
-              painter: _DashedLinePainter(
-                color: Colors.white.withValues(alpha: 0.22),
-              ),
-              child: const SizedBox(height: 4),
-            ),
-          ),
-          // START marker
-          Positioned(
-            left: 0,
-            top: 18,
-            child: _PathMarker(
-              icon: Icons.play_arrow_rounded,
-              label: 'START',
-              color: const Color(0xFF43A047),
-              active: _activeCommandIndex >= 0,
-            ),
-          ),
-          // END / flag marker
-          Positioned(
-            right: 0,
-            top: 18,
-            child: _PathMarker(
-              icon: Icons.flag_rounded,
-              label: 'END',
-              color: const Color(0xFFEF6C00),
-              active: _activeCommandIndex == 3 || _celebrating,
-            ),
-          ),
-          // Robot
-          AnimatedBuilder(
-            animation:
-                Listenable.merge([_bounceAnim, _walkAnim, _celebrateAnim]),
-            builder: (context2, child) {
-              final x = 36.0 + robotFrac * usable;
-              final bounce = _celebrating ? 0.0 : _bounceAnim.value;
-              final scale = _celebrating ? _celebrateAnim.value : 1.0;
-              final walk =
-                  (_robotStep > 0 && _robotStep < 2) ? _walkAnim.value : 0.0;
-              return Positioned(
-                left: x - 24,
-                top: 0 + bounce,
-                child: Transform.scale(
-                  scale: scale,
-                  child: SizedBox(
-                    width: 48,
-                    height: 58,
-                    child: CustomPaint(
-                      painter: _RobotPainter(
-                        isHappy: _celebrating,
-                        walkPhase: walk,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
           ),
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.3, end: 0);
   }
 
-  // ── Code panel (vertical command blocks) ──────────────────────────────────────
+  // ── Grid scene ─────────────────────────────────────────────────────────────
 
-  Widget _buildCodePanel() {
+  Widget _buildGridScene() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          color: Colors.white.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+              color: AppTheme.tealPrimary.withValues(alpha: 0.18), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+                color: AppTheme.tealPrimary.withValues(alpha: 0.10),
+                blurRadius: 10,
+                offset: const Offset(0, 3))
+          ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Panel header — mirrors the real game's code area header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF4DD0C4).withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.code_rounded,
-                      color: Color(0xFF4DD0C4),
-                      size: 16,
-                    ),
+            // Challenge instruction
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(7),
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Your Code',
+                  child: const Icon(Icons.lightbulb_rounded,
+                      color: AppTheme.tealPrimary, size: 15),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    'The robot should reach its goal',
                     style: GoogleFonts.nunito(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                    ),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.tealDark),
                   ),
-                  const Spacer(),
-                  if (_phase >= 3)
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildMiniGrid(),
+                const SizedBox(width: 14),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
+                    _LegendRow(
+                        color: AppTheme.tealPrimary,
+                        icon: Icons.android_rounded,
+                        label: 'Robot'),
+                    const SizedBox(height: 8),
+                    _LegendRow(
+                        color: Colors.amber.shade600,
+                        icon: Icons.flag_rounded,
+                        label: 'Target'),
+                    const SizedBox(height: 14),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                          horizontal: 10, vertical: 7),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF4DD0C4).withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        color: const Color(0xFF2196F3).withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: const Color(0xFF4DD0C4).withValues(alpha: 0.4),
-                        ),
+                            color: const Color(0xFF2196F3)
+                                .withValues(alpha: 0.30)),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Column(
                         children: [
-                          const Icon(Icons.play_arrow_rounded,
-                              color: Color(0xFF4DD0C4), size: 13),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Running...',
-                            style: GoogleFonts.nunito(
-                              color: const Color(0xFF4DD0C4),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
+                          AnimatedBuilder(
+                            animation: _glowAnim,
+                            builder: (ctx, _) => Icon(
+                              Icons.arrow_upward_rounded,
+                              color: Color.lerp(
+                                  const Color(0xFF2196F3),
+                                  AppTheme.tealPrimary,
+                                  _glowAnim.value),
+                              size: 28,
                             ),
                           ),
+                          const SizedBox(height: 2),
+                          Text('Move\nForward',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.nunito(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF1565C0))),
                         ],
                       ),
-                    ).animate(onPlay: (c) => c.repeat(reverse: true))
-                        .fadeIn(duration: 600.ms)
-                        .then()
-                        .fadeOut(duration: 600.ms),
-                ],
-              ),
-            ),
-
-            // Divider
-            Container(
-              height: 1,
-              color: Colors.white.withValues(alpha: 0.08),
-              margin: const EdgeInsets.symmetric(horizontal: 12),
-            ),
-
-            // Command blocks — vertical stack, scrollable
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                child: Column(
-                  children: List.generate(4, (i) {
-                    if (!_commandVisible[i]) return const SizedBox.shrink();
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _CommandBlock(
-                        label: _commandLabels[i],
-                        icon: _commandIcons[i],
-                        color: _commandColors[i],
-                        isActive: _activeCommandIndex == i,
-                        isDone: _activeCommandIndex > i,
-                        stepNumber: i + 1,
-                      ),
-                    );
-                  }),
+                    ),
+                  ],
                 ),
-              ),
+              ],
             ),
           ],
         ),
-      ).animate().fadeIn(duration: 600.ms, delay: 150.ms),
+      ),
+    ).animate().fadeIn(duration: 600.ms, delay: 100.ms);
+  }
+
+  Widget _buildMiniGrid() {
+    const int gridW = 5;
+    const int gridH = 5;
+    const double cellSize = 24.0;
+    const double gap = 3.0;
+    const double total = gridW * cellSize + (gridW - 1) * gap;
+
+    final double robotTop = (2.0 - _robotStep) * (cellSize + gap);
+    const double robotLeft = 2 * (cellSize + gap);
+
+    return SizedBox(
+      width: total,
+      height: total,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (int y = 0; y < gridH; y++)
+            for (int x = 0; x < gridW; x++)
+              Positioned(
+                left: x * (cellSize + gap),
+                top: y * (cellSize + gap),
+                child: _MiniCell(
+                  isTarget: x == 2 && y == 1 && _robotStep < 0.95,
+                  cellSize: cellSize,
+                ),
+              ),
+          // Animated robot
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 50),
+            left: robotLeft,
+            top: robotTop,
+            child: AnimatedBuilder(
+              animation: Listenable.merge([_bounceAnim, _celebrateAnim]),
+              builder: (ctx, _) {
+                final bounce = _celebrating ? 0.0 : _bounceAnim.value;
+                final scale = _celebrating ? _celebrateAnim.value : 1.0;
+                return Transform.translate(
+                  offset: Offset(0, bounce),
+                  child: Transform.scale(
+                    scale: scale,
+                    child: _MiniRobotCell(cellSize: cellSize),
+                  ),
+                );
+              },
+            ),
+          ),
+          // Path line between robot and target
+          if (_phase >= 2 && _robotStep < 0.95)
+            Positioned(
+              left: robotLeft + cellSize / 2 - 1,
+              top: 1 * (cellSize + gap) + cellSize,
+              child: AnimatedBuilder(
+                animation: _glowAnim,
+                builder: (ctx, _) => Container(
+                  width: 2,
+                  height: (2.0 - _robotStep) * (cellSize + gap) - cellSize - 2,
+                  decoration: BoxDecoration(
+                    color: AppTheme.tealPrimary
+                        .withValues(alpha: 0.3 + _glowAnim.value * 0.4),
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
-  // ── Celebration particles ─────────────────────────────────────────────────────
+  // ── Code / tutorial panel ──────────────────────────────────────────────────
+
+  Widget _buildCodePanel() {
+    final bool showRunHighlight = _phase == 5;
+    final bool isExecuting = _phase == 6;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      // LayoutBuilder lets us compute hand positions from actual panel size
+      child: LayoutBuilder(builder: (ctx, box) {
+        final w = box.maxWidth;
+        final h = box.maxHeight;
+
+        // Approximate positions relative to the panel's top-left corner.
+        // Run button sits in the header row, right side.
+        final runBtnPos = Offset(w * 0.82, h * 0.055);
+        // Drop zone = center of the code-area section (~35 % down the panel).
+        final dropZonePos = Offset(w * 0.50, h * 0.34);
+        // Move Forward chip in the palette row = 2nd chip, ~40 % from left,
+        // near the bottom of the panel.
+        final paletteChipPos = Offset(w * 0.38, h * 0.83);
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // ── Panel body ─────────────────────────────────────────────────
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.90),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.15),
+                    width: 1.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: AppTheme.tealPrimary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          child: const Icon(Icons.code_rounded,
+                              color: AppTheme.tealPrimary, size: 14),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('Your Code',
+                            style: GoogleFonts.nunito(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.tealDark)),
+                        const Spacer(),
+                        // Run button
+                        AnimatedBuilder(
+                          animation: _runPulseAnim,
+                          builder: (ctx2, _) => Transform.scale(
+                            scale: showRunHighlight
+                                ? _runPulseAnim.value
+                                : 1.0,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 120),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: _runButtonPressed
+                                    ? AppTheme.tealDark
+                                    : showRunHighlight
+                                        ? AppTheme.tealPrimary
+                                        : isExecuting
+                                            ? const Color(0xFF9CCFC5)
+                                            : AppTheme.tealPrimary
+                                                .withValues(alpha: 0.45),
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: (showRunHighlight || _runButtonPressed)
+                                    ? [
+                                        BoxShadow(
+                                          color: AppTheme.tealPrimary
+                                              .withValues(alpha: 0.55),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 3),
+                                        )
+                                      ]
+                                    : null,
+                              ),
+                              child: Transform.scale(
+                                scale: _runButtonPressed ? 0.88 : 1.0,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isExecuting
+                                          ? Icons.hourglass_top_rounded
+                                          : Icons.play_arrow_rounded,
+                                      color: Colors.white,
+                                      size: 14,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      isExecuting ? 'Running...' : 'Run',
+                                      style: GoogleFonts.nunito(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Step 2 highlight banner
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 280),
+                    child: showRunHighlight
+                        ? Container(
+                            margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: AppTheme.tealPrimary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                  color: AppTheme.tealPrimary
+                                      .withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.tealPrimary,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Center(
+                                    child: Text('2',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w900)),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text('Press the Run button above! ▶️',
+                                    style: GoogleFonts.nunito(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppTheme.tealDark)),
+                              ],
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+
+                  Divider(height: 1, color: Colors.grey.shade200),
+
+                  // Code area
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5FAF9),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 6, horizontal: 6),
+                        child: Column(
+                          children: List.generate(3, (i) {
+                            if (!_commandVisible[i]) {
+                              return const SizedBox.shrink();
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 5),
+                              child: _TutorialCommandBlock(
+                                label: _commandLabels[i],
+                                icon: _commandIcons[i],
+                                color: _commandColors[i],
+                                isActive: _activeCommandIndex == i,
+                                isDone: _activeCommandIndex > i,
+                                stepNumber: i + 1,
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // Step 1 label
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 250),
+                    child: _phase >= 3
+                        ? Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF7C4DFF),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Center(
+                                    child: Text('1',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w900)),
+                                  ),
+                                ),
+                                const SizedBox(width: 7),
+                                Text('Drag blocks to build your code',
+                                    style: GoogleFonts.nunito(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppTheme.tealDark)),
+                              ],
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+
+                  // Palette chips
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 300),
+                    child: _phase >= 3
+                        ? Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                            child: Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                _PaletteChipWidget(
+                                  label: 'START',
+                                  color: const Color(0xFF4CAF50),
+                                  icon: Icons.play_arrow_rounded,
+                                ),
+                                _PaletteChipWidget(
+                                  label: 'Move Forward',
+                                  color: const Color(0xFF2196F3),
+                                  icon: Icons.arrow_upward_rounded,
+                                  // Dim while hand is "holding" it (0.10–0.55)
+                                  dimmed: _showHand &&
+                                      _handAnimValue > 0.10 &&
+                                      _handAnimValue < 0.55,
+                                ),
+                                _PaletteChipWidget(
+                                  label: 'END',
+                                  color: const Color(0xFF9C27B0),
+                                  icon: Icons.stop_rounded,
+                                ),
+                              ],
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(duration: 500.ms, delay: 100.ms),
+
+            // ── Animated hand overlay ──────────────────────────────────────
+            if (_showHand)
+              _buildHandOverlay(
+                palettePos: paletteChipPos,
+                dropPos: dropZonePos,
+                runPos: runBtnPos,
+              ),
+          ],
+        );
+      }),
+    );
+  }
+
+  // ── Hand overlay ───────────────────────────────────────────────────────────
+  //
+  // t ∈ [0.00, 0.10] : hand appears at palette chip
+  // t ∈ [0.10, 0.45] : hand drags block from palette → code area
+  // t ∈ [0.45, 0.55] : hand releases block (ghost fades, hand lifts)
+  // t ∈ [0.55, 0.70] : hand moves to Run button
+  // t ∈ [0.70, 0.85] : hand hovers over Run button
+  // t ∈ [0.85, 1.00] : hand presses Run button (scale + colour change)
+
+  Widget _buildHandOverlay({
+    required Offset palettePos,
+    required Offset dropPos,
+    required Offset runPos,
+  }) {
+    final t = _handAnimValue;
+
+    // ── Compute hand position ──────────────────────────────────────────────
+    Offset handPos;
+    double handScale = 1.0;
+    bool isPressingRun = false;
+    bool showGhost = false;
+    double ghostOpacity = 0.0;
+
+    if (t < 0.10) {
+      handPos = palettePos;
+      handScale = (t / 0.10).clamp(0.0, 1.0);
+    } else if (t < 0.45) {
+      final localT = (t - 0.10) / 0.35;
+      final curved = Curves.easeInOut.transform(localT.clamp(0.0, 1.0));
+      handPos = Offset.lerp(palettePos, dropPos, curved)!;
+      showGhost = true;
+      // Ghost fully visible once localT > 0.15
+      ghostOpacity = (localT / 0.15).clamp(0.0, 1.0);
+    } else if (t < 0.55) {
+      handPos = dropPos;
+      showGhost = true;
+      // Ghost fades out as block "lands"
+      ghostOpacity = 1.0 - ((t - 0.45) / 0.10).clamp(0.0, 1.0);
+      handScale = 0.85 + ((t - 0.45) / 0.10).clamp(0.0, 1.0) * 0.15;
+    } else if (t < 0.70) {
+      final localT = (t - 0.55) / 0.15;
+      final curved = Curves.easeInOut.transform(localT.clamp(0.0, 1.0));
+      handPos = Offset.lerp(dropPos, runPos, curved)!;
+    } else if (t < 0.85) {
+      // Gentle hover bounce over the Run button
+      final bounce =
+          math.sin(((t - 0.70) / 0.15) * math.pi * 2) * 4.0;
+      handPos = Offset(runPos.dx, runPos.dy - bounce.abs());
+    } else {
+      // Pressing down
+      isPressingRun = true;
+      handPos = Offset(runPos.dx, runPos.dy + 4);
+      handScale = 0.82;
+    }
+
+    return IgnorePointer(
+      child: Stack(
+        children: [
+          // Ghost block follows hand during drag
+          if (showGhost && ghostOpacity > 0.03)
+            Positioned(
+              left: handPos.dx - 52,
+              top: handPos.dy - 34,
+              child: Opacity(
+                opacity: ghostOpacity.clamp(0.0, 1.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2196F3),
+                    borderRadius: BorderRadius.circular(9),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF2196F3)
+                            .withValues(alpha: 0.55),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.arrow_upward_rounded,
+                          size: 12, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Text('Move Forward',
+                          style: GoogleFonts.nunito(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // Hand icon (finger with circular background)
+          Positioned(
+            left: handPos.dx - 16,
+            top: handPos.dy - 16,
+            child: Transform.scale(
+              scale: handScale,
+              alignment: Alignment.center,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.touch_app_rounded,
+                  color: isPressingRun
+                      ? AppTheme.tealPrimary
+                      : AppTheme.tealDark,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Celebration particles ──────────────────────────────────────────────────
 
   Widget _buildParticles() {
     return IgnorePointer(
       child: LayoutBuilder(builder: (ctx, box) {
-        final rng = math.Random(42);
-        const particleColors = [
+        final rng = math.Random(55);
+        const colors = [
           Color(0xFFFFD700),
-          Color(0xFF4DD0C4),
+          AppTheme.tealPrimary,
           Color(0xFFFF6B9D),
           Color(0xFF7C83FD),
           Color(0xFFFF9A3C),
         ];
         return Stack(
-          children: List.generate(24, (i) {
+          children: List.generate(22, (i) {
             final x = rng.nextDouble() * box.maxWidth;
-            final y = box.maxHeight * 0.35 +
-                rng.nextDouble() * box.maxHeight * 0.45;
-            final sz = 6.0 + rng.nextDouble() * 11;
-            final color = particleColors[i % particleColors.length];
+            final y = box.maxHeight * 0.4 +
+                rng.nextDouble() * box.maxHeight * 0.4;
+            final sz = 6.0 + rng.nextDouble() * 10;
+            final color = colors[i % colors.length];
             return Positioned(
               left: x,
               top: y,
@@ -614,19 +1020,20 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.85),
                   shape: i.isEven ? BoxShape.circle : BoxShape.rectangle,
-                  borderRadius: i.isEven ? null : BorderRadius.circular(2),
+                  borderRadius:
+                      i.isEven ? null : BorderRadius.circular(2),
                 ),
               )
                   .animate(onPlay: (c) => c.repeat())
                   .moveY(
                     begin: 0,
-                    end: -box.maxHeight * 0.65,
-                    duration: Duration(milliseconds: 1600 + (i * 65)),
+                    end: -box.maxHeight * 0.6,
+                    duration: Duration(milliseconds: 1500 + (i * 60)),
                     curve: Curves.easeOut,
                   )
                   .fadeOut(
-                    delay: Duration(milliseconds: 800 + (i * 32)),
-                    duration: const Duration(milliseconds: 700),
+                    delay: Duration(milliseconds: 750 + (i * 30)),
+                    duration: const Duration(milliseconds: 650),
                   ),
             );
           }),
@@ -635,61 +1042,52 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
     ).animate().fadeIn(duration: 200.ms);
   }
 
-  // ── Play / Got it button ──────────────────────────────────────────────────────
+  // ── Play button ────────────────────────────────────────────────────────────
 
   Widget _buildPlayButton(double bottomPad) {
     return Positioned(
-      bottom: 20 + bottomPad,
-      left: 32,
-      right: 32,
+      bottom: 18 + bottomPad,
+      left: 28,
+      right: 28,
       child: GestureDetector(
         onTap: _onPlay,
         child: Container(
           height: 56,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF4DD0C4), Color(0xFF26C6DA)],
-            ),
-            borderRadius: BorderRadius.circular(32),
+                colors: [AppTheme.tealPrimary, Color(0xFF26C6DA)]),
+            borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF4DD0C4).withValues(alpha: 0.45),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
+                color: AppTheme.tealPrimary.withValues(alpha: 0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                widget.isReplay
-                    ? Icons.check_circle_rounded
-                    : Icons.play_circle_fill_rounded,
-                color: Colors.white,
-                size: 28,
-              ),
+              const Icon(Icons.play_circle_fill_rounded,
+                  color: Colors.white, size: 28),
               const SizedBox(width: 12),
-              Text(
-                widget.isReplay ? "Got it! ✓" : "Let's Play!",
-                style: GoogleFonts.nunito(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+              Text("Let's Play! 🎮",
+                  style: GoogleFonts.nunito(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800)),
             ],
           ),
         ),
       ),
     )
         .animate()
-        .fadeIn(duration: 500.ms)
+        .fadeIn(duration: 450.ms)
         .scale(
-          begin: const Offset(0.6, 0.6),
+          begin: const Offset(0.65, 0.65),
           end: const Offset(1, 1),
           curve: Curves.elasticOut,
-          duration: 720.ms,
+          duration: 700.ms,
         );
   }
 }
@@ -707,15 +1105,15 @@ class _SpeechBubble extends StatelessWidget {
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.18),
-                blurRadius: 16,
-                offset: const Offset(0, 5),
+                color: AppTheme.tealPrimary.withValues(alpha: 0.15),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -723,31 +1121,29 @@ class _SpeechBubble extends StatelessWidget {
             text,
             textAlign: TextAlign.center,
             style: GoogleFonts.nunito(
-              fontSize: 17,
+              fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF1A237E),
+              color: AppTheme.tealDark,
               height: 1.45,
             ),
           ),
         ),
-        // Downward tail pointing toward the robot
         Align(
           alignment: Alignment.center,
           child: CustomPaint(
-            size: const Size(22, 11),
+            size: const Size(20, 10),
             painter: _BubbleTailPainter(),
           ),
         ),
       ],
     )
         .animate()
-        .fadeIn(duration: 350.ms)
+        .fadeIn(duration: 320.ms)
         .scale(
-          begin: const Offset(0.88, 0.88),
-          end: const Offset(1, 1),
-          curve: Curves.elasticOut,
-          duration: 500.ms,
-        );
+            begin: const Offset(0.9, 0.9),
+            end: const Offset(1, 1),
+            curve: Curves.elasticOut,
+            duration: 450.ms);
   }
 }
 
@@ -768,66 +1164,99 @@ class _BubbleTailPainter extends CustomPainter {
   bool shouldRepaint(_BubbleTailPainter old) => false;
 }
 
-// ── Path marker ────────────────────────────────────────────────────────────────
+// ── Mini grid cells ────────────────────────────────────────────────────────────
 
-class _PathMarker extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final bool active;
-
-  const _PathMarker({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.active,
-  });
+class _MiniCell extends StatelessWidget {
+  final bool isTarget;
+  final double cellSize;
+  const _MiniCell({required this.isTarget, required this.cellSize});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      width: cellSize,
+      height: cellSize,
+      decoration: BoxDecoration(
+        color: isTarget ? Colors.amber.shade300 : const Color(0xFFF0F4F3),
+        borderRadius: BorderRadius.circular(6),
+        border: isTarget
+            ? Border.all(color: Colors.amber.shade600, width: 1.5)
+            : null,
+      ),
+      child: isTarget
+          ? Center(
+              child: Icon(Icons.flag_rounded,
+                  color: const Color(0xFF7B5800), size: cellSize * 0.55))
+          : null,
+    );
+  }
+}
+
+class _MiniRobotCell extends StatelessWidget {
+  final double cellSize;
+  const _MiniRobotCell({required this.cellSize});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: cellSize,
+      height: cellSize,
+      decoration: BoxDecoration(
+        color: AppTheme.tealPrimary,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+            color: AppTheme.tealDark.withValues(alpha: 0.4), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+              color: AppTheme.tealPrimary.withValues(alpha: 0.4),
+              blurRadius: 6,
+              offset: const Offset(0, 2))
+        ],
+      ),
+      child: Center(
+        child: Icon(Icons.android_rounded,
+            color: Colors.white, size: cellSize * 0.65),
+      ),
+    );
+  }
+}
+
+// ── Legend ─────────────────────────────────────────────────────────────────────
+
+class _LegendRow extends StatelessWidget {
+  final Color color;
+  final IconData icon;
+  final String label;
+  const _LegendRow(
+      {required this.color, required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 450),
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: active ? color : color.withValues(alpha: 0.2),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: active
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.22),
-              width: 2.5,
-            ),
-            boxShadow: active
-                ? [BoxShadow(color: color.withValues(alpha: 0.6), blurRadius: 14)]
-                : [],
-          ),
-          child: Icon(
-            icon,
-            color: active ? Colors.white : Colors.white.withValues(alpha: 0.4),
-            size: 22,
-          ),
+        Container(
+          width: 20,
+          height: 20,
+          decoration:
+              BoxDecoration(color: color, borderRadius: BorderRadius.circular(5)),
+          child: Icon(icon, color: Colors.white, size: 13),
         ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: GoogleFonts.nunito(
-            color: active ? Colors.white : Colors.white.withValues(alpha: 0.35),
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        const SizedBox(width: 6),
+        Text(label,
+            style: GoogleFonts.nunito(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.tealDark)),
       ],
     );
   }
 }
 
-// ── Command block (vertical list style, mirrors the real game's code blocks) ───
+// ── Tutorial command block ─────────────────────────────────────────────────────
 
-class _CommandBlock extends StatelessWidget {
+class _TutorialCommandBlock extends StatelessWidget {
   final String label;
   final IconData icon;
   final Color color;
@@ -835,7 +1264,7 @@ class _CommandBlock extends StatelessWidget {
   final bool isDone;
   final int stepNumber;
 
-  const _CommandBlock({
+  const _TutorialCommandBlock({
     required this.label,
     required this.icon,
     required this.color,
@@ -847,95 +1276,78 @@ class _CommandBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 320),
+      duration: const Duration(milliseconds: 300),
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: isActive
             ? color
             : isDone
-                ? color.withValues(alpha: 0.32)
-                : color.withValues(alpha: 0.11),
-        borderRadius: BorderRadius.circular(14),
+                ? color.withValues(alpha: 0.28)
+                : color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isActive
-              ? Colors.white.withValues(alpha: 0.9)
+              ? Colors.white.withValues(alpha: 0.8)
               : isDone
-                  ? color.withValues(alpha: 0.6)
-                  : color.withValues(alpha: 0.32),
+                  ? color.withValues(alpha: 0.55)
+                  : color.withValues(alpha: 0.30),
           width: isActive ? 2.0 : 1.5,
         ),
         boxShadow: isActive
             ? [
                 BoxShadow(
-                  color: color.withValues(alpha: 0.5),
-                  blurRadius: 16,
-                  spreadRadius: 1,
-                  offset: const Offset(0, 3),
-                )
+                    color: color.withValues(alpha: 0.45),
+                    blurRadius: 14,
+                    offset: const Offset(0, 3))
               ]
             : [],
       ),
       child: Row(
         children: [
-          // Step number badge
           AnimatedContainer(
-            duration: const Duration(milliseconds: 280),
-            width: 28,
-            height: 28,
+            duration: const Duration(milliseconds: 260),
+            width: 26,
+            height: 26,
             decoration: BoxDecoration(
               color: isActive
                   ? Colors.white.withValues(alpha: 0.25)
-                  : color.withValues(alpha: isActive || isDone ? 0.3 : 0.2),
-              borderRadius: BorderRadius.circular(8),
+                  : color.withValues(alpha: 0.20),
+              borderRadius: BorderRadius.circular(7),
             ),
             child: Center(
-              child: Text(
-                '$stepNumber',
-                style: GoogleFonts.nunito(
-                  color: (isActive || isDone)
-                      ? Colors.white
-                      : color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
+              child: Text('$stepNumber',
+                  style: GoogleFonts.nunito(
+                      color: (isActive || isDone) ? Colors.white : color,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900)),
             ),
           ),
-          const SizedBox(width: 10),
-          // Coloured icon box
+          const SizedBox(width: 9),
           AnimatedContainer(
-            duration: const Duration(milliseconds: 280),
-            width: 36,
-            height: 36,
+            duration: const Duration(milliseconds: 260),
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               color: isActive
                   ? Colors.white.withValues(alpha: 0.22)
-                  : color.withValues(alpha: isDone ? 0.4 : 0.18),
-              borderRadius: BorderRadius.circular(10),
+                  : color.withValues(alpha: isDone ? 0.35 : 0.16),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               (isDone && !isActive) ? Icons.check_rounded : icon,
               color: (isActive || isDone) ? Colors.white : color,
-              size: 20,
+              size: 18,
             ),
           ),
-          const SizedBox(width: 12),
-          // Label
+          const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              label,
-              style: GoogleFonts.nunito(
-                color: (isActive || isDone)
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.6),
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.3,
-              ),
-            ),
+            child: Text(label,
+                style: GoogleFonts.nunito(
+                    color: (isActive || isDone) ? Colors.white : Colors.black87,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800)),
           ),
-          // Right indicator
           if (isActive)
             Container(
               width: 8,
@@ -945,9 +1357,7 @@ class _CommandBlock extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    blurRadius: 6,
-                  )
+                      color: Colors.white.withValues(alpha: 0.7), blurRadius: 5)
                 ],
               ),
             )
@@ -955,194 +1365,56 @@ class _CommandBlock extends StatelessWidget {
                 .scaleXY(begin: 0.5, end: 1.2, duration: 500.ms)
           else if (isDone)
             Icon(Icons.check_circle_rounded,
-                color: Colors.white.withValues(alpha: 0.85), size: 18),
+                color: Colors.white.withValues(alpha: 0.85), size: 16),
         ],
       ),
     )
         .animate()
-        .fadeIn(duration: 400.ms)
-        .slideX(
-          begin: -0.25,
-          end: 0,
-          curve: Curves.easeOutCubic,
-          duration: 500.ms,
-        );
+        .fadeIn(duration: 380.ms)
+        .slideX(begin: -0.2, end: 0, curve: Curves.easeOutCubic, duration: 450.ms);
   }
 }
 
-// ── Robot custom painter ───────────────────────────────────────────────────────
+// ── Palette chip ───────────────────────────────────────────────────────────────
 
-class _RobotPainter extends CustomPainter {
-  final bool isHappy;
-  final double walkPhase; // -1.0 to 1.0
-
-  const _RobotPainter({this.isHappy = false, this.walkPhase = 0.0});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    final bodyClr = isHappy ? const Color(0xFF4DD0C4) : const Color(0xFF546E7A);
-    final chestClr =
-        isHappy ? const Color(0xFF26C6DA) : const Color(0xFF607D8B);
-    final eyeClr =
-        isHappy ? const Color(0xFFFFD700) : const Color(0xFF4DD0C4);
-    final antennaBallClr =
-        isHappy ? const Color(0xFFFFD700) : const Color(0xFF4DD0C4);
-
-    // Left leg
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-            w * 0.23, h * 0.74 + walkPhase * 5, w * 0.22, h * 0.24),
-        const Radius.circular(5),
-      ),
-      Paint()..color = bodyClr,
-    );
-    // Right leg
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-            w * 0.55, h * 0.74 - walkPhase * 5, w * 0.22, h * 0.24),
-        const Radius.circular(5),
-      ),
-      Paint()..color = bodyClr,
-    );
-
-    // Torso
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.15, h * 0.42, w * 0.70, h * 0.33),
-        const Radius.circular(8),
-      ),
-      Paint()..color = chestClr,
-    );
-
-    // Left arm
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-            w * 0.02, h * 0.44 + walkPhase * 6, w * 0.13, h * 0.25),
-        const Radius.circular(5),
-      ),
-      Paint()..color = bodyClr,
-    );
-    // Right arm
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-            w * 0.85, h * 0.44 - walkPhase * 6, w * 0.13, h * 0.25),
-        const Radius.circular(5),
-      ),
-      Paint()..color = bodyClr,
-    );
-
-    // Chest light (outer)
-    canvas.drawCircle(
-      Offset(w * 0.5, h * 0.585),
-      w * 0.095,
-      Paint()
-        ..color =
-            isHappy ? const Color(0xFFFFD700) : const Color(0xFF4DD0C4),
-    );
-    // Chest light (inner shine)
-    canvas.drawCircle(
-      Offset(w * 0.5, h * 0.585),
-      w * 0.048,
-      Paint()..color = Colors.white.withValues(alpha: 0.55),
-    );
-
-    // Head
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.12, h * 0.04, w * 0.76, h * 0.38),
-        const Radius.circular(10),
-      ),
-      Paint()..color = bodyClr,
-    );
-
-    // Antenna stem
-    canvas.drawLine(
-      Offset(w * 0.5, h * 0.04),
-      Offset(w * 0.5, -h * 0.04),
-      Paint()
-        ..color = chestClr
-        ..strokeWidth = 2.5
-        ..strokeCap = StrokeCap.round
-        ..style = PaintingStyle.stroke,
-    );
-    // Antenna ball
-    canvas.drawCircle(
-      Offset(w * 0.5, -h * 0.065),
-      w * 0.08,
-      Paint()..color = antennaBallClr,
-    );
-
-    // Eyes (outer glow)
-    canvas.drawCircle(
-        Offset(w * 0.34, h * 0.185), w * 0.108, Paint()..color = eyeClr);
-    canvas.drawCircle(
-        Offset(w * 0.66, h * 0.185), w * 0.108, Paint()..color = eyeClr);
-    // Eyes (pupil)
-    canvas.drawCircle(Offset(w * 0.34, h * 0.185), w * 0.048,
-        Paint()..color = const Color(0xFF0D1B2A));
-    canvas.drawCircle(Offset(w * 0.66, h * 0.185), w * 0.048,
-        Paint()..color = const Color(0xFF0D1B2A));
-    // Eye shine
-    canvas.drawCircle(Offset(w * 0.355, h * 0.168), w * 0.022,
-        Paint()..color = Colors.white.withValues(alpha: 0.75));
-    canvas.drawCircle(Offset(w * 0.675, h * 0.168), w * 0.022,
-        Paint()..color = Colors.white.withValues(alpha: 0.75));
-
-    // Mouth
-    final mouthPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.4
-      ..strokeCap = StrokeCap.round;
-
-    if (isHappy) {
-      mouthPaint.color = const Color(0xFFFFD700);
-      final path = Path()
-        ..moveTo(w * 0.3, h * 0.315)
-        ..quadraticBezierTo(w * 0.5, h * 0.415, w * 0.7, h * 0.315);
-      canvas.drawPath(path, mouthPaint);
-    } else {
-      mouthPaint.color = Colors.white.withValues(alpha: 0.6);
-      canvas.drawLine(
-        Offset(w * 0.32, h * 0.355),
-        Offset(w * 0.68, h * 0.355),
-        mouthPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_RobotPainter old) =>
-      old.isHappy != isHappy || old.walkPhase != walkPhase;
-}
-
-// ── Dashed line painter ────────────────────────────────────────────────────────
-
-class _DashedLinePainter extends CustomPainter {
+class _PaletteChipWidget extends StatelessWidget {
+  final String label;
   final Color color;
-  const _DashedLinePainter({required this.color});
+  final IconData icon;
+  final bool dimmed;
+
+  const _PaletteChipWidget({
+    required this.label,
+    required this.color,
+    required this.icon,
+    this.dimmed = false,
+  });
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round;
-    double x = 0;
-    const dash = 10.0;
-    const gap = 7.0;
-    while (x < size.width) {
-      canvas.drawLine(Offset(x, 0), Offset(x + dash, 0), paint);
-      x += dash + gap;
-    }
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 300),
+      opacity: dimmed ? 0.30 : 1.0,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.10),
+          border: Border.all(color: color.withValues(alpha: 0.35)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
+            Text(label,
+                style: GoogleFonts.nunito(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: color)),
+          ],
+        ),
+      ),
+    );
   }
-
-  @override
-  bool shouldRepaint(_DashedLinePainter old) => old.color != color;
 }
