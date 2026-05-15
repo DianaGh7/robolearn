@@ -9,6 +9,7 @@ import 'package:robolearn/models/child_model.dart';
 import 'package:robolearn/widgets/shared_widgets.dart';
 import 'package:robolearn/services/child_progress_service.dart';
 import 'package:robolearn/l10n/app_strings.dart';
+import 'level_two_intro_screen.dart';
 
 class LevelTwoScreen extends StatefulWidget {
   final ChildModel child;
@@ -79,6 +80,34 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
       _waveController.repeat(reverse: true);
     }
 
+    // Auto-show tutorial the first time a child opens Level 2 with no
+    // completed Level 2 challenges (same pattern as Level 1 intro).
+    final bool isFirstLevel2Visit =
+        widget.challenge.number == SoundChallenge.soundChallenges.first.number &&
+        !SoundChallenge.soundChallenges
+            .any((c) => widget.child.completedChallengeIds.contains(c.number));
+
+    if (isFirstLevel2Visit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _showTutorial();
+      });
+    }
+  }
+
+  void _showTutorial() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (ctx2, anim, _) => LevelTwoIntroScreen(
+          child: _progressChild,
+          challenge: widget.challenge,
+          isReplay: true,
+        ),
+        transitionsBuilder: (ctx2, anim, _, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
   }
 
   @override
@@ -339,9 +368,8 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
 
     final isCorrect = _validateSequence(soundSequence);
 
-    setState(() => _isExecuting = false);
-
     if (isCorrect) {
+      setState(() => _isExecuting = false);
       final streakBefore = _progressChild.streak;
       final challenges = SoundChallenge.soundChallenges;
       int reachedIndex = 0;
@@ -378,6 +406,10 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
         );
       });
       _showFailNotification();
+      // Brief pause so the child sees the wrong result, then unlock the Run button.
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (!mounted) return;
+      setState(() => _isExecuting = false);
       final childId = _progressChild.childId;
       if (childId != null) {
         _progressService
@@ -611,6 +643,7 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                                     isExecuting: _isExecuting,
                                     activeBlockIndex: _activeBlockIndex,
                                     onRun: _executeSoundSequence,
+                                    onShowTutorial: _showTutorial,
                                   ),
                                 ),
                               ],
@@ -1224,6 +1257,7 @@ class _CodeBlocksArea extends StatelessWidget {
   final bool isExecuting;
   final int? activeBlockIndex;
   final VoidCallback onRun;
+  final VoidCallback onShowTutorial;
 
   const _CodeBlocksArea({
     required this.arrangedBlocks,
@@ -1235,6 +1269,7 @@ class _CodeBlocksArea extends StatelessWidget {
     required this.isExecuting,
     required this.activeBlockIndex,
     required this.onRun,
+    required this.onShowTutorial,
   });
 
   @override
@@ -1269,6 +1304,26 @@ class _CodeBlocksArea extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+              // Tutorial replay button — matches Level 1 style
+              GestureDetector(
+                onTap: onShowTutorial,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C4DFF).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF7C4DFF).withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.ondemand_video_rounded,
+                    color: Color(0xFF7C4DFF),
+                    size: 16,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: isExecuting ? null : onRun,
                 child: AnimatedContainer(
