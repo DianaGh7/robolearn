@@ -357,7 +357,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                 Text('Level 1',
                     style: GoogleFonts.nunito(
                         color: AppTheme.tealDark,
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w800)),
               ],
             ),
@@ -366,7 +366,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
           Text('Sequential Logic',
               style: GoogleFonts.nunito(
                   color: AppTheme.tealMid,
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600)),
           const SizedBox(width: 10),
           GestureDetector(
@@ -381,7 +381,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
               child: Text('Skip',
                   style: GoogleFonts.nunito(
                       color: AppTheme.tealDark,
-                      fontSize: 13,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700)),
             ),
           ),
@@ -429,7 +429,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                   child: Text(
                     'The robot should reach its goal',
                     style: GoogleFonts.nunito(
-                        fontSize: 13,
+                        fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: AppTheme.tealDark),
                   ),
@@ -484,7 +484,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                           Text('Move\nForward',
                               textAlign: TextAlign.center,
                               style: GoogleFonts.nunito(
-                                  fontSize: 10,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w800,
                                   color: const Color(0xFF1565C0))),
                         ],
@@ -623,7 +623,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                         const SizedBox(width: 8),
                         Text('Your Code',
                             style: GoogleFonts.nunito(
-                                fontSize: 14,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w900,
                                 color: AppTheme.tealDark)),
                         const Spacer(),
@@ -675,7 +675,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                                     Text(
                                       isExecuting ? 'Running...' : 'Run',
                                       style: GoogleFonts.nunito(
-                                          fontSize: 12,
+                                          fontSize: 14,
                                           fontWeight: FontWeight.w900,
                                           color: Colors.white),
                                     ),
@@ -717,14 +717,14 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                                     child: Text('2',
                                         style: TextStyle(
                                             color: Colors.white,
-                                            fontSize: 11,
+                                            fontSize: 13,
                                             fontWeight: FontWeight.w900)),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 Text('Press the Run button above! ▶️',
                                     style: GoogleFonts.nunito(
-                                        fontSize: 12,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w800,
                                         color: AppTheme.tealDark)),
                               ],
@@ -791,14 +791,14 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                                     child: Text('1',
                                         style: TextStyle(
                                             color: Colors.white,
-                                            fontSize: 11,
+                                            fontSize: 13,
                                             fontWeight: FontWeight.w900)),
                                   ),
                                 ),
                                 const SizedBox(width: 7),
                                 Text('Drag blocks to build your code',
                                     style: GoogleFonts.nunito(
-                                        fontSize: 11,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w800,
                                         color: AppTheme.tealDark)),
                               ],
@@ -1121,7 +1121,7 @@ class _SpeechBubble extends StatelessWidget {
             text,
             textAlign: TextAlign.center,
             style: GoogleFonts.nunito(
-              fontSize: 16,
+              fontSize: 20,
               fontWeight: FontWeight.w700,
               color: AppTheme.tealDark,
               height: 1.45,
@@ -1246,7 +1246,7 @@ class _LegendRow extends StatelessWidget {
         const SizedBox(width: 6),
         Text(label,
             style: GoogleFonts.nunito(
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: AppTheme.tealDark)),
       ],
@@ -1319,7 +1319,7 @@ class _TutorialCommandBlock extends StatelessWidget {
               child: Text('$stepNumber',
                   style: GoogleFonts.nunito(
                       color: (isActive || isDone) ? Colors.white : color,
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: FontWeight.w900)),
             ),
           ),
@@ -1345,7 +1345,7 @@ class _TutorialCommandBlock extends StatelessWidget {
             child: Text(label,
                 style: GoogleFonts.nunito(
                     color: (isActive || isDone) ? Colors.white : Colors.black87,
-                    fontSize: 13,
+                    fontSize: 16,
                     fontWeight: FontWeight.w800)),
           ),
           if (isActive)
@@ -1409,7 +1409,7 @@ class _PaletteChipWidget extends StatelessWidget {
             const SizedBox(width: 4),
             Text(label,
                 style: GoogleFonts.nunito(
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w800,
                     color: color)),
           ],

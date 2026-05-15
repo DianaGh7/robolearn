@@ -309,7 +309,6 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
     setState(() {
       _activeBlockIndex = null;
       _highlightedLineIndex = null;
-      _isExecuting = false;
     });
 
     final sequence = arrangedBlocks
@@ -323,6 +322,7 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
         );
 
     if (isCorrect) {
+      setState(() => _isExecuting = false);
       final streakBefore = _progressChild.streak;
       final challenges = LedChallenge.ledChallenges;
       int reachedIndex = 0;
@@ -359,6 +359,14 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
         );
       });
       _showFailNotification();
+      // Keep the Run button disabled while the child sees the wrong result,
+      // then reset the LED before unlocking.
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (!mounted) return;
+      setState(() {
+        _ledColor = _kOff;
+        _isExecuting = false;
+      });
       final childId = _progressChild.childId;
       if (childId != null) {
         _progressService
