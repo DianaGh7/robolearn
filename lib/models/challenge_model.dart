@@ -91,7 +91,7 @@ class CodeBlock {
     CodeBlockType.elseBlock: 'ELSE',
     CodeBlockType.encourage: 'keep going! 💪',
     CodeBlockType.ifBig: 'IF big 🐾',
-    CodeBlockType.ifHasTrunk: 'IF big nose 🐽',
+    CodeBlockType.ifHasTrunk: 'IF tall nose 🐽',
     CodeBlockType.elephantSound: 'elephant 🐘',
     CodeBlockType.lionSound: 'lion 🦁',
     CodeBlockType.ifFluffy: 'IF fluffy 🐱',
