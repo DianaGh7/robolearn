@@ -8,6 +8,7 @@ import 'package:robolearn/models/child_model.dart';
 import 'package:robolearn/widgets/shared_widgets.dart';
 import 'package:robolearn/services/child_progress_service.dart';
 import 'package:robolearn/l10n/app_strings.dart';
+import 'level_three_intro_screen.dart';
 
 enum _RobotConnectionStatus { disconnected, connecting, connected, executing }
 
@@ -73,6 +74,20 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
     _glowAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
+
+    // Auto-show tutorial the first time a child opens Level 3 with no
+    // completed Level 3 challenges (same pattern as Levels 1 & 2).
+    final bool isFirstLevel3Visit =
+        widget.challenge.number == LedChallenge.ledChallenges.first.number &&
+        !LedChallenge.ledChallenges
+            .any((c) => widget.child.completedChallengeIds.contains(c.number));
+
+    if (isFirstLevel3Visit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _showTutorial();
+      });
+    }
   }
 
   @override
@@ -376,6 +391,22 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
     }
   }
 
+  // ── Tutorial ──────────────────────────────────────────
+  void _showTutorial() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (ctx2, anim, _) => LevelThreeIntroScreen(
+          child: _progressChild,
+          challenge: widget.challenge,
+          isReplay: true,
+        ),
+        transitionsBuilder: (ctx2, anim, _, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
+  }
+
   // ── Connection / run ──────────────────────────────────
   Future<void> _handleConnect() async {
     if (_connectionStatus != _RobotConnectionStatus.disconnected) return;
@@ -457,7 +488,6 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final totalHeight = constraints.maxHeight;
-                        final vizHeight = (totalHeight * 0.30).clamp(170.0, 250.0);
                         final codeAreaHeight = (totalHeight * 0.62).clamp(360.0, 560.0);
 
                         return SingleChildScrollView(
@@ -474,18 +504,13 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 3),
-                                SizedBox(
-                                  height: vizHeight,
-                                  child: Center(
-                                    child: FractionallySizedBox(
-                                      widthFactor: 0.96,
-                                      child: _LedVisualizationCard(
-                                        targetDisplay: widget.challenge.targetDisplay ?? '',
-                                        highlightedLineIndex: _highlightedLineIndex,
-                                        ledColor: _ledColor,
-                                        glowAnim: _glowAnim,
-                                      ),
-                                    ),
+                                FractionallySizedBox(
+                                  widthFactor: 0.96,
+                                  child: _LedVisualizationCard(
+                                    targetDisplay: widget.challenge.targetDisplay ?? '',
+                                    highlightedLineIndex: _highlightedLineIndex,
+                                    ledColor: _ledColor,
+                                    glowAnim: _glowAnim,
                                   ),
                                 ),
                                 const SizedBox(height: 3),
@@ -501,6 +526,7 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
                                     isExecuting: _isExecuting,
                                     activeBlockIndex: _activeBlockIndex,
                                     onRun: _handleRobotAction,
+                                    onShowTutorial: _showTutorial,
                                   ),
                                 ),
                               ],
@@ -947,7 +973,7 @@ class _LedVisualizationCard extends StatelessWidget {
         .toList();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(14),
@@ -1030,19 +1056,18 @@ class _LedVisualizationCard extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 8),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (final entry in lines.asMap().entries) ...[
-                  if (entry.key > 0) const SizedBox(height: 6),
+          const SizedBox(height: 4),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final entry in lines.asMap().entries) ...[
+                if (entry.key > 0) const SizedBox(height: 4),
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     width: double.infinity,
                     padding: EdgeInsets.symmetric(
                       horizontal: 12,
-                      vertical: entry.key == highlightedLineIndex ? 9 : 6,
+                      vertical: entry.key == highlightedLineIndex ? 7 : 4,
                     ),
                     decoration: BoxDecoration(
                       color: entry.key == highlightedLineIndex
@@ -1082,7 +1107,6 @@ class _LedVisualizationCard extends StatelessWidget {
                 ],
               ],
             ),
-          ),
         ],
       ),
     );
@@ -1102,6 +1126,7 @@ class _CodeBlocksArea extends StatelessWidget {
   final bool isExecuting;
   final int? activeBlockIndex;
   final VoidCallback onRun;
+  final VoidCallback onShowTutorial;
 
   const _CodeBlocksArea({
     required this.arrangedBlocks,
@@ -1113,6 +1138,7 @@ class _CodeBlocksArea extends StatelessWidget {
     required this.isExecuting,
     required this.activeBlockIndex,
     required this.onRun,
+    required this.onShowTutorial,
   });
 
   @override
@@ -1143,6 +1169,26 @@ class _CodeBlocksArea extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+              // Tutorial replay button
+              GestureDetector(
+                onTap: onShowTutorial,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C4DFF).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF7C4DFF).withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.ondemand_video_rounded,
+                    color: Color(0xFF7C4DFF),
+                    size: 16,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: isExecuting ? null : onRun,
                 child: AnimatedContainer(

@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
-import 'level_two_screen.dart';
+import 'level_three_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Frame data — each entry is one speech bubble the child taps through
@@ -14,21 +14,21 @@ import 'level_two_screen.dart';
 class _Frame {
   final int step;
   final String speech;
-  final bool showResult;  // controls animated reveal inside slides 3 & 4
-  final bool celebrate;
-  final bool stopBounce;  // stop the robot bounce on first step-2 entry
+  final bool resetLed;    // reset LED to off when entering this frame
+  final bool triggerBlink; // start the 3× blink animation
+  final bool celebrate;    // trigger the celebration state
   const _Frame(this.step, this.speech,
-      {this.showResult = false, this.celebrate = false, this.stopBounce = false});
+      {this.resetLed = false, this.triggerBlink = false, this.celebrate = false});
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-class LevelTwoIntroScreen extends StatefulWidget {
+class LevelThreeIntroScreen extends StatefulWidget {
   final ChildModel child;
-  final SoundChallenge challenge;
+  final LedChallenge challenge;
   final bool isReplay;
 
-  const LevelTwoIntroScreen({
+  const LevelThreeIntroScreen({
     super.key,
     required this.child,
     required this.challenge,
@@ -36,39 +36,34 @@ class LevelTwoIntroScreen extends StatefulWidget {
   });
 
   @override
-  State<LevelTwoIntroScreen> createState() => _LevelTwoIntroScreenState();
+  State<LevelThreeIntroScreen> createState() => _LevelThreeIntroScreenState();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
+class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
     with TickerProviderStateMixin {
 
   // ── Flat frame list ──────────────────────────────────────────────────────
+  // Steps visible in progress dots: 1–4. Step 5 = celebrate (no dots).
   static const _frames = [
-    // Step 1 – greeting / IF concept
+    // Step 1 – greeting / concept
     _Frame(1, "Hi! I'm Robo! 🤖"),
-    _Frame(1, "I look at things around me..."),
-    _Frame(1, "...and decide what to do!\nIF tells me how! 🤔"),
-    // Step 2 – robot sees the screen
-    _Frame(2, "The screen shows me a face 📺", stopBounce: true),
-    _Frame(2, "It could be 😊 happy\nOR 😢 sad"),
-    _Frame(2, "I look at it... then I decide!"),
-    // Step 3 – IF → music
-    _Frame(3, "IF I see 😊 happy face..."),
-    _Frame(3, "...I play music! 🎵\nIF = do this when TRUE ✅", showResult: true),
-    // Step 4 – ELSE → cry
-    _Frame(4, "But if I do NOT see 😊..."),
-    _Frame(4, "ELSE → I cry! 😢\nELSE = do this when FALSE ❌", showResult: true),
-    // Step 5 – ELSE IF
-    _Frame(5, "I can check MORE than one thing!\nThat's ELSE IF!"),
-    _Frame(5, "🌙 Moon? → night! 🌃"),
-    _Frame(5, "☀️ Sun? → morning! 🌅\nOtherwise → something else!"),
-    // Step 6 – Nested IF
-    _Frame(6, "IF can go INSIDE another IF!\nThat's called Nested! 🐾"),
-    _Frame(6, "Big animal?\n→ check AGAIN inside!\nTall nose? → 🐘   No tall nose? → 🦁"),
-    // Step 7 – Celebrate
-    _Frame(7, "Amazing! You learned it all! 🌟\nNow it's YOUR turn!", celebrate: true),
+    _Frame(1, "Today you'll learn about\nLOOPS! 🔁"),
+    _Frame(1, "Loops help us repeat actions\nautomatically! ✨"),
+    // Step 2 – problem without loops
+    _Frame(2, "Want to blink a light 3 times?\nWithout a loop... 😓"),
+    _Frame(2, "You'd write the SAME commands\nover and over! So boring! 😴"),
+    // Step 3 – REPEAT block intro
+    _Frame(3, "A REPEAT block wraps your\ncommands and runs them for you! 🎉"),
+    _Frame(3, "Put commands INSIDE the block...\nand Robo loops them! ✅"),
+    // Step 4 – live blink demo
+    _Frame(4, "Example: Blink RED 3 times!\nREPEAT 3 does it automatically 🔴",
+        resetLed: true),
+    _Frame(4, "Watch the light blink! 👀", triggerBlink: true),
+    // Step 5 – celebrate
+    _Frame(5, "Great! Now you can use loops\nto solve the challenges! 🌟",
+        celebrate: true),
   ];
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -76,9 +71,14 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
   int _step = 0;
   String _speech = '';
   bool _showSpeech = false;
-  bool _showResult = false;
   bool _celebrating = false;
   bool _showPlayButton = false;
+  bool _cancelBlink = false;
+
+  static const _kOff = Color(0xFF37474F);
+  static const _kRed = Color(0xFFE53935);
+  Color _ledColor = _kOff;
+  bool _ledOn = false;
 
   // ── Animation controllers ────────────────────────────────────────────────
   late AnimationController _bounceCtrl;
@@ -99,7 +99,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
         .animate(CurvedAnimation(parent: _bounceCtrl, curve: Curves.easeInOut));
 
     _glowCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1300))
+        vsync: this, duration: const Duration(milliseconds: 1200))
       ..repeat(reverse: true);
     _glow = Tween<double>(begin: 0.3, end: 1.0)
         .animate(CurvedAnimation(parent: _glowCtrl, curve: Curves.easeInOut));
@@ -116,6 +116,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
 
   @override
   void dispose() {
+    _cancelBlink = true;
     _bounceCtrl.dispose();
     _glowCtrl.dispose();
     _celebCtrl.dispose();
@@ -127,32 +128,51 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
   void _goToFrame(int index) {
     if (!mounted || index < 0 || index >= _frames.length) return;
     final frame = _frames[index];
-
-    // Manage bounce: stop at step 2+, restart if we go back to step 1
-    if (frame.step >= 2) {
-      if (_bounceCtrl.isAnimating) _bounceCtrl.stop();
-    } else if (frame.step == 1) {
-      if (!_bounceCtrl.isAnimating) {
-        _bounceCtrl.reset();
-        _bounceCtrl.repeat(reverse: true);
-      }
-    }
+    _cancelBlink = true;
 
     setState(() {
       _frameIndex = index;
       _step = frame.step;
       _speech = frame.speech;
       _showSpeech = true;
-      _showResult = frame.showResult;
     });
 
+    if (frame.resetLed) {
+      setState(() {
+        _ledColor = _kOff;
+        _ledOn = false;
+      });
+    }
+
     if (frame.celebrate && !_celebrating) {
+      _bounceCtrl.stop();
       setState(() => _celebrating = true);
       _celebCtrl.forward();
+    }
+
+    if (frame.triggerBlink) _startBlink();
+  }
+
+  Future<void> _startBlink() async {
+    _cancelBlink = false;
+    for (int i = 0; i < 3; i++) {
+      if (!mounted || _cancelBlink) return;
+      setState(() {
+        _ledColor = _kRed;
+        _ledOn = true;
+      });
+      await Future.delayed(const Duration(milliseconds: 450));
+      if (!mounted || _cancelBlink) return;
+      setState(() {
+        _ledColor = _kOff;
+        _ledOn = false;
+      });
+      await Future.delayed(const Duration(milliseconds: 350));
     }
   }
 
   void _onForward() {
+    _cancelBlink = true;
     if (_frameIndex >= _frames.length - 1) {
       setState(() {
         _showSpeech = false;
@@ -165,6 +185,11 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
 
   void _onBack() {
     if (_frameIndex <= 0) return;
+    _cancelBlink = true;
+    setState(() {
+      _ledColor = _kOff;
+      _ledOn = false;
+    });
     _goToFrame(_frameIndex - 1);
   }
 
@@ -176,7 +201,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (c, a, _) =>
-            LevelTwoScreen(child: widget.child, challenge: widget.challenge),
+            LevelThreeScreen(child: widget.child, challenge: widget.challenge),
         transitionsBuilder: (c, a, _, child) =>
             FadeTransition(opacity: a, child: child),
         transitionDuration: const Duration(milliseconds: 500),
@@ -206,7 +231,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
               children: [
                 _header(),
                 const SizedBox(height: 6),
-                if (_step >= 1 && _step <= 6) _progressDots(),
+                if (_step >= 1 && _step <= 4) _progressDots(),
                 const SizedBox(height: 6),
 
                 // Speech bubble — tap anywhere = forward; back text handles its own tap
@@ -236,17 +261,15 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
                   AnimatedBuilder(
                     animation: Listenable.merge([_bounce, _celeb]),
                     builder: (_, child) {
-                      if (_step == 7) {
+                      if (_step == 5) {
                         return Transform.scale(
                           scale: _celeb.value,
-                          child: const Text('🤖',
-                              style: TextStyle(fontSize: 72)),
+                          child: const Text('🤖', style: TextStyle(fontSize: 72)),
                         );
                       }
                       return Transform.translate(
                         offset: Offset(0, _bounce.value),
-                        child: const Text('🤖',
-                            style: TextStyle(fontSize: 72)),
+                        child: const Text('🤖', style: TextStyle(fontSize: 72)),
                       );
                     },
                   ),
@@ -281,8 +304,8 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
   // ── Progress dots ─────────────────────────────────────────────────────────
 
   Widget _progressDots() {
-    const totalSteps = 6;
-    final current = _step.clamp(1, 6);
+    const totalSteps = 4;
+    final current = _step.clamp(1, 4);
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(totalSteps, (i) {
@@ -313,10 +336,10 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFF7E8DF1).withValues(alpha: 0.18),
+              color: const Color(0xFF7E57C2).withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                  color: const Color(0xFF7E8DF1).withValues(alpha: 0.45)),
+                  color: const Color(0xFF7E57C2).withValues(alpha: 0.45)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -324,18 +347,18 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
                 const Icon(Icons.star_rounded,
                     color: Color(0xFFFFB300), size: 15),
                 const SizedBox(width: 5),
-                Text('Level 2',
+                Text('Level 3',
                     style: GoogleFonts.nunito(
-                        color: const Color(0xFF3949AB),
+                        color: const Color(0xFF4527A0),
                         fontSize: 15,
                         fontWeight: FontWeight.w800)),
               ],
             ),
           ),
           const Spacer(),
-          Text('Conditional Statements',
+          Text('Loops',
               style: GoogleFonts.nunito(
-                  color: const Color(0xFF5C6BC0),
+                  color: const Color(0xFF7E57C2),
                   fontSize: 15,
                   fontWeight: FontWeight.w600)),
           const SizedBox(width: 10),
@@ -366,12 +389,10 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
   Widget _slide() {
     return switch (_step) {
       1 => _slideHi(),
-      2 => _slideScreen(),
-      3 => _slideIf(),
-      4 => _slideElse(),
-      5 => _slideElseIf(),
-      6 => _slideNested(),
-      7 => _slideCelebrate(),
+      2 => _slideProblem(),
+      3 => _slideRepeatIntro(),
+      4 => _slideBlinkRed(),
+      5 => _slideCelebrate(),
       _ => const SizedBox.shrink(key: ValueKey('empty')),
     };
   }
@@ -380,218 +401,42 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
 
   Widget _slideHi() {
     return Center(
-      key: const ValueKey('hi'),
+      key: const ValueKey('hi3'),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Robo thinks!',
+          Text('LOOPS! 🔁',
               style: GoogleFonts.nunito(
-                  fontSize: 26,
+                  fontSize: 42,
                   fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark)),
           const SizedBox(height: 10),
-          Text('IF  =  if something is true',
+          Text('REPEAT  =  do it many times',
               style: GoogleFonts.nunito(
-                  fontSize: 22,
+                  fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF5C6BC0))),
-        ],
-      ),
-    ).animate().fadeIn(duration: 600.ms);
-  }
-
-  // ── Slide 2: Robot looks at screen ───────────────────────────────────────
-
-  Widget _slideScreen() {
-    return Center(
-      key: const ValueKey('screen'),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: AppTheme.tealPrimary.withValues(alpha: 0.3), width: 2),
-              boxShadow: [
-                BoxShadow(
-                    color: AppTheme.tealPrimary.withValues(alpha: 0.12),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4)),
-              ],
-            ),
-            child: Column(
-              children: [
-                Text('📺  The screen shows:',
-                    style: GoogleFonts.nunito(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.tealMid)),
-                const SizedBox(height: 16),
-                const Text('😊  or  😢',
-                    style: TextStyle(fontSize: 56)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text('👀', style: TextStyle(fontSize: 52)),
-          const SizedBox(height: 8),
-          Text('Robo looks... and decides!',
-              style: GoogleFonts.nunito(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.tealDark)),
-        ],
-      ),
-    ).animate().fadeIn(duration: 600.ms);
-  }
-
-  // ── Slide 3: IF → music ───────────────────────────────────────────────────
-
-  Widget _slideIf() {
-    final g = _glow.value;
-    return SingleChildScrollView(
-      key: const ValueKey('ifMusic'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _ScreenCard(emoji: '😊', label: 'Screen shows:'),
-          const SizedBox(height: 16),
-          _BigBlock(
-            topTag: 'IF',
-            body: '😊  happy face on screen',
-            color: const Color(0xFFF29E4C),
-            glowValue: g,
-          ),
-          const SizedBox(height: 12),
-          _YesNoArrow(label: '✅  YES!', color: const Color(0xFF4CAF50)),
-          const SizedBox(height: 12),
-          AnimatedOpacity(
-            opacity: _showResult ? 1 : 0,
-            duration: const Duration(milliseconds: 450),
-            child: AnimatedSlide(
-              offset: _showResult ? Offset.zero : const Offset(0, 0.25),
-              duration: const Duration(milliseconds: 450),
-              curve: Curves.easeOut,
-              child: _BigBlock(
-                topTag: 'Action!',
-                body: '🎵  play music!',
-                color: const Color(0xFF43A047),
-                glowValue: _showResult ? g : 0,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 600.ms);
-  }
-
-  // ── Slide 4: ELSE → cry ───────────────────────────────────────────────────
-
-  Widget _slideElse() {
-    final g = _glow.value;
-    return SingleChildScrollView(
-      key: const ValueKey('elseCry'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _ScreenCard(emoji: '😢', label: 'Screen shows:'),
-          const SizedBox(height: 16),
-          _BigBlock(
-            topTag: 'IF',
-            body: '😊  happy face on screen',
-            color: const Color(0xFFF29E4C),
-            glowValue: 0,
-            dimmed: true,
-          ),
-          const SizedBox(height: 12),
-          _YesNoArrow(label: '❌  NO!', color: const Color(0xFFE57373)),
-          const SizedBox(height: 12),
-          _BigBlock(
-            topTag: 'ELSE',
-            body: '↩️  do something else',
-            color: const Color(0xFF7E8DF1),
-            glowValue: g,
-          ),
-          const SizedBox(height: 12),
-          AnimatedOpacity(
-            opacity: _showResult ? 1 : 0,
-            duration: const Duration(milliseconds: 450),
-            child: AnimatedSlide(
-              offset: _showResult ? Offset.zero : const Offset(0, 0.25),
-              duration: const Duration(milliseconds: 450),
-              curve: Curves.easeOut,
-              child: _BigBlock(
-                topTag: 'Action!',
-                body: '😢  cry!',
-                color: const Color(0xFF7E8DF1),
-                glowValue: _showResult ? g * 0.6 : 0,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 600.ms);
-  }
-
-  // ── Slide 5: ELSE IF ──────────────────────────────────────────────────────
-
-  Widget _slideElseIf() {
-    final g = _glow.value;
-    return SingleChildScrollView(
-      key: const ValueKey('elseif'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Text('ELSE IF  =  check again!',
-                style: GoogleFonts.nunito(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFF5C6BC0))),
-          ),
+                  color: const Color(0xFF7E57C2))),
           const SizedBox(height: 20),
-          _SimpleRow(
-            condEmoji: '🌙',
-            condText: 'IF  moon 🌙',
-            condColor: const Color(0xFF5C6BC0),
-            actEmoji: '🌃',
-            actText: 'night!',
-            glowValue: 0,
-          ),
-          const SizedBox(height: 6),
-          _NoArrow(),
-          const SizedBox(height: 6),
-          _SimpleRow(
-            condEmoji: '☀️',
-            condText: 'ELSE IF  sun ☀️',
-            condColor: const Color(0xFFF29E4C),
-            actEmoji: '🌅',
-            actText: 'morning!',
-            glowValue: g,
-          ),
-          const SizedBox(height: 6),
-          _NoArrow(),
-          const SizedBox(height: 6),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey.shade400),
+              color: const Color(0xFF7E57C2).withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: const Color(0xFF7E57C2).withValues(alpha: 0.35),
+                  width: 2),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('↩️', style: TextStyle(fontSize: 28)),
+                const Icon(Icons.repeat_rounded,
+                    color: Color(0xFF7E57C2), size: 32),
                 const SizedBox(width: 12),
-                Text('ELSE  →  anything else!',
+                Text('Instead of writing the\nsame thing many times!',
                     style: GoogleFonts.nunito(
-                        fontSize: 19,
+                        fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: Colors.grey.shade700)),
+                        color: const Color(0xFF4527A0))),
               ],
             ),
           ),
@@ -600,98 +445,48 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
     ).animate().fadeIn(duration: 600.ms);
   }
 
-  // ── Slide 6: Nested IF ────────────────────────────────────────────────────
+  // ── Slide 2: Problem ──────────────────────────────────────────────────────
 
-  Widget _slideNested() {
-    final g = _glow.value;
+  Widget _slideProblem() {
     return SingleChildScrollView(
-      key: const ValueKey('nested'),
+      key: const ValueKey('problem3'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
-            child: Text('IF  inside  IF',
+            child: Text('Without a loop... 😓',
                 style: GoogleFonts.nunito(
-                    fontSize: 24,
+                    fontSize: 22,
                     fontWeight: FontWeight.w900,
                     color: AppTheme.tealDark)),
           ),
-          const SizedBox(height: 4),
-          Center(
-            child: Text('Nested = checking again inside!',
-                style: GoogleFonts.nunito(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF5C6BC0))),
-          ),
-          const SizedBox(height: 16),
-          _BigBlock(
-            topTag: 'IF',
-            body: '🐾  Big animal?',
-            color: AppTheme.tealPrimary,
-            glowValue: g,
-          ),
-          const SizedBox(height: 8),
-          _YesNoArrow(label: '✅  YES!', color: const Color(0xFF4CAF50)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
+          for (int i = 0; i < 3; i++) ...[
+            _MiniCodeBlock(
+                label: 'set RED 🔴', color: const Color(0xFFE53935)),
+            const SizedBox(height: 5),
+            _MiniCodeBlock(
+                label: 'LED off ⚫', color: const Color(0xFF546E7A)),
+            if (i < 2) const SizedBox(height: 5),
+          ],
+          const SizedBox(height: 14),
           Container(
-            margin: const EdgeInsets.only(left: 20),
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFFF29E4C).withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                  color: const Color(0xFFF29E4C).withValues(alpha: 0.45),
-                  width: 2),
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.shade300),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Row(
               children: [
-                Text('Check INSIDE:',
-                    style: GoogleFonts.nunito(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                        color: const Color(0xFFF29E4C))),
-                const SizedBox(height: 8),
-                _BigBlock(
-                  topTag: 'IF',
-                  body: '🐽  Tall nose?',
-                  color: const Color(0xFFF29E4C),
-                  glowValue: 0,
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _YesNoArrow(
-                              label: '✅ YES',
-                              color: const Color(0xFF4CAF50)),
-                          const SizedBox(height: 4),
-                          const _ResultBox(
-                              emoji: '🐘',
-                              label: 'elephant!',
-                              color: Color(0xFF4CAF50)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _YesNoArrow(
-                              label: '❌ NO',
-                              color: const Color(0xFFE57373)),
-                          const SizedBox(height: 4),
-                          const _ResultBox(
-                              emoji: '🦁',
-                              label: 'lion!',
-                              color: Color(0xFF7E8DF1)),
-                        ],
-                      ),
-                    ),
-                  ],
+                const Text('😴', style: TextStyle(fontSize: 26)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text('So many blocks for the same thing!',
+                      style: GoogleFonts.nunito(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.orange.shade800)),
                 ),
               ],
             ),
@@ -701,23 +496,127 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
     ).animate().fadeIn(duration: 600.ms);
   }
 
-  // ── Slide 7: Celebrate ────────────────────────────────────────────────────
+  // ── Slide 3: REPEAT block intro ───────────────────────────────────────────
+
+  Widget _slideRepeatIntro() {
+    final g = _glow.value;
+    return SingleChildScrollView(
+      key: const ValueKey('repeatIntro3'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Text('With a loop! 🎉',
+                style: GoogleFonts.nunito(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.tealDark)),
+          ),
+          const SizedBox(height: 14),
+          _RepeatBlockWidget(
+            repeatCount: 3,
+            color: const Color(0xFF7E57C2),
+            glowValue: g,
+            children: [
+              _MiniCodeBlock(
+                  label: 'set RED 🔴', color: const Color(0xFFE53935)),
+              const SizedBox(height: 5),
+              _MiniCodeBlock(
+                  label: 'LED off ⚫', color: const Color(0xFF546E7A)),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.green.shade300),
+            ),
+            child: Row(
+              children: [
+                const Text('✨', style: TextStyle(fontSize: 26)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                      'REPEAT 3 runs everything inside 3 times!',
+                      style: GoogleFonts.nunito(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.green.shade800)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 600.ms);
+  }
+
+  // ── Slide 4: Blink red 3× ────────────────────────────────────────────────
+
+  Widget _slideBlinkRed() {
+    final g = _glow.value;
+    final isOn = _ledOn;
+    return SingleChildScrollView(
+      key: const ValueKey('blinkRed3'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: AnimatedBuilder(
+              animation: _glow,
+              builder: (ctx4, child4) =>
+                  _LedBulb(color: _ledColor, glow: isOn ? g : 0.0),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _RepeatBlockWidget(
+            repeatCount: 3,
+            color: const Color(0xFF7E57C2),
+            glowValue: isOn ? g : 0.2,
+            children: [
+              _ActiveBlock(
+                label: 'set RED 🔴',
+                color: const Color(0xFFE53935),
+                isActive: isOn,
+              ),
+              const SizedBox(height: 5),
+              _ActiveBlock(
+                label: 'LED off ⚫',
+                color: const Color(0xFF546E7A),
+                isActive: !isOn && _ledColor == _kOff,
+              ),
+            ],
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 600.ms);
+  }
+
+  // ── Slide 5: Celebrate ────────────────────────────────────────────────────
 
   Widget _slideCelebrate() {
     return Center(
-      key: const ValueKey('celebrate'),
+      key: const ValueKey('celebrate3'),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('🎉  🎊  ✨', style: TextStyle(fontSize: 40))
+          const Text('🎉  🔁  ✨', style: TextStyle(fontSize: 40))
               .animate(onPlay: (c) => c.repeat(reverse: true))
               .scaleXY(begin: 0.85, end: 1.1, duration: 700.ms),
           const SizedBox(height: 20),
-          Text('Amazing! Ready to play!',
+          Text('You know loops!',
               style: GoogleFonts.nunito(
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark)),
+          const SizedBox(height: 8),
+          Text('Ready to solve the challenges!',
+              style: GoogleFonts.nunito(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.tealMid)),
         ],
       ),
     ).animate().fadeIn(duration: 600.ms);
@@ -728,10 +627,10 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
   Widget _particles() {
     return IgnorePointer(
       child: LayoutBuilder(builder: (ctx, box) {
-        final rng = math.Random(42);
+        final rng = math.Random(77);
         const colors = [
-          Color(0xFFFFD700), Color(0xFF7E8DF1),
-          Color(0xFFFF6B9D), AppTheme.tealPrimary, Color(0xFFFF9A3C),
+          Color(0xFFFFD700), Color(0xFF7E57C2),
+          Color(0xFFE53935), Color(0xFF43A047), Color(0xFF1E88E5),
         ];
         return Stack(
           children: List.generate(22, (i) {
@@ -817,7 +716,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Speech bubble — with optional back hint on the left
+//  Speech bubble — same style as Levels 1 & 2, with optional back hint
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SpeechBubble extends StatelessWidget {
@@ -928,290 +827,205 @@ class _TailPainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Shared visual components (identical to original)
+//  LED Bulb
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _BigBlock extends StatelessWidget {
-  final String topTag;
-  final String body;
+class _LedBulb extends StatelessWidget {
+  final Color color;
+  final double glow;
+  const _LedBulb({required this.color, required this.glow});
+
+  bool get _isOff => color == const Color(0xFF37474F);
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        border: Border.all(color: Colors.white, width: 3),
+        boxShadow: _isOff
+            ? [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 8)
+              ]
+            : [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.3 + glow * 0.5),
+                  blurRadius: 18 + glow * 22,
+                  spreadRadius: 4 + glow * 8,
+                ),
+              ],
+      ),
+      child: Center(
+        child: Icon(
+          Icons.lightbulb,
+          color: _isOff
+              ? Colors.white.withValues(alpha: 0.3)
+              : Colors.white.withValues(alpha: 0.9),
+          size: 32,
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Mini code block
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MiniCodeBlock extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _MiniCodeBlock({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+              color: color.withValues(alpha: 0.3),
+              blurRadius: 5,
+              offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.nunito(
+            fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Active block (highlights while executing)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ActiveBlock extends StatelessWidget {
+  final String label;
+  final Color color;
+  final bool isActive;
+  const _ActiveBlock(
+      {required this.label, required this.color, required this.isActive});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: isActive ? color : color.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(
+          color: isActive
+              ? Colors.white.withValues(alpha: 0.8)
+              : color.withValues(alpha: 0.4),
+          width: isActive ? 1.8 : 1.2,
+        ),
+        boxShadow: isActive
+            ? [
+                BoxShadow(
+                    color: color.withValues(alpha: 0.45),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2))
+              ]
+            : null,
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.nunito(
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+          color: isActive ? Colors.white : color,
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  REPEAT block container
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RepeatBlockWidget extends StatelessWidget {
+  final int repeatCount;
   final Color color;
   final double glowValue;
-  final bool dimmed;
+  final List<Widget> children;
 
-  const _BigBlock({
-    required this.topTag,
-    required this.body,
+  const _RepeatBlockWidget({
+    required this.repeatCount,
     required this.color,
     required this.glowValue,
-    this.dimmed = false,
+    required this.children,
   });
 
   @override
   Widget build(BuildContext context) {
-    final active = glowValue > 0.1;
-    final bg = dimmed
-        ? color.withValues(alpha: 0.07)
-        : active
-            ? color
-            : color.withValues(alpha: 0.13);
-    final border = dimmed
-        ? color.withValues(alpha: 0.22)
-        : active
-            ? Colors.white.withValues(alpha: 0.85)
-            : color.withValues(alpha: 0.45);
-    final textColor = (active && !dimmed) ? Colors.white : color;
-
+    final active = glowValue > 0.3;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 280),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      duration: const Duration(milliseconds: 250),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: border, width: active ? 2.4 : 1.8),
+        color: active ? color : color.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: active
+              ? Colors.white.withValues(alpha: 0.8)
+              : color.withValues(alpha: 0.5),
+          width: active ? 2.2 : 1.6,
+        ),
         boxShadow: active
             ? [
                 BoxShadow(
-                    color: color.withValues(alpha: 0.3 + glowValue * 0.35),
-                    blurRadius: 16 + glowValue * 12,
-                    offset: const Offset(0, 4)),
+                    color: color.withValues(alpha: 0.3 + glowValue * 0.3),
+                    blurRadius: 12 + glowValue * 10,
+                    offset: const Offset(0, 3))
               ]
             : [],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Icon(Icons.repeat_rounded,
+                    color: active ? Colors.white : color, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'REPEAT $repeatCount times',
+                  style: GoogleFonts.nunito(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: active ? Colors.white : color),
+                ),
+              ],
+            ),
+          ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            margin: const EdgeInsets.only(left: 20, right: 6, bottom: 10),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
             decoration: BoxDecoration(
-              color: active
-                  ? Colors.white.withValues(alpha: 0.28)
-                  : color.withValues(alpha: 0.18),
+              color: const Color(0xFFF5FAF9),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(topTag,
-                style: GoogleFonts.nunito(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    color: textColor.withValues(alpha: dimmed ? 0.55 : 1))),
-          ),
-          const SizedBox(height: 8),
-          Text(body,
-              style: GoogleFonts.nunito(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: textColor.withValues(alpha: dimmed ? 0.45 : 1))),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScreenCard extends StatelessWidget {
-  final String emoji;
-  final String label;
-  const _ScreenCard({required this.emoji, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-            color: AppTheme.tealPrimary.withValues(alpha: 0.28), width: 2),
-        boxShadow: [
-          BoxShadow(
-              color: AppTheme.tealPrimary.withValues(alpha: 0.10),
-              blurRadius: 12,
-              offset: const Offset(0, 3)),
-        ],
-      ),
-      child: Row(
-        children: [
-          const Text('📺', style: TextStyle(fontSize: 30)),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label,
-                  style: GoogleFonts.nunito(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.tealMid)),
-              const SizedBox(height: 2),
-              Text(emoji, style: const TextStyle(fontSize: 40)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _YesNoArrow extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _YesNoArrow({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.arrow_downward_rounded, color: color, size: 24),
-        const SizedBox(width: 6),
-        Text(label,
-            style: GoogleFonts.nunito(
-                fontSize: 18, fontWeight: FontWeight.w900, color: color)),
-      ],
-    );
-  }
-}
-
-class _NoArrow extends StatelessWidget {
-  const _NoArrow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 12),
-      child: Row(
-        children: [
-          Icon(Icons.subdirectory_arrow_right_rounded,
-              size: 18, color: const Color(0xFFE57373)),
-          const SizedBox(width: 4),
-          Text('No ❌  check again...',
-              style: GoogleFonts.nunito(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFFE57373))),
-        ],
-      ),
-    );
-  }
-}
-
-class _SimpleRow extends StatelessWidget {
-  final String condEmoji;
-  final String condText;
-  final Color condColor;
-  final String actEmoji;
-  final String actText;
-  final double glowValue;
-
-  const _SimpleRow({
-    required this.condEmoji,
-    required this.condText,
-    required this.condColor,
-    required this.actEmoji,
-    required this.actText,
-    required this.glowValue,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final active = glowValue > 0.1;
-    return Row(
-      children: [
-        Expanded(
-          flex: 5,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-            decoration: BoxDecoration(
-              color: active ? condColor : condColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: active
-                    ? Colors.white.withValues(alpha: 0.8)
-                    : condColor.withValues(alpha: 0.45),
-                width: active ? 2.2 : 1.8,
-              ),
-              boxShadow: active
-                  ? [
-                      BoxShadow(
-                          color: condColor.withValues(
-                              alpha: 0.25 + glowValue * 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 2)),
-                    ]
-                  : [],
-            ),
-            child: Row(
-              children: [
-                Text(condEmoji, style: const TextStyle(fontSize: 24)),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(condText,
-                      style: GoogleFonts.nunito(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          color: active ? Colors.white : condColor)),
-                ),
-              ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
             ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Icon(Icons.arrow_forward_rounded,
-              color: const Color(0xFF4CAF50), size: 22),
-        ),
-        Expanded(
-          flex: 4,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
-            decoration: BoxDecoration(
-              color: const Color(0xFF4CAF50).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                  color: const Color(0xFF4CAF50).withValues(alpha: 0.45),
-                  width: 1.8),
-            ),
-            child: Row(
-              children: [
-                Text(actEmoji, style: const TextStyle(fontSize: 22)),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(actText,
-                      style: GoogleFonts.nunito(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF2E7D32))),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ResultBox extends StatelessWidget {
-  final String emoji;
-  final String label;
-  final Color color;
-  const _ResultBox(
-      {required this.emoji, required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.45), width: 1.8),
-      ),
-      child: Column(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 30)),
-          const SizedBox(height: 4),
-          Text(label,
-              style: GoogleFonts.nunito(
-                  fontSize: 16, fontWeight: FontWeight.w800, color: color)),
         ],
       ),
     );
