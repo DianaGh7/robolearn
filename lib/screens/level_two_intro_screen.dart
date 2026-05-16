@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -43,6 +44,8 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
   bool _showSpeech = false;
   bool _celebrating = false;
   bool _showPlayButton = false;
+  Completer<void>? _tapCompleter;
+  bool _showTapHint = false;
 
   late AnimationController _bounceCtrl;
   late Animation<double> _bounce;
@@ -79,6 +82,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
 
   @override
   void dispose() {
+    _tapCompleter?.complete();
     _bounceCtrl.dispose();
     _glowCtrl.dispose();
     _celebCtrl.dispose();
@@ -97,6 +101,19 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
     setState(() => _showSpeech = false);
   }
 
+  Future<void> _waitForTap() {
+    _tapCompleter = Completer<void>();
+    if (mounted) setState(() => _showTapHint = true);
+    return _tapCompleter!.future;
+  }
+
+  void _onTap() {
+    if (_tapCompleter != null && !_tapCompleter!.isCompleted) {
+      if (mounted) setState(() => _showTapHint = false);
+      _tapCompleter!.complete();
+    }
+  }
+
   // ── Sequence ───────────────────────────────────────────────────────────────
 
   void _run() async {
@@ -105,75 +122,93 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
     // ── Step 1: Hi! ──────────────────────────────────────────────────────────
     if (!mounted) return;
     setState(() => _step = 1);
-    _say("I'm Robo! 🤖");
-    await _wait(3200);
-    _say("I look at the screen...");
-    await _wait(3200);
-    _say("...and I decide what to do! 🤔");
-    await _wait(3500);
+    _say("Hi! I'm Robo! 🤖");
+    await _waitForTap();
+    if (!mounted) return;
+    _say("I look at things around me...");
+    await _waitForTap();
+    if (!mounted) return;
+    _say("...and decide what to do!\nIF tells me how! 🤔");
+    await _waitForTap();
+    if (!mounted) return;
     _quiet();
-    await _wait(600);
+    await _wait(400);
 
     // ── Step 2: Robot looks at the screen ────────────────────────────────────
     if (!mounted) return;
     setState(() { _step = 2; _showResult = false; });
-    _say("The screen shows a face... 👀");
-    await _wait(3500);
-    _say("Robo looks at the face\nand decides! 🤖");
-    await _wait(4000);
+    _bounceCtrl.stop();
+    _say("The screen shows me a face 📺");
+    await _waitForTap();
+    if (!mounted) return;
+    _say("It could be 😊 happy\nOR 😢 sad");
+    await _waitForTap();
+    if (!mounted) return;
+    _say("I look at it... then I decide!");
+    await _waitForTap();
+    if (!mounted) return;
     _quiet();
-    await _wait(600);
+    await _wait(400);
 
     // ── Step 3: IF → music ───────────────────────────────────────────────────
     if (!mounted) return;
     setState(() { _step = 3; _showResult = false; });
-    _say("IF Robo sees 😊 on screen...");
-    await _wait(3800);
+    _say("IF I see 😊 happy face...");
+    await _waitForTap();
     if (!mounted) return;
     setState(() => _showResult = true);
-    _say("...play music! 🎵");
-    await _wait(4000);
+    _say("...I play music! 🎵\nIF = do this when TRUE ✅");
+    await _waitForTap();
+    if (!mounted) return;
     _quiet();
-    await _wait(600);
+    await _wait(400);
 
     // ── Step 4: ELSE → cry ───────────────────────────────────────────────────
     if (!mounted) return;
     setState(() { _step = 4; _showResult = false; });
-    _say("But if Robo does NOT see 😊...");
-    await _wait(3800);
+    _say("But if I do NOT see 😊...");
+    await _waitForTap();
     if (!mounted) return;
     setState(() => _showResult = true);
-    _say("...ELSE → cry! 😢");
-    await _wait(4500);
+    _say("ELSE → I cry! 😢\nELSE = do this when FALSE ❌");
+    await _waitForTap();
+    if (!mounted) return;
     _quiet();
-    await _wait(600);
+    await _wait(400);
 
     // ── Step 5: ELSE IF ──────────────────────────────────────────────────────
     if (!mounted) return;
     setState(() { _step = 5; _showResult = false; });
-    _say("We can check more\nthan one thing! 🌙☀️");
-    await _wait(4500);
+    _say("I can check MORE than one thing!\nThat's ELSE IF!");
+    await _waitForTap();
     if (!mounted) return;
-    _say("🌙 Moon? → night! 🌃\n☀️ Sun? → morning! 🌅");
-    await _wait(5000);
+    _say("🌙 Moon? → night! 🌃");
+    await _waitForTap();
+    if (!mounted) return;
+    _say("☀️ Sun? → morning! 🌅\nOtherwise → something else!");
+    await _waitForTap();
+    if (!mounted) return;
     _quiet();
-    await _wait(600);
+    await _wait(400);
 
     // ── Step 6: Nested IF ────────────────────────────────────────────────────
     if (!mounted) return;
     setState(() { _step = 6; _showResult = false; });
-    _say("We can even check\ninside another check! 🐾");
-    await _wait(5000);
+    _say("IF can go INSIDE another IF!\nThat's called Nested! 🐾");
+    await _waitForTap();
+    if (!mounted) return;
+    _say("Big animal?\n→ check AGAIN inside!\nTrunk? → 🐘   No trunk? → 🦁");
+    await _waitForTap();
+    if (!mounted) return;
     _quiet();
-    await _wait(600);
+    await _wait(400);
 
     // ── Step 7: Celebrate ────────────────────────────────────────────────────
     if (!mounted) return;
-    _bounceCtrl.stop();
     setState(() { _step = 7; _celebrating = true; });
     _celebCtrl.forward();
-    _say("Now it's YOUR turn!\nHelp Robo think! 🤖✨");
-    await _wait(4500);
+    _say("Amazing! You learned it all! 🌟\nNow it's YOUR turn!");
+    await _waitForTap();
 
     if (!mounted) return;
     setState(() { _showSpeech = false; _showPlayButton = true; });
@@ -215,17 +250,24 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
             child: Column(
               children: [
                 _header(),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
+                if (_step >= 1 && _step <= 6) _progressDots(),
+                const SizedBox(height: 6),
 
-                // Speech bubble
+                // Speech bubble — tappable to advance
                 AnimatedSize(
                   duration: const Duration(milliseconds: 350),
                   curve: Curves.easeInOut,
                   child: _showSpeech
-                      ? Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: _SpeechBubble(
-                              key: ValueKey(_speech), text: _speech),
+                      ? GestureDetector(
+                          onTap: _onTap,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: _SpeechBubble(
+                                key: ValueKey(_speech),
+                                text: _speech,
+                                showHint: _showTapHint),
+                          ),
                         )
                       : const SizedBox.shrink(),
                 ),
@@ -277,6 +319,31 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
           if (_showPlayButton) _playBtn(btm),
         ],
       ),
+    );
+  }
+
+  // ── Progress dots ──────────────────────────────────────────────────────────
+
+  Widget _progressDots() {
+    const totalSteps = 6;
+    final current = _step.clamp(1, 6);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(totalSteps, (i) {
+        final done = i < current;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: done ? 18 : 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: done
+                ? AppTheme.tealPrimary
+                : AppTheme.tealPrimary.withValues(alpha: 0.22),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        );
+      }),
     );
   }
 
@@ -622,111 +689,88 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
                     fontWeight: FontWeight.w900,
                     color: AppTheme.tealDark)),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 4),
+          Center(
+            child: Text('Nested = checking again inside!',
+                style: GoogleFonts.nunito(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF5C6BC0))),
+          ),
+          const SizedBox(height: 16),
 
-          // Outer IF — glowing
+          // Outer IF
           _BigBlock(
-            topTag: 'Outer IF',
-            body: '🐾  big animal?',
+            topTag: 'IF',
+            body: '🐾  Big animal?',
             color: AppTheme.tealPrimary,
             glowValue: g,
           ),
+          const SizedBox(height: 8),
+          _YesNoArrow(label: '✅  YES!', color: const Color(0xFF4CAF50)),
+          const SizedBox(height: 8),
 
-          // Indent inner block
-          Padding(
-            padding: const EdgeInsets.only(left: 28, top: 10),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Vertical bar — stretches to match content height
-                  Container(
-                    width: 4,
-                    margin: const EdgeInsets.only(right: 12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.tealPrimary.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(2),
+          // Inner nested block
+          Container(
+            margin: const EdgeInsets.only(left: 20),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF29E4C).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: const Color(0xFFF29E4C).withValues(alpha: 0.45),
+                  width: 2),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Check INSIDE:',
+                    style: GoogleFonts.nunito(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFFF29E4C))),
+                const SizedBox(height: 8),
+                _BigBlock(
+                  topTag: 'IF',
+                  body: '🐽  Has a trunk?',
+                  color: const Color(0xFFF29E4C),
+                  glowValue: 0,
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _YesNoArrow(
+                              label: '✅ YES',
+                              color: const Color(0xFF4CAF50)),
+                          const SizedBox(height: 4),
+                          const _ResultBox(
+                              emoji: '🐘',
+                              label: 'elephant!',
+                              color: Color(0xFF4CAF50)),
+                        ],
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Inner IF header
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF29E4C).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                                color: const Color(0xFFF29E4C).withValues(alpha: 0.5),
-                                width: 2),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Inner IF',
-                                  style: GoogleFonts.nunito(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w900,
-                                      color: const Color(0xFFF29E4C))),
-                              const SizedBox(height: 4),
-                              Text('🐽  big nose?',
-                                  style: GoogleFonts.nunito(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w900,
-                                      color: const Color(0xFFF29E4C))),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // YES → elephant
-                        Row(
-                          children: [
-                            const Icon(Icons.arrow_downward_rounded,
-                                color: Color(0xFF43A047), size: 18),
-                            const SizedBox(width: 4),
-                            Text('YES ✅',
-                                style: GoogleFonts.nunito(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                    color: const Color(0xFF43A047))),
-                            const SizedBox(width: 8),
-                            const Expanded(
-                              child: _ResultBox(
-                                  emoji: '🐘',
-                                  label: 'elephant',
-                                  color: Color(0xFF43A047)),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        // NO → lion
-                        Row(
-                          children: [
-                            const Icon(Icons.arrow_downward_rounded,
-                                color: Color(0xFFE57373), size: 18),
-                            const SizedBox(width: 4),
-                            Text('NO ❌',
-                                style: GoogleFonts.nunito(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                    color: const Color(0xFFE57373))),
-                            const SizedBox(width: 8),
-                            const Expanded(
-                              child: _ResultBox(
-                                  emoji: '🦁',
-                                  label: 'lion',
-                                  color: Color(0xFF7E8DF1)),
-                            ),
-                          ],
-                        ),
-                      ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _YesNoArrow(
+                              label: '❌ NO',
+                              color: const Color(0xFFE57373)),
+                          const SizedBox(height: 4),
+                          const _ResultBox(
+                              emoji: '🦁',
+                              label: 'lion!',
+                              color: Color(0xFF7E8DF1)),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -851,7 +895,8 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
 
 class _SpeechBubble extends StatelessWidget {
   final String text;
-  const _SpeechBubble({super.key, required this.text});
+  final bool showHint;
+  const _SpeechBubble({super.key, required this.text, this.showHint = false});
 
   @override
   Widget build(BuildContext context) {
@@ -860,7 +905,7 @@ class _SpeechBubble extends StatelessWidget {
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -871,15 +916,35 @@ class _SpeechBubble extends StatelessWidget {
                   offset: const Offset(0, 4)),
             ],
           ),
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.nunito(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.tealDark,
-              height: 1.55,
-            ),
+          child: Column(
+            children: [
+              Text(
+                text,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.nunito(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.tealDark,
+                  height: 1.55,
+                ),
+              ),
+              if (showHint) ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      'tap to continue ▶',
+                      style: GoogleFonts.nunito(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.tealPrimary.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
           ),
         ),
         Align(
