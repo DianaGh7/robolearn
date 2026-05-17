@@ -8,6 +8,7 @@ import '../widgets/shared_widgets.dart';
 import 'level_one_screen.dart';
 import 'level_two_screen.dart';
 import 'level_three_screen.dart';
+import 'level_four_screen.dart';
 import 'login_screen.dart';
 
 class AdventureMapScreen extends StatelessWidget {
@@ -74,12 +75,14 @@ class AdventureMapScreen extends StatelessWidget {
         Challenge c => c.number,
         SoundChallenge c => c.number,
         LedChallenge c => c.number,
+        VarChallenge c => c.number,
         _ => 0,
       };
 
   static List<dynamic> _challengesForLevel(int levelNumber) {
     if (levelNumber == 2) return SoundChallenge.soundChallenges;
     if (levelNumber == 3) return LedChallenge.ledChallenges;
+    if (levelNumber == 4) return VarChallenge.varChallenges;
     return Challenge.demoChallenge
         .where((c) => c.levelNumber == levelNumber)
         .toList()
@@ -339,6 +342,8 @@ class _LevelNode extends StatelessWidget {
       levelChallenges = SoundChallenge.soundChallenges;
     } else if (data.number == 3) {
       levelChallenges = LedChallenge.ledChallenges;
+    } else if (data.number == 4) {
+      levelChallenges = VarChallenge.varChallenges;
     } else {
       levelChallenges =
           Challenge.demoChallenge
@@ -446,6 +451,29 @@ class _LevelNode extends StatelessWidget {
                             builder: (context) => LevelThreeScreen(
                               child: child,
                               challenge: ledChallenges[startIndex],
+                            ),
+                          ),
+                        ).then((updatedChild) {
+                          if (updatedChild == null || !context.mounted) return;
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AdventureMapScreen(child: updatedChild),
+                            ),
+                          );
+                        });
+                      } else if (data.number == 4 && levelChallenges.isNotEmpty) {
+                        // Handle Level 4 (Variable Challenges)
+                        final List<VarChallenge> varChallenges =
+                            VarChallenge.varChallenges;
+                        final int startIndex = firstUnsolvedIndex;
+                        Navigator.push<ChildModel>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => LevelFourScreen(
+                              child: child,
+                              challenge: varChallenges[startIndex],
                             ),
                           ),
                         ).then((updatedChild) {

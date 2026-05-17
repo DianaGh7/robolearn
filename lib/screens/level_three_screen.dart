@@ -1574,17 +1574,27 @@ class _DropSlotState extends State<_DropSlot> {
       },
       builder: (context2, candidateData, rejectedData) => AnimatedContainer(
         duration: const Duration(milliseconds: 120),
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-        height: _hovering ? 20 : 4,
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        height: _hovering ? 28 : 10,
         decoration: BoxDecoration(
           color: _hovering
-              ? AppTheme.tealPrimary.withValues(alpha: 0.18)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: _hovering
-              ? Border.all(color: AppTheme.tealPrimary)
-              : null,
+              ? AppTheme.tealPrimary.withValues(alpha: 0.15)
+              : AppTheme.tealPrimary.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: _hovering
+                ? AppTheme.tealPrimary
+                : AppTheme.tealPrimary.withValues(alpha: 0.22),
+            width: _hovering ? 1.5 : 1,
+          ),
         ),
+        child: _hovering
+            ? Center(
+                child: Icon(Icons.add_rounded,
+                    size: 14,
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.8)),
+              )
+            : null,
       ),
     );
   }

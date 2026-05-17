@@ -47,6 +47,23 @@ enum CodeBlockType {
   waitShort,
   ledRepeat3,
   ledRepeat2,
+  // Level 4 – Variables
+  varSetScore,
+  varSetZero,
+  varAdd5,
+  varShowScore,
+  varSetCount,
+  varRepeat3,
+  varAddOne,
+  varShowCount,
+  varSetTempHot,
+  varIfHot,
+  varShowSun,
+  varElse,
+  varShowSnow,
+  varSetA,
+  varSetB,
+  varShowFaster,
 }
 
 class CodeBlock {
@@ -105,6 +122,23 @@ class CodeBlock {
     CodeBlockType.waitShort: 'wait ⏱️',
     CodeBlockType.ledRepeat3: 'REPEAT 3×',
     CodeBlockType.ledRepeat2: 'REPEAT 2×',
+    // Level 4 – Variables
+    CodeBlockType.varSetScore: 'score = 10',
+    CodeBlockType.varSetZero: 'score = 0',
+    CodeBlockType.varAdd5: 'add 5 points',
+    CodeBlockType.varShowScore: 'show score',
+    CodeBlockType.varSetCount: 'count = 0',
+    CodeBlockType.varRepeat3: 'REPEAT 3×',
+    CodeBlockType.varAddOne: 'count + 1',
+    CodeBlockType.varShowCount: 'show count',
+    CodeBlockType.varSetTempHot: 'temp = 40',
+    CodeBlockType.varIfHot: 'IF temp > 30',
+    CodeBlockType.varShowSun: 'show ☀️',
+    CodeBlockType.varElse: 'ELSE',
+    CodeBlockType.varShowSnow: 'show ❄️',
+    CodeBlockType.varSetA: 'speedA = 8',
+    CodeBlockType.varSetB: 'speedB = 3',
+    CodeBlockType.varShowFaster: 'show winner',
   };
 
   static const Map<CodeBlockType, Color> typeColors = {
@@ -148,6 +182,23 @@ class CodeBlock {
     CodeBlockType.waitShort: Color(0xFF8E24AA),
     CodeBlockType.ledRepeat3: Color(0xFF7E57C2),
     CodeBlockType.ledRepeat2: Color(0xFF5E35B1),
+    // Level 4 – Variables
+    CodeBlockType.varSetScore: Color(0xFFE91E63),
+    CodeBlockType.varSetZero: Color(0xFF9C27B0),
+    CodeBlockType.varAdd5: Color(0xFF4CAF50),
+    CodeBlockType.varShowScore: Color(0xFF1565C0),
+    CodeBlockType.varSetCount: Color(0xFF9C27B0),
+    CodeBlockType.varRepeat3: Color(0xFF7E57C2),
+    CodeBlockType.varAddOne: Color(0xFF4CAF50),
+    CodeBlockType.varShowCount: Color(0xFF1565C0),
+    CodeBlockType.varSetTempHot: Color(0xFFFF5722),
+    CodeBlockType.varIfHot: Color(0xFFFF9800),
+    CodeBlockType.varShowSun: Color(0xFFFFC107),
+    CodeBlockType.varElse: Color(0xFF607D8B),
+    CodeBlockType.varShowSnow: Color(0xFF29B6F6),
+    CodeBlockType.varSetA: Color(0xFFF44336),
+    CodeBlockType.varSetB: Color(0xFF26A69A),
+    CodeBlockType.varShowFaster: Color(0xFFFFB300),
   };
 
   factory CodeBlock.fromType(CodeBlockType type, {int nesting = 0}) {
@@ -613,6 +664,135 @@ class LedChallenge {
         CodeBlockType.setRed,
         CodeBlockType.setGreen,
         CodeBlockType.setBlue,
+      ],
+    ),
+  ];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Level 4 – Variable Challenge definition
+// ─────────────────────────────────────────────────────────────────────────────
+class VarChallenge {
+  final int number;
+  final int levelNumber;
+  final String title;
+  final String instruction;
+  final String? targetDisplay;
+  final String? expectedOutput;
+  final List<int?>? lineForBlock;
+  final List<CodeBlockType> availableBlocks;
+  final List<CodeBlockType> correctSequence;
+
+  const VarChallenge({
+    required this.number,
+    required this.levelNumber,
+    required this.title,
+    required this.instruction,
+    this.targetDisplay,
+    this.expectedOutput,
+    this.lineForBlock,
+    required this.availableBlocks,
+    required this.correctSequence,
+  });
+
+  int get displayNumber {
+    final index = varChallenges.indexWhere((c) => c.number == number);
+    return index + 1;
+  }
+
+  static const List<VarChallenge> varChallenges = [
+    // Challenge 18 – My First Variable (set + show)
+    VarChallenge(
+      number: 18,
+      levelNumber: 4,
+      title: 'My First Variable',
+      instruction: 'Set the score to 10, then show it on the robot screen.',
+      expectedOutput: 'score = 10',
+      availableBlocks: [
+        CodeBlockType.varSetScore,
+        CodeBlockType.varShowScore,
+      ],
+      correctSequence: [
+        CodeBlockType.varSetScore,
+        CodeBlockType.varShowScore,
+      ],
+    ),
+    // Challenge 19 – Add Points (modify a variable)
+    VarChallenge(
+      number: 19,
+      levelNumber: 4,
+      title: 'Add Points',
+      instruction: 'Start score at 0, add 5 points, then show the result.',
+      expectedOutput: 'score = 5',
+      availableBlocks: [
+        CodeBlockType.varSetZero,
+        CodeBlockType.varAdd5,
+        CodeBlockType.varShowScore,
+      ],
+      correctSequence: [
+        CodeBlockType.varSetZero,
+        CodeBlockType.varAdd5,
+        CodeBlockType.varShowScore,
+      ],
+    ),
+    // Challenge 20 – Count the Steps (variable + loop)
+    VarChallenge(
+      number: 20,
+      levelNumber: 4,
+      title: 'Count the Steps',
+      instruction: 'Start count at 0. Use REPEAT 3 times to add 1 each time, then show the count.',
+      expectedOutput: 'count = 3',
+      availableBlocks: [
+        CodeBlockType.varSetCount,
+        CodeBlockType.varRepeat3,
+        CodeBlockType.varAddOne,
+        CodeBlockType.varShowCount,
+      ],
+      correctSequence: [
+        CodeBlockType.varSetCount,
+        CodeBlockType.varRepeat3,
+        CodeBlockType.varAddOne,
+        CodeBlockType.varShowCount,
+      ],
+    ),
+    // Challenge 21 – Temperature Check (variable + if/else)
+    VarChallenge(
+      number: 21,
+      levelNumber: 4,
+      title: 'Temperature Check',
+      instruction: 'Set temp to 40. IF it is hot → show ☀️  inside the IF block. ELSE → show ❄️  inside the ELSE block.',
+      expectedOutput: '☀️',
+      availableBlocks: [
+        CodeBlockType.varSetTempHot,
+        CodeBlockType.varIfHot,
+        CodeBlockType.varShowSun,
+        CodeBlockType.varElse,
+        CodeBlockType.varShowSnow,
+      ],
+      correctSequence: [
+        CodeBlockType.varSetTempHot,
+        CodeBlockType.varIfHot,
+        CodeBlockType.varShowSun,
+        CodeBlockType.varElse,
+        CodeBlockType.varShowSnow,
+      ],
+    ),
+    // Challenge 22 – Speed Race (two variables + comparison)
+    VarChallenge(
+      number: 22,
+      levelNumber: 4,
+      title: 'Speed Race',
+      instruction: 'Set speedA = 8 and speedB = 3, then show which robot is faster.',
+      expectedOutput: 'A wins!',
+      availableBlocks: [
+        CodeBlockType.varSetA,
+        CodeBlockType.varSetB,
+        CodeBlockType.varShowFaster,
+      ],
+      correctSequence: [
+        CodeBlockType.varSetA,
+        CodeBlockType.varSetB,
+        CodeBlockType.varShowFaster,
       ],
     ),
   ];
