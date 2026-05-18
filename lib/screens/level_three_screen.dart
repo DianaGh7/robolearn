@@ -488,7 +488,7 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final totalHeight = constraints.maxHeight;
-                        final codeAreaHeight = (totalHeight * 0.62).clamp(360.0, 560.0);
+                        final codeAreaHeight = (totalHeight * 0.65).clamp(360.0, 560.0);
 
                         return SingleChildScrollView(
                           padding: const EdgeInsets.only(bottom: 84),
