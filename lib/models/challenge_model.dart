@@ -64,6 +64,14 @@ enum CodeBlockType {
   varSetA,
   varSetB,
   varShowFaster,
+  // Level 4 – Challenge 5 replacement: Plant Watering
+  varSetWater,
+  varWaterPlant,
+  varShowPlant,
+  // Level 4 – Challenge 3 replacement: Countdown
+  varSetCountdown,
+  varMinusOne,
+  varShowCountdown,
 }
 
 class CodeBlock {
@@ -125,7 +133,7 @@ class CodeBlock {
     // Level 4 – Variables
     CodeBlockType.varSetScore: 'score = 10',
     CodeBlockType.varSetZero: 'score = 0',
-    CodeBlockType.varAdd5: 'add 5 points',
+    CodeBlockType.varAdd5: 'score = score + 5',
     CodeBlockType.varShowScore: 'show score',
     CodeBlockType.varSetCount: 'count = 0',
     CodeBlockType.varRepeat3: 'REPEAT 3×',
@@ -139,6 +147,12 @@ class CodeBlock {
     CodeBlockType.varSetA: 'speedA = 8',
     CodeBlockType.varSetB: 'speedB = 3',
     CodeBlockType.varShowFaster: 'show winner',
+    CodeBlockType.varSetWater: 'water = 0',
+    CodeBlockType.varWaterPlant: 'water = water + 1',
+    CodeBlockType.varShowPlant: 'show plant',
+    CodeBlockType.varSetCountdown: 'countdown = 3',
+    CodeBlockType.varMinusOne: 'countdown = countdown - 1',
+    CodeBlockType.varShowCountdown: 'show countdown',
   };
 
   static const Map<CodeBlockType, Color> typeColors = {
@@ -199,6 +213,12 @@ class CodeBlock {
     CodeBlockType.varSetA: Color(0xFFF44336),
     CodeBlockType.varSetB: Color(0xFF26A69A),
     CodeBlockType.varShowFaster: Color(0xFFFFB300),
+    CodeBlockType.varSetWater: Color(0xFF0288D1),
+    CodeBlockType.varWaterPlant: Color(0xFF26C6DA),
+    CodeBlockType.varShowPlant: Color(0xFF43A047),
+    CodeBlockType.varSetCountdown: Color(0xFFE53935),
+    CodeBlockType.varMinusOne: Color(0xFFFF7043),
+    CodeBlockType.varShowCountdown: Color(0xFF8E24AA),
   };
 
   factory CodeBlock.fromType(CodeBlockType type, {int nesting = 0}) {
@@ -682,6 +702,8 @@ class VarChallenge {
   final List<int?>? lineForBlock;
   final List<CodeBlockType> availableBlocks;
   final List<CodeBlockType> correctSequence;
+  // Optional: if set, each block's nesting level must match this list exactly.
+  final List<int>? correctNesting;
 
   const VarChallenge({
     required this.number,
@@ -693,6 +715,7 @@ class VarChallenge {
     this.lineForBlock,
     required this.availableBlocks,
     required this.correctSequence,
+    this.correctNesting,
   });
 
   int get displayNumber {
@@ -735,24 +758,25 @@ class VarChallenge {
         CodeBlockType.varShowScore,
       ],
     ),
-    // Challenge 20 – Count the Steps (variable + loop)
+    // Challenge 20 – Countdown (variable + loop + subtraction)
     VarChallenge(
       number: 20,
       levelNumber: 4,
-      title: 'Count the Steps',
-      instruction: 'Start count at 0. Use REPEAT 3 times to add 1 each time, then show the count.',
-      expectedOutput: 'count = 3',
+      title: 'Countdown!',
+      instruction: 'Launch the rocket! 🚀\nSet countdown to 3 and show it, then use REPEAT 3× to subtract 1 and show each time.\nThe screen should print: 3 → 2 → 1 → 0',
+      expectedOutput: '0',
       availableBlocks: [
-        CodeBlockType.varSetCount,
+        CodeBlockType.varSetCountdown,
+        CodeBlockType.varShowCountdown,
         CodeBlockType.varRepeat3,
-        CodeBlockType.varAddOne,
-        CodeBlockType.varShowCount,
+        CodeBlockType.varMinusOne,
       ],
       correctSequence: [
-        CodeBlockType.varSetCount,
+        CodeBlockType.varSetCountdown,
+        CodeBlockType.varShowCountdown,
         CodeBlockType.varRepeat3,
-        CodeBlockType.varAddOne,
-        CodeBlockType.varShowCount,
+        CodeBlockType.varMinusOne,
+        CodeBlockType.varShowCountdown,
       ],
     ),
     // Challenge 21 – Temperature Check (variable + if/else)
@@ -777,23 +801,27 @@ class VarChallenge {
         CodeBlockType.varShowSnow,
       ],
     ),
-    // Challenge 22 – Speed Race (two variables + comparison)
+    // Challenge 22 – Plant Watering (variable + loop + conditional display)
     VarChallenge(
       number: 22,
       levelNumber: 4,
-      title: 'Speed Race',
-      instruction: 'Set speedA = 8 and speedB = 3, then show which robot is faster.',
-      expectedOutput: 'A wins!',
+      title: 'Plant Watering',
+      instruction: 'Water the plant! Set water to 0, then use REPEAT 3× — inside the loop: water it and show the plant each time. Watch it grow! 🌻',
+      expectedOutput: '🌻',
       availableBlocks: [
-        CodeBlockType.varSetA,
-        CodeBlockType.varSetB,
-        CodeBlockType.varShowFaster,
+        CodeBlockType.varSetWater,
+        CodeBlockType.varRepeat3,
+        CodeBlockType.varWaterPlant,
+        CodeBlockType.varShowPlant,
       ],
       correctSequence: [
-        CodeBlockType.varSetA,
-        CodeBlockType.varSetB,
-        CodeBlockType.varShowFaster,
+        CodeBlockType.varSetWater,
+        CodeBlockType.varRepeat3,
+        CodeBlockType.varWaterPlant,
+        CodeBlockType.varShowPlant,
       ],
+      // varWaterPlant and varShowPlant must both be nested inside REPEAT 3×
+      correctNesting: [0, 0, 1, 1],
     ),
   ];
 }

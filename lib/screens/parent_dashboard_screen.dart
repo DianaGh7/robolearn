@@ -2,9 +2,35 @@
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/child_model.dart';
+import '../models/challenge_model.dart';
 import '../services/child_firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+
+// ── Derived-stats helpers ─────────────────────────────────────────────────────
+// completedLevels / progress / level are stale in Firestore (set at creation,
+// never updated).  Compute them from completedChallengeIds instead.
+
+int _effectiveLevel(ChildModel c) {
+  final ids = c.completedChallengeIds;
+  final groups = [
+    Challenge.demoChallenge.where((ch) => ch.levelNumber == 1).map((ch) => ch.number).toList(),
+    SoundChallenge.soundChallenges.map((ch) => ch.number).toList(),
+    LedChallenge.ledChallenges.map((ch) => ch.number).toList(),
+    VarChallenge.varChallenges.map((ch) => ch.number).toList(),
+  ];
+  int level = 1;
+  for (final group in groups) {
+    if (group.isEmpty || !group.every(ids.contains)) break;
+    level++;
+  }
+  return level;
+}
+
+double _effectiveProgress(ChildModel c) {
+  const total = 20; // 5 challenges × 4 levels
+  return (c.completedChallengeIds.length / total).clamp(0.0, 1.0);
+}
 
 class ParentDashboardScreen extends StatefulWidget {
   const ParentDashboardScreen({super.key});
@@ -456,10 +482,10 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
   @override
   Widget build(BuildContext context) {
     final totalLessons =
-        _children.fold<int>(0, (s, c) => s + c.completedLevels);
+        _children.fold<int>(0, (s, c) => s + c.completedChallengeIds.length);
     final avgProgress = _children.isEmpty
         ? 0.0
-        : _children.fold<double>(0, (s, c) => s + c.progress) /
+        : _children.fold<double>(0, (s, c) => s + _effectiveProgress(c)) /
             _children.length;
     final totalStreak = _children.fold<int>(0, (s, c) => s + c.streak);
 
@@ -762,7 +788,7 @@ class _ChildProgressCard extends StatelessWidget {
                             color: AppTheme.tealPrimary.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text('Lv ${child.level}',
+                          child: Text('Lv ${_effectiveLevel(child)}',
                               style: GoogleFonts.nunito(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
@@ -777,7 +803,7 @@ class _ChildProgressCard extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(6),
                         child: LinearProgressIndicator(
-                          value: child.progress,
+                          value: _effectiveProgress(child),
                           backgroundColor: Colors.grey.shade200,
                           valueColor:
                               AlwaysStoppedAnimation<Color>(child.palette[0]),
@@ -786,7 +812,7 @@ class _ChildProgressCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${child.completedLevels} / ${child.totalLevels} levels  •  ${(child.progress * 100).toInt()}%',
+                        '${_effectiveLevel(child) - 1} / ${child.totalLevels} levels  •  ${(_effectiveProgress(child) * 100).toInt()}%',
                         style: GoogleFonts.nunito(
                             fontSize: 11, color: Colors.grey.shade500),
                       ),
@@ -813,7 +839,7 @@ class _ChildProgressCard extends StatelessWidget {
                 _MiniStat(
                     icon: Icons.check_circle_outline_rounded,
                     label: 'Passed',
-                    value: '${child.completedLevels}',
+                    value: '${_effectiveLevel(child) - 1}',
                     color: AppTheme.tealPrimary),
                 _MiniStat(
                     icon: Icons.refresh_rounded,

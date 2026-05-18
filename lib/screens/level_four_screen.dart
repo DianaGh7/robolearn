@@ -169,6 +169,17 @@ class _LevelFourScreenState extends State<LevelFourScreen>
       type == CodeBlockType.varIfHot ||
       type == CodeBlockType.varElse;
 
+  bool _nestingMatches(List<int> correctNesting) {
+    final filtered = arrangedBlocks
+        .where((b) => b.type != CodeBlockType.start && b.type != CodeBlockType.end)
+        .toList();
+    if (filtered.length != correctNesting.length) return false;
+    for (int i = 0; i < filtered.length; i++) {
+      if (filtered[i].nesting != correctNesting[i]) return false;
+    }
+    return true;
+  }
+
   // ── Notifications ─────────────────────────────────────────────────────────
 
   void _showSuccessNotification() {
@@ -223,7 +234,7 @@ class _LevelFourScreenState extends State<LevelFourScreen>
 
   void _addSideLog(String entry) {
     _sideLog.add(entry);
-    if (_sideLog.length > 5) _sideLog.removeAt(0);
+    if (_sideLog.length > 8) _sideLog.removeAt(0);
   }
 
   // Side log = variable state changes. Screen output = only explicit "show" blocks.
@@ -273,6 +284,32 @@ class _LevelFourScreenState extends State<LevelFourScreen>
           _addSideLog('A=$a  B=$b');
           _screenOutput = a >= b ? 'A wins!' : 'B wins!';
           _screenActive = true;
+        });
+      case CodeBlockType.varSetCountdown:
+        _variables['countdown'] = 3;
+        setState(() => _addSideLog('countdown = 3'));
+      case CodeBlockType.varMinusOne:
+        _variables['countdown'] = (_variables['countdown'] ?? 0) - 1;
+        setState(() => _addSideLog('-1  →  countdown = ${_variables['countdown']}'));
+      case CodeBlockType.varShowCountdown:
+        final cd = _variables['countdown'] ?? 0;
+        setState(() {
+          _screenOutput = '$cd';
+          _screenActive = true;
+        });
+      case CodeBlockType.varSetWater:
+        _variables['water'] = 0;
+        setState(() => _addSideLog('water = 0'));
+      case CodeBlockType.varWaterPlant:
+        _variables['water'] = (_variables['water'] ?? 0) + 1;
+        setState(() => _addSideLog('💧  water = ${_variables['water']}'));
+      case CodeBlockType.varShowPlant:
+        final w = _variables['water'] ?? 0;
+        final plantStage = w >= 3 ? '🌻' : w == 2 ? '🌿' : '🌱';
+        setState(() {
+          _screenOutput = plantStage;
+          _screenActive = true;
+          _addSideLog('water=$w → $plantStage');
         });
       default:
         break;
@@ -417,7 +454,9 @@ class _LevelFourScreenState extends State<LevelFourScreen>
       final isCorrect =
           sequence.length == widget.challenge.correctSequence.length &&
               sequence.asMap().entries.every(
-                  (e) => e.value == widget.challenge.correctSequence[e.key]);
+                  (e) => e.value == widget.challenge.correctSequence[e.key]) &&
+              (widget.challenge.correctNesting == null ||
+                  _nestingMatches(widget.challenge.correctNesting!));
 
       if (isCorrect) {
         success = true;
@@ -577,7 +616,7 @@ class _LevelFourScreenState extends State<LevelFourScreen>
                       builder: (context, constraints) {
                         final totalHeight = constraints.maxHeight;
                         final codeAreaHeight =
-                            (totalHeight * 0.60).clamp(350.0, 540.0);
+                            (totalHeight * 0.65).clamp(360.0, 560.0);
                         return SingleChildScrollView(
                           padding: const EdgeInsets.only(bottom: 84),
                           child: ConstrainedBox(
@@ -592,14 +631,11 @@ class _LevelFourScreenState extends State<LevelFourScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                FractionallySizedBox(
-                                  widthFactor: 0.96,
-                                  child: _VarVisualizationCard(
-                                    screenOutput: _screenOutput,
-                                    screenActive: _screenActive,
-                                    glowAnim: _glowAnim,
-                                    sideLog: _sideLog,
-                                  ),
+                                _VarVisualizationCard(
+                                  screenOutput: _screenOutput,
+                                  screenActive: _screenActive,
+                                  glowAnim: _glowAnim,
+                                  sideLog: _sideLog,
                                 ),
                                 const SizedBox(height: 4),
                                 SizedBox(
@@ -969,15 +1005,14 @@ class _VarVisualizationCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.12), width: 1),
       ),
-      child: SizedBox(
-        height: 100,
-        child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Side white log panel ─────────────────────────────────────────
+          // ── Side log panel — grows with content, scrolls when tall ───────
           Expanded(
-            flex: 4,
+            flex: 5,
             child: Container(
+              constraints: const BoxConstraints(minHeight: 88),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: const Color(0xFFF8FFFE),
@@ -985,6 +1020,7 @@ class _VarVisualizationCard extends StatelessWidget {
                 border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.18)),
               ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
@@ -998,13 +1034,14 @@ class _VarVisualizationCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Expanded(
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 140),
                     child: sideLog.isEmpty
                         ? Text('—',
                             style: GoogleFonts.sourceCodePro(
                                 fontSize: 11, color: Colors.grey.shade400))
                         : SingleChildScrollView(
-                            physics: const NeverScrollableScrollPhysics(),
+                            physics: const BouncingScrollPhysics(),
                             reverse: true,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1015,9 +1052,7 @@ class _VarVisualizationCard extends StatelessWidget {
                                         style: GoogleFonts.sourceCodePro(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600,
-                                            color: AppTheme.tealDark),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis),
+                                            color: AppTheme.tealDark)),
                                   )).toList(),
                             ),
                           ),
@@ -1029,14 +1064,14 @@ class _VarVisualizationCard extends StatelessWidget {
 
           const SizedBox(width: 8),
 
-          // ── Main robot screen ────────────────────────────────────────────
+          // ── Main robot screen — fixed height, aligns to top ─────────────
           Expanded(
-            flex: 6,
+            flex: 5,
             child: AnimatedBuilder(
               animation: glowAnim,
               builder: (_, child) => AnimatedContainer(
                 duration: const Duration(milliseconds: 350),
-                height: 86,
+                height: 88,
                 decoration: BoxDecoration(
                   color: screenActive ? const Color(0xFF111827) : const Color(0xFF1F2937),
                   borderRadius: BorderRadius.circular(10),
@@ -1074,7 +1109,6 @@ class _VarVisualizationCard extends StatelessWidget {
             ),
           ),
         ],
-        ),
       ),
     );
   }
