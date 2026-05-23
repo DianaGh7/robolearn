@@ -65,8 +65,8 @@ class AdventureMapScreen extends StatelessWidget {
 
   static const List<_LevelData> _levels = [
     _LevelData(number: 1, title: 'Move Your Robot'),
-    _LevelData(number: 2, title: 'Make Some Noise'),
-    _LevelData(number: 3, title: 'Play with Colors'),
+    _LevelData(number: 2, title: 'Play with Colors'),
+    _LevelData(number: 3, title: 'Make Some Noise'),
     _LevelData(number: 4, title: 'Magic Screen'),
     _LevelData(number: 5, title: 'Smart Moves'),
   ];
@@ -80,8 +80,8 @@ class AdventureMapScreen extends StatelessWidget {
       };
 
   static List<dynamic> _challengesForLevel(int levelNumber) {
-    if (levelNumber == 2) return SoundChallenge.soundChallenges;
-    if (levelNumber == 3) return LedChallenge.ledChallenges;
+    if (levelNumber == 2) return LedChallenge.ledChallenges;
+    if (levelNumber == 3) return SoundChallenge.soundChallenges;
     if (levelNumber == 4) return VarChallenge.varChallenges;
     return Challenge.demoChallenge
         .where((c) => c.levelNumber == levelNumber)
@@ -339,9 +339,9 @@ class _LevelNode extends StatelessWidget {
     // Get challenges based on level type
     late final List<dynamic> levelChallenges;
     if (data.number == 2) {
-      levelChallenges = SoundChallenge.soundChallenges;
-    } else if (data.number == 3) {
       levelChallenges = LedChallenge.ledChallenges;
+    } else if (data.number == 3) {
+      levelChallenges = SoundChallenge.soundChallenges;
     } else if (data.number == 4) {
       levelChallenges = VarChallenge.varChallenges;
     } else {
@@ -396,20 +396,18 @@ class _LevelNode extends StatelessWidget {
             child: GestureDetector(
               onTap: data.unlocked
                   ? () {
-                      // Handle Level 2 (Sound Challenges) separately
+                      // Handle Level 2 (LED Challenges)
                       if (data.number == 2) {
-                        final List<SoundChallenge> soundChallenges =
-                            SoundChallenge.soundChallenges;
-                        if (soundChallenges.isNotEmpty) {
+                        final List<LedChallenge> ledChallenges =
+                            LedChallenge.ledChallenges;
+                        if (ledChallenges.isNotEmpty) {
                           final int startIndex = firstUnsolvedIndex;
-                          final SoundChallenge selectedChallenge =
-                              soundChallenges[startIndex];
                           Navigator.push<ChildModel>(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => LevelTwoScreen(
+                              builder: (context) => LevelThreeScreen(
                                 child: child,
-                                challenge: selectedChallenge,
+                                challenge: ledChallenges[startIndex],
                               ),
                             ),
                           ).then((updatedChild) {
@@ -441,16 +439,18 @@ class _LevelNode extends StatelessWidget {
                           );
                         }
                       } else if (data.number == 3 && levelChallenges.isNotEmpty) {
-                        // Handle Level 3 (LED Challenges)
-                        final List<LedChallenge> ledChallenges =
-                            LedChallenge.ledChallenges;
+                        // Handle Level 3 (Sound Challenges)
+                        final List<SoundChallenge> soundChallenges =
+                            SoundChallenge.soundChallenges;
                         final int startIndex = firstUnsolvedIndex;
+                        final SoundChallenge selectedChallenge =
+                            soundChallenges[startIndex];
                         Navigator.push<ChildModel>(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => LevelThreeScreen(
+                            builder: (context) => LevelTwoScreen(
                               child: child,
-                              challenge: ledChallenges[startIndex],
+                              challenge: selectedChallenge,
                             ),
                           ),
                         ).then((updatedChild) {

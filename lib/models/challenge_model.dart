@@ -105,7 +105,7 @@ class CodeBlock {
     CodeBlockType.ifHappy: 'IF happy 😊',
     CodeBlockType.music: 'play music 🎵',
     CodeBlockType.ifSad: 'IF sad 😢',
-    CodeBlockType.cry: 'cry 💧',
+    CodeBlockType.cry: 'sad tone',
     CodeBlockType.ifMoon: 'IF moon 🌙',
     CodeBlockType.thenNight: 'show night 🌃',
     CodeBlockType.elseIfSun: 'ELSE IF sun ☀️',
@@ -119,7 +119,7 @@ class CodeBlock {
     CodeBlockType.ifHasTrunk: 'IF tall nose 🐽',
     CodeBlockType.elephantSound: 'elephant 🐘',
     CodeBlockType.lionSound: 'lion 🦁',
-    CodeBlockType.ifFluffy: 'IF fluffy 🐱',
+    CodeBlockType.ifFluffy: 'IF fluffy',
     CodeBlockType.catSound: 'cat 🐱',
     CodeBlockType.dogSound: 'dog 🐶',
     CodeBlockType.setRed: 'set RED 🔴',
@@ -342,12 +342,12 @@ class SoundChallenge {
     return index + 1;
   }
 
-  // Level 2 Sound Challenges (internal numbers start at 7 to avoid collision with Level 1)
+  // Level 3 Sound Challenges (internal numbers start at 7 to avoid collision with Level 1)
   static final List<SoundChallenge> soundChallenges = [
     // Challenge 1 – shows emoji cue only; child solves independently
     const SoundChallenge(
       number: 7,
-      levelNumber: 2,
+      levelNumber: 3,
       title: 'Happy Music',
       instruction: 'Help the robot react when a happy emoji appears.',
       targetDisplay: '😊',
@@ -362,7 +362,7 @@ class SoundChallenge {
     // Challenge 2 – if sad → cry, else → happy
     const SoundChallenge(
       number: 8,
-      levelNumber: 2,
+      levelNumber: 3,
       title: 'Sad Reaction',
       instruction: 'Help the robot react when a sad emoji appears.',
       targetDisplay: '😢',
@@ -385,7 +385,7 @@ class SoundChallenge {
     // Challenge 3 – highlights matching row on execution
     const SoundChallenge(
       number: 9,
-      levelNumber: 2,
+      levelNumber: 3,
       title: 'Streaks',
       instruction: '🤖 Mission: Help the robot cheer you on!\n• Big streak? → Celebrate! 🎉\n• Medium streak? → Clap! 👏\n• Small streak? → Encourage the robot! 💪',
       targetDisplay: '🔥 streak 5+  →  Celebrate! 🎉\n📈 streak 2+  →  Clap! 👏\n💪 else  →  Keep going!',
@@ -411,7 +411,7 @@ class SoundChallenge {
     // Challenge 4 – time-based: executes moon branch at night, sun branch during day
     const SoundChallenge(
       number: 10,
-      levelNumber: 2,
+      levelNumber: 3,
       title: 'Day and Night',
       instruction: 'Help the robot react based on the time of day.',
       targetDisplay: '🌙 → 🌃 night\n☀️ → 🌅 morning',
@@ -433,7 +433,7 @@ class SoundChallenge {
     // Challenge 5 – Guess the Animal (nested if)
     const SoundChallenge(
       number: 11,
-      levelNumber: 2,
+      levelNumber: 3,
       title: 'Guess the Animal',
       instruction: '🐾 Can the robot guess the animal?\n\nIf it\'s big:\n  • Big nose? → 🐘 Elephant\n  • Otherwise → 🦁 Lion\n\nIf it\'s not big:\n  • Fluffy? → 🐱 Cat\n  • Otherwise → 🐶 Dog',
       targetDisplay:
@@ -500,10 +500,10 @@ class Challenge {
       levelNumber: 1,
       title: 'Move Forward',
       instruction: 'Try to move your robot one block forward ⬆️',
-      initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 2, y: 1, direction: Direction.up),
-      gridWidth: 5,
-      gridHeight: 5,
+      initialRobotState: RobotState(x: 1, y: 2, direction: Direction.up),
+      targetRobotState: RobotState(x: 1, y: 1, direction: Direction.up),
+      gridWidth: 4,
+      gridHeight: 4,
       availableBlocks: [CodeBlockType.moveForward],
     ),
     const Challenge(
@@ -511,10 +511,10 @@ class Challenge {
       levelNumber: 1,
       title: 'Move Backward',
       instruction: 'Try to move your robot one block backward ⬇️',
-      initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 2, y: 3, direction: Direction.up),
-      gridWidth: 5,
-      gridHeight: 5,
+      initialRobotState: RobotState(x: 1, y: 2, direction: Direction.up),
+      targetRobotState: RobotState(x: 1, y: 3, direction: Direction.up),
+      gridWidth: 4,
+      gridHeight: 4,
       availableBlocks: [CodeBlockType.moveBackward],
     ),
     const Challenge(
@@ -522,21 +522,21 @@ class Challenge {
       levelNumber: 1,
       title: 'Move Right',
       instruction: 'Move your robot to the right',
-      initialRobotState: RobotState(x: 0, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 1, y: 2, direction: Direction.right),
-      gridWidth: 5,
-      gridHeight: 5,
+      initialRobotState: RobotState(x: 1, y: 2, direction: Direction.up),
+      targetRobotState: RobotState(x: 2, y: 2, direction: Direction.right),
+      gridWidth: 4,
+      gridHeight: 4,
       availableBlocks: [CodeBlockType.turnRight, CodeBlockType.moveForward],
     ),
     const Challenge(
       number: 4,
       levelNumber: 1,
       title: 'Move Right - Multiple',
-      instruction: 'Move your robot 3 blocks to the right',
-      initialRobotState: RobotState(x: 0, y: 2, direction: Direction.up),
+      instruction: 'Move your robot 2 blocks to the right',
+      initialRobotState: RobotState(x: 1, y: 2, direction: Direction.up),
       targetRobotState: RobotState(x: 3, y: 2, direction: Direction.right),
-      gridWidth: 5,
-      gridHeight: 5,
+      gridWidth: 4,
+      gridHeight: 4,
       availableBlocks: [CodeBlockType.turnRight, CodeBlockType.moveForward],
     ),
     const Challenge(
@@ -544,10 +544,10 @@ class Challenge {
       levelNumber: 1,
       title: 'Move Left',
       instruction: 'Move your robot to the left',
-      initialRobotState: RobotState(x: 4, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 3, y: 2, direction: Direction.left),
-      gridWidth: 5,
-      gridHeight: 5,
+      initialRobotState: RobotState(x: 1, y: 2, direction: Direction.up),
+      targetRobotState: RobotState(x: 0, y: 2, direction: Direction.left),
+      gridWidth: 4,
+      gridHeight: 4,
       availableBlocks: [CodeBlockType.turnLeft, CodeBlockType.moveForward],
     ),
   ];
@@ -584,7 +584,7 @@ class LedChallenge {
     // Challenge 12 – First Blink (intro: no loop, just sequence)
     LedChallenge(
       number: 12,
-      levelNumber: 3,
+      levelNumber: 2,
       title: 'First Blink',
       instruction: 'Light it up! Turn the LED red, wait, then turn it off.',
       targetDisplay: '🔴 turn on\n⏱️ wait\n⚫ turn off',
@@ -603,7 +603,7 @@ class LedChallenge {
     // Challenge 13 – Blink 3 Times (basic repeat loop)
     LedChallenge(
       number: 13,
-      levelNumber: 3,
+      levelNumber: 2,
       title: 'Blink 3 Times',
       instruction: 'Use REPEAT 3× to blink the red LED 3 times!',
       targetDisplay: 'REPEAT 3×\n🔴 on → ⚫ off',
@@ -621,7 +621,7 @@ class LedChallenge {
     // Challenge 14 – Color Parade (multiple actions inside loop)
     LedChallenge(
       number: 14,
-      levelNumber: 3,
+      levelNumber: 2,
       title: 'Color Parade',
       instruction: 'Inside the loop, show red, then green, then blue!',
       targetDisplay: 'REPEAT 3×\n🔴 → 🟢 → 🔵',
@@ -641,7 +641,7 @@ class LedChallenge {
     // Challenge 16 – Traffic Light (chaining two loops)
     LedChallenge(
       number: 16,
-      levelNumber: 3,
+      levelNumber: 2,
       title: 'Traffic Light',
       instruction: 'First blink red 3 times, then blink green 2 times!',
       targetDisplay: 'REPEAT 3×: 🔴 blink\nREPEAT 2×: 🟢 blink',
@@ -664,7 +664,7 @@ class LedChallenge {
     // Challenge 17 – Rainbow Spin (complex multi-loop)
     LedChallenge(
       number: 17,
-      levelNumber: 3,
+      levelNumber: 2,
       title: 'Rainbow Spin',
       instruction: 'First blink red 2 times, then spin red → green → blue 3 times!',
       targetDisplay: 'REPEAT 2×: 🔴 blink\nREPEAT 3×: 🔴 → 🟢 → 🔵',
@@ -758,26 +758,27 @@ class VarChallenge {
         CodeBlockType.varShowScore,
       ],
     ),
-    // Challenge 20 – Countdown (variable + loop + subtraction)
+    // Challenge 20 – Plant Watering (variable + loop + conditional display)
     VarChallenge(
       number: 20,
       levelNumber: 4,
-      title: 'Countdown!',
-      instruction: 'Launch the rocket! 🚀\nSet countdown to 3 and show it, then use REPEAT 3× to subtract 1 and show each time.\nThe screen should print: 3 → 2 → 1 → 0',
-      expectedOutput: '0',
+      title: 'Plant Watering',
+      instruction: 'Water the plant! Set water to 0, then use REPEAT 3× — inside the loop: water it and show the plant each time. Watch it grow! 🌻',
+      expectedOutput: '🌻',
       availableBlocks: [
-        CodeBlockType.varSetCountdown,
-        CodeBlockType.varShowCountdown,
+        CodeBlockType.varSetWater,
         CodeBlockType.varRepeat3,
-        CodeBlockType.varMinusOne,
+        CodeBlockType.varWaterPlant,
+        CodeBlockType.varShowPlant,
       ],
       correctSequence: [
-        CodeBlockType.varSetCountdown,
-        CodeBlockType.varShowCountdown,
+        CodeBlockType.varSetWater,
         CodeBlockType.varRepeat3,
-        CodeBlockType.varMinusOne,
-        CodeBlockType.varShowCountdown,
+        CodeBlockType.varWaterPlant,
+        CodeBlockType.varShowPlant,
       ],
+      // varWaterPlant and varShowPlant must both be nested inside REPEAT 3×
+      correctNesting: [0, 0, 1, 1],
     ),
     // Challenge 21 – Temperature Check (variable + if/else)
     VarChallenge(
@@ -801,27 +802,26 @@ class VarChallenge {
         CodeBlockType.varShowSnow,
       ],
     ),
-    // Challenge 22 – Plant Watering (variable + loop + conditional display)
+    // Challenge 22 – Countdown (variable + loop + subtraction)
     VarChallenge(
       number: 22,
       levelNumber: 4,
-      title: 'Plant Watering',
-      instruction: 'Water the plant! Set water to 0, then use REPEAT 3× — inside the loop: water it and show the plant each time. Watch it grow! 🌻',
-      expectedOutput: '🌻',
+      title: 'Countdown!',
+      instruction: 'Launch the rocket! 🚀\nSet countdown to 3 and show it, then use REPEAT 3× to subtract 1 and show each time.\nThe screen should print: 3 → 2 → 1 → 0',
+      expectedOutput: '0',
       availableBlocks: [
-        CodeBlockType.varSetWater,
+        CodeBlockType.varSetCountdown,
+        CodeBlockType.varShowCountdown,
         CodeBlockType.varRepeat3,
-        CodeBlockType.varWaterPlant,
-        CodeBlockType.varShowPlant,
+        CodeBlockType.varMinusOne,
       ],
       correctSequence: [
-        CodeBlockType.varSetWater,
+        CodeBlockType.varSetCountdown,
+        CodeBlockType.varShowCountdown,
         CodeBlockType.varRepeat3,
-        CodeBlockType.varWaterPlant,
-        CodeBlockType.varShowPlant,
+        CodeBlockType.varMinusOne,
+        CodeBlockType.varShowCountdown,
       ],
-      // varWaterPlant and varShowPlant must both be nested inside REPEAT 3×
-      correctNesting: [0, 0, 1, 1],
     ),
   ];
 }

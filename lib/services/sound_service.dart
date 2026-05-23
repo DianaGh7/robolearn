@@ -43,7 +43,7 @@ class SoundService {
         await _playWav(_WavGen.music());
         break;
       case 'cry':
-        await _playWav(_WavGen.cry());
+        await _playAsset('assets/sounds/sad_trombone.mp3');
         break;
       case 'elephantSound':
         await _playAnimalUrl(
@@ -74,19 +74,19 @@ class SoundService {
         );
         break;
       case 'thenNight':
-        await _speak(isArabic ? 'تصبح على خير' : 'Good night!');
+        await _playAsset('assets/sounds/good_night.mp3');
         break;
       case 'thenMorning':
-        await _speak(isArabic ? 'صباح الخير' : 'Good morning!');
+        await _playAsset('assets/sounds/good_morning.mp3');
         break;
       case 'cheering':
-        await _speak(isArabic ? 'هيا' : 'Yay!');
+        await _playAsset('assets/sounds/cheer.mp3');
         break;
       case 'clap':
-        await _speak(isArabic ? 'تصفيق' : 'Clap clap!');
+        await _playAsset('assets/sounds/clap.mp3');
         break;
       case 'encourage':
-        await _speak(isArabic ? 'استمر' : 'Keep going!');
+        await _playAsset('assets/sounds/encourage.mp3');
         break;
     }
   }
@@ -98,11 +98,9 @@ class SoundService {
     await _player.play(BytesSource(bytes));
   }
 
-  Future<void> _speak(String text) async {
-    await _tts.stop();
-    await _tts.setSpeechRate(0.45);
-    await _tts.setPitch(1.1);
-    await _tts.speak(text);
+  Future<void> _playAsset(String assetPath) async {
+    await _player.stop();
+    await _player.play(AssetSource(assetPath.replaceFirst('assets/', '')));
   }
 
   Future<void> _speakAnimal(String text,
@@ -164,35 +162,6 @@ class _WavGen {
             .clamp(-32768, 32767);
         if (start + i < totalSamples) pcm[start + i] = sample;
       }
-    }
-    return _wavHeader(pcm);
-  }
-
-  /// Soft descending sigh — single smooth tone, 400→250 Hz, no harsh harmonics.
-  /// Sounds like a gentle "aaahh" falling in pitch, appropriate for children.
-  static Uint8List cry() {
-    const ms  = 900;
-    final len = (_sr * ms / 1000).round();
-    final pcm = Int16List(len);
-    double phase = 0;
-
-    for (int i = 0; i < len; i++) {
-      final progress = i / len;
-
-      // Smooth exponential descent: 400 Hz → 250 Hz
-      final freq = 400.0 * math.pow(250.0 / 400.0, progress);
-
-      phase += 2 * math.pi * freq / _sr;
-
-      // Soft sine mix — no sawtooth, no noise, just gentle harmonics
-      final s = math.sin(phase)     * 0.82 +
-                math.sin(2 * phase) * 0.13 +
-                math.sin(3 * phase) * 0.05;
-
-      // Slow attack (20 %) and long release (35 %) for a breath-like feel
-      final env = _env(i, len, fadeInRatio: 0.20, fadeOutRatio: 0.35);
-
-      pcm[i] = (s * 32767 * _vol * env).round().clamp(-32768, 32767);
     }
     return _wavHeader(pcm);
   }

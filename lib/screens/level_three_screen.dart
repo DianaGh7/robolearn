@@ -424,11 +424,9 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
   // ── Navigation ────────────────────────────────────────
   Future<void> _goToPreviousChallenge() async {
     final challenges = LedChallenge.ledChallenges;
-    final prev = challenges.firstWhere(
-      (c) => c.number == widget.challenge.number - 1,
-      orElse: () => challenges.first,
-    );
-    if (prev.number == widget.challenge.number) return;
+    final currentIndex = challenges.indexWhere((c) => c.number == widget.challenge.number);
+    if (currentIndex <= 0) return;
+    final prev = challenges[currentIndex - 1];
     final updated = await Navigator.push<ChildModel>(
       context,
       MaterialPageRoute(
@@ -440,14 +438,12 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
 
   Future<void> _goToNextChallenge() async {
     final challenges = LedChallenge.ledChallenges;
-    final next = challenges.firstWhere(
-      (c) => c.number == widget.challenge.number + 1,
-      orElse: () => challenges.last,
-    );
-    if (next.number == widget.challenge.number) {
+    final currentIndex = challenges.indexWhere((c) => c.number == widget.challenge.number);
+    if (currentIndex == -1 || currentIndex >= challenges.length - 1) {
       Navigator.pop(context, _progressChild);
       return;
     }
+    final next = challenges[currentIndex + 1];
     final updated = await Navigator.push<ChildModel>(
       context,
       MaterialPageRoute(
