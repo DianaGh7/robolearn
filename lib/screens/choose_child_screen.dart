@@ -40,6 +40,7 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) {
+        if (!mounted) return;
         setState(() {
           _children = [];
           _loadingChildren = false;
@@ -48,16 +49,17 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
       }
 
       final kids = await _childService.listChildren(uid: uid);
+      if (!mounted) return;
       setState(() {
         _children = kids;
         _loadingChildren = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _children = [];
         _loadingChildren = false;
       });
-      if (!mounted) return;
       final s = AppStrings(LanguageNotifier.instance.isArabic);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -207,9 +209,17 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     StateSetter setDialogState,
     void Function(String?) setError,
   ) async {
+    // Capture NavigatorState synchronously here — this function is called
+    // directly from the button's onPressed, so this line runs before any
+    // await, while the widget tree is stable. After the Firebase await below,
+    // we call navigator.pop() directly on the NavigatorState object, which
+    // does NOT call dependOnInheritedWidgetOfExactType at all — eliminating
+    // the Android race between InheritedWidget rebuilds and deactivation.
+    final navigator = Navigator.of(context);
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || user.email == null) {
-      if (ctx.mounted) Navigator.of(ctx).pop(false);
+      navigator.pop(false);
       return;
     }
     try {
@@ -218,8 +228,9 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
         password: password,
       );
       await user.reauthenticateWithCredential(credential);
-      if (ctx.mounted) Navigator.of(ctx).pop(true);
+      if (mounted) navigator.pop(true);
     } on FirebaseAuthException catch (e) {
+      if (!ctx.mounted) return;
       setDialogState(() {
         setError(AppStrings(LanguageNotifier.instance.isArabic).authError(e.code));
       });
@@ -498,11 +509,12 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
                       cursor: SystemMouseCursors.click,
                       child: GestureDetector(
                         onTap: () async {
+                          final navigator = Navigator.of(context);
                           final verified =
                               await _showParentPasswordDialog();
                           if (!verified) return;
                           if (!mounted) return;
-                          await Navigator.of(context).push(
+                          await navigator.push(
                             PageRouteBuilder(
                               pageBuilder: (_, _, _) =>
                                   const ParentDashboardScreen(),

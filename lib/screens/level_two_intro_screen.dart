@@ -324,7 +324,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
                 const Icon(Icons.star_rounded,
                     color: Color(0xFFFFB300), size: 15),
                 const SizedBox(width: 5),
-                Text('Level 2',
+                Text('Level 3',
                     style: GoogleFonts.nunito(
                         color: const Color(0xFF3949AB),
                         fontSize: 15,

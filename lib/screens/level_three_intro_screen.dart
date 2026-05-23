@@ -347,7 +347,7 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
                 const Icon(Icons.star_rounded,
                     color: Color(0xFFFFB300), size: 15),
                 const SizedBox(width: 5),
-                Text('Level 3',
+                Text('Level 2',
                     style: GoogleFonts.nunito(
                         color: const Color(0xFF4527A0),
                         fontSize: 15,
