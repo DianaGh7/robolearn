@@ -133,6 +133,17 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
     });
   }
 
+  bool _nestingMatches(List<int> correctNesting) {
+    final filtered = arrangedBlocks
+        .where((b) => b.type != CodeBlockType.start && b.type != CodeBlockType.end)
+        .toList();
+    if (filtered.length != correctNesting.length) return false;
+    for (int i = 0; i < filtered.length; i++) {
+      if (filtered[i].nesting != correctNesting[i]) return false;
+    }
+    return true;
+  }
+
   bool get _hasValidStartEndOrder {
     if (arrangedBlocks.length < 2) return false;
     return arrangedBlocks.first.type == CodeBlockType.start &&
@@ -185,9 +196,35 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
     final steppedProgress = (oldProgress + 1).clamp(0, challenges.length);
     progressMap[3] = math.max(steppedProgress, reachedIndex);
 
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final lastIso = _progressChild.streakLastPlayedDateIso;
+    int nextStreak = _progressChild.streak;
+    if (lastIso == null) {
+      nextStreak = 1;
+    } else {
+      try {
+        final lastPlayed = DateTime.parse(lastIso);
+        final lastDay = DateTime.utc(lastPlayed.year, lastPlayed.month, lastPlayed.day);
+        final todayUtc = DateTime.utc(today.year, today.month, today.day);
+        final diffDays = todayUtc.difference(lastDay).inDays;
+        if (diffDays == 0) {
+          nextStreak = _progressChild.streak;
+        } else if (diffDays == 1) {
+          nextStreak = _progressChild.streak + 1;
+        } else {
+          nextStreak = 1;
+        }
+      } catch (_) {
+        nextStreak = 1;
+      }
+    }
+
     return _progressChild.copyWith(
       completedChallengeIds: completedSet.toList()..sort(),
       subLevelProgressByLevel: progressMap,
+      streak: nextStreak,
+      streakLastPlayedDateIso: today.toIso8601String(),
     );
   }
 
@@ -212,6 +249,85 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
       default:
         break;
     }
+  }
+
+  // ── Execution helpers ─────────────────────────────────
+
+  int _repeatCountFor(CodeBlockType type) => switch (type) {
+    CodeBlockType.ledRepeat5 => 5,
+    CodeBlockType.ledRepeat3 => 3,
+    _ => 2,
+  };
+
+  // Recursive engine for nested loops (maxNesting > 1).
+  // seqCounter is a single-element list used as a mutable int reference so
+  // recursive calls share and advance the same counter.
+  // The counter maps each block (repeat headers included) to a line in
+  // lineForBlock; it resets to savedSeqIdx at the start of each loop iteration
+  // so the same highlight lines are shown on every pass.
+  Future<bool> _executeRecursive(
+    List<(int, CodeBlock)> pairs,
+    int depth,
+    List<int>? lineMap,
+    List<int> seqCounter,
+  ) async {
+    int i = 0;
+    while (i < pairs.length) {
+      if (!mounted) return false;
+      final (arrangedIdx, block) = pairs[i];
+      final seqLine = (lineMap != null && seqCounter[0] < lineMap.length)
+          ? lineMap[seqCounter[0]]
+          : null;
+
+      if (_isRepeatBlock(block.type)) {
+        final count = _repeatCountFor(block.type);
+
+        setState(() {
+          _activeBlockIndex = arrangedIdx;
+          _highlightedLineIndex = seqLine;
+        });
+        seqCounter[0]++;
+        await Future.delayed(const Duration(milliseconds: 550));
+        if (!mounted) return false;
+
+        // Body = all blocks with nesting > this block's nesting level.
+        final currentNesting = block.nesting;
+        int j = i + 1;
+        while (j < pairs.length && pairs[j].$2.nesting > currentNesting) { j++; }
+        final body = pairs.sublist(i + 1, j);
+
+        // Remember counter at body start so each iteration re-highlights identically.
+        final savedBodySeqIdx = seqCounter[0];
+        for (int r = 0; r < count; r++) {
+          seqCounter[0] = savedBodySeqIdx;
+          if (!await _executeRecursive(body, depth + 1, lineMap, seqCounter)) {
+            return false;
+          }
+        }
+
+        if (mounted) setState(() => _ledColor = _kOff);
+        await Future.delayed(const Duration(milliseconds: 200));
+        i = j;
+      } else {
+        // Single action block.
+        setState(() {
+          _activeBlockIndex = arrangedIdx;
+          _highlightedLineIndex = seqLine;
+        });
+        seqCounter[0]++;
+        await Future.delayed(const Duration(milliseconds: 350));
+        if (!mounted) return false;
+
+        if (block.type == CodeBlockType.waitShort) {
+          await Future.delayed(const Duration(milliseconds: 600));
+        } else {
+          _applyLedAction(block.type);
+          await Future.delayed(const Duration(milliseconds: 400));
+        }
+        i++;
+      }
+    }
+    return true;
   }
 
   // ── Execution ─────────────────────────────────────────
@@ -249,74 +365,93 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
       }
     }
 
-    // lineForBlock mapping (null for challenges with repeat blocks).
     final mapping = widget.challenge.lineForBlock;
-    int seqIdx = 0;
-    // Track which repeat section we're in for line highlighting.
-    int repeatSection = -1;
+    final repeatLineOffset = widget.challenge.repeatLineOffset;
 
-    int i = 0;
-    while (i < actionPairs.length) {
-      final (idx, block) = actionPairs[i];
+    // Dispatch: nested loops (maxNesting > 1) → recursive engine;
+    // single-level nesting or legacy → flat hybrid engine.
+    final int maxNesting =
+        actionPairs.fold(0, (m, p) => p.$2.nesting > m ? p.$2.nesting : m);
 
-      if (_isRepeatBlock(block.type)) {
-        repeatSection++;
-        final repeatCount = block.type == CodeBlockType.ledRepeat3 ? 3 : 2;
+    if (maxNesting > 1) {
+      // ── Recursive engine (nested loops, e.g. challenge 17) ──────────────
+      await _executeRecursive(actionPairs, 0, mapping, [0]);
+    } else {
+      // ── Flat hybrid engine (single-level nesting or legacy) ──────────────
+      int seqIdx = 0;
+      int repeatSection = -1;
 
-        // Highlight the repeat block itself.
-        setState(() {
-          _activeBlockIndex = idx;
-          _highlightedLineIndex = repeatSection;
-        });
-        await Future.delayed(const Duration(milliseconds: 550));
-        if (!mounted) return;
+      // Hybrid mode: when any action block is nested (nesting > 0) use
+      // nesting-based body detection; otherwise fall back to legacy mode.
+      final bool useNestingMode = actionPairs.any((p) => p.$2.nesting > 0);
 
-        // Collect body blocks until the next repeat block.
-        final List<(int, CodeBlock)> body = [];
-        int j = i + 1;
-        while (j < actionPairs.length && !_isRepeatBlock(actionPairs[j].$2.type)) {
-          body.add(actionPairs[j]);
-          j++;
-        }
+      int i = 0;
+      while (i < actionPairs.length) {
+        final (idx, block) = actionPairs[i];
 
-        // Execute body repeatCount times.
-        for (int r = 0; r < repeatCount; r++) {
-          for (final (bodyIdx, bodyBlock) in body) {
-            if (!mounted) return;
-            setState(() {
-              _activeBlockIndex = bodyIdx;
-              _highlightedLineIndex = repeatSection;
-            });
-            await Future.delayed(const Duration(milliseconds: 350));
-            if (!mounted) return;
-            _applyLedAction(bodyBlock.type);
-            await Future.delayed(const Duration(milliseconds: 400));
+        if (_isRepeatBlock(block.type)) {
+          repeatSection++;
+          final repeatCount = _repeatCountFor(block.type);
+
+          setState(() {
+            _activeBlockIndex = idx;
+            _highlightedLineIndex = repeatSection + repeatLineOffset;
+          });
+          await Future.delayed(const Duration(milliseconds: 550));
+          if (!mounted) return;
+
+          // Collect body blocks.
+          final List<(int, CodeBlock)> body = [];
+          int j = i + 1;
+          if (useNestingMode) {
+            while (j < actionPairs.length && actionPairs[j].$2.nesting > 0) {
+              body.add(actionPairs[j]);
+              j++;
+            }
+          } else {
+            while (j < actionPairs.length && !_isRepeatBlock(actionPairs[j].$2.type)) {
+              body.add(actionPairs[j]);
+              j++;
+            }
           }
-        }
 
-        // Leave LED off after each repeat group.
-        if (mounted) setState(() => _ledColor = _kOff);
-        await Future.delayed(const Duration(milliseconds: 200));
-        i = j;
-      } else {
-        // Single action block (Ch 12 intro sequence).
-        setState(() {
-          _activeBlockIndex = idx;
-          _highlightedLineIndex = (mapping != null && seqIdx < mapping.length)
-              ? mapping[seqIdx]
-              : null;
-        });
-        await Future.delayed(const Duration(milliseconds: 450));
-        if (!mounted) return;
+          // Execute body repeatCount times.
+          for (int r = 0; r < repeatCount; r++) {
+            for (final (bodyIdx, bodyBlock) in body) {
+              if (!mounted) return;
+              setState(() {
+                _activeBlockIndex = bodyIdx;
+                _highlightedLineIndex = repeatSection + repeatLineOffset;
+              });
+              await Future.delayed(const Duration(milliseconds: 350));
+              if (!mounted) return;
+              _applyLedAction(bodyBlock.type);
+              await Future.delayed(const Duration(milliseconds: 400));
+            }
+          }
 
-        if (block.type == CodeBlockType.waitShort) {
-          await Future.delayed(const Duration(milliseconds: 600));
+          if (mounted) setState(() => _ledColor = _kOff);
+          await Future.delayed(const Duration(milliseconds: 200));
+          i = j;
         } else {
-          _applyLedAction(block.type);
-          await Future.delayed(const Duration(milliseconds: 500));
+          setState(() {
+            _activeBlockIndex = idx;
+            _highlightedLineIndex = (mapping != null && seqIdx < mapping.length)
+                ? mapping[seqIdx]
+                : null;
+          });
+          await Future.delayed(const Duration(milliseconds: 450));
+          if (!mounted) return;
+
+          if (block.type == CodeBlockType.waitShort) {
+            await Future.delayed(const Duration(milliseconds: 600));
+          } else {
+            _applyLedAction(block.type);
+            await Future.delayed(const Duration(milliseconds: 500));
+          }
+          seqIdx++;
+          i++;
         }
-        seqIdx++;
-        i++;
       }
     }
 
@@ -334,11 +469,13 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
     final isCorrect = sequence.length == widget.challenge.correctSequence.length &&
         sequence.asMap().entries.every(
           (e) => e.value == widget.challenge.correctSequence[e.key],
-        );
+        ) &&
+        (widget.challenge.correctNesting == null ||
+            _nestingMatches(widget.challenge.correctNesting!));
 
     if (isCorrect) {
       setState(() => _isExecuting = false);
-      final streakBefore = _progressChild.streak;
+      final lastPlayedDateBefore = _progressChild.streakLastPlayedDateIso;
       final challenges = LedChallenge.ledChallenges;
       int reachedIndex = 0;
       for (int i = 0; i < challenges.length; i++) {
@@ -364,7 +501,7 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
       } else {
         _progressChild = _markChallengeCompleted();
       }
-      _streakRenewed = _progressChild.streak > streakBefore;
+      _streakRenewed = _progressChild.streakLastPlayedDateIso != lastPlayedDateBefore;
       setState(() => _challengeSuccessfullyCompleted = true);
       _showSuccessNotification();
     } else {
@@ -456,7 +593,13 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
   // ── Build ─────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        Navigator.pop(context, _progressChild);
+      },
+      child: Scaffold(
       body: Stack(
         children: [
           Container(
@@ -678,7 +821,8 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
             ),
         ],
       ),
-    );
+    ), // Scaffold
+    ); // PopScope
   }
 }
 
@@ -802,27 +946,30 @@ class _HeaderBar extends StatelessWidget {
             ),
           ],
           const SizedBox(width: 6),
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFFFFF), Color(0xFFF2FFFB)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              border: Border.all(color: Colors.white, width: 1.8),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.tealPrimary.withValues(alpha: 0.25),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+          GestureDetector(
+            onTap: () => showChildProfileDialog(context, child),
+            child: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFFFFF), Color(0xFFF2FFFB)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
+                border: Border.all(color: Colors.white, width: 1.8),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(2.5),
+              child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender)),
             ),
-            padding: const EdgeInsets.all(2.5),
-            child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender)),
           ),
         ],
       ),
@@ -1841,7 +1988,9 @@ class _ConnectedBanner extends StatelessWidget {
 }
 
 bool _isRepeatBlock(CodeBlockType type) =>
-    type == CodeBlockType.ledRepeat3 || type == CodeBlockType.ledRepeat2;
+    type == CodeBlockType.ledRepeat3 ||
+    type == CodeBlockType.ledRepeat2 ||
+    type == CodeBlockType.ledRepeat5;
 
 // ─────────────────────────────────────────────────────
 // Block icon helper
@@ -1867,6 +2016,8 @@ IconData _blockIcon(CodeBlockType type) {
     case CodeBlockType.ledRepeat3:
       return Icons.repeat_rounded;
     case CodeBlockType.ledRepeat2:
+      return Icons.repeat_rounded;
+    case CodeBlockType.ledRepeat5:
       return Icons.repeat_rounded;
     default:
       return Icons.code_rounded;

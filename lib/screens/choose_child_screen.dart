@@ -110,131 +110,17 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
   }
 
   Future<bool> _showParentPasswordDialog() async {
-    // Google-authenticated users are already securely verified — let them through.
     final user = FirebaseAuth.instance.currentUser;
-    final isGoogleUser = user?.providerData
-            .any((p) => p.providerId == 'google.com') ??
-        false;
+    final isGoogleUser =
+        user?.providerData.any((p) => p.providerId == 'google.com') ?? false;
     if (isGoogleUser) return true;
-
-    final s = AppStrings(LanguageNotifier.instance.isArabic);
-    final passwordCtrl = TextEditingController();
-    bool obscure = true;
-    String? errorText;
 
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              const Icon(Icons.lock_rounded, color: AppTheme.tealMid),
-              const SizedBox(width: 8),
-              Text(
-                s.parentsArea,
-                style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                s.enterPasswordToContinue,
-                style: GoogleFonts.nunito(
-                    fontSize: 14, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: passwordCtrl,
-                obscureText: obscure,
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: s.password,
-                  errorText: errorText,
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                        obscure ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () =>
-                        setDialogState(() => obscure = !obscure),
-                  ),
-                ),
-                onSubmitted: (_) async {
-                  await _verifyAndPopDialog(
-                      ctx, passwordCtrl.text, setDialogState, (err) {
-                    errorText = err;
-                  });
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: Text(s.cancel,
-                  style: GoogleFonts.nunito(color: Colors.grey[600])),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                await _verifyAndPopDialog(
-                    ctx, passwordCtrl.text, setDialogState, (err) {
-                  errorText = err;
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.tealMid,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text(s.confirm,
-                  style: GoogleFonts.nunito(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
+      builder: (_) => const _PasswordDialog(),
     );
-    passwordCtrl.dispose();
     return result ?? false;
-  }
-
-  Future<void> _verifyAndPopDialog(
-    BuildContext ctx,
-    String password,
-    StateSetter setDialogState,
-    void Function(String?) setError,
-  ) async {
-    // Capture NavigatorState synchronously here — this function is called
-    // directly from the button's onPressed, so this line runs before any
-    // await, while the widget tree is stable. After the Firebase await below,
-    // we call navigator.pop() directly on the NavigatorState object, which
-    // does NOT call dependOnInheritedWidgetOfExactType at all — eliminating
-    // the Android race between InheritedWidget rebuilds and deactivation.
-    final navigator = Navigator.of(context);
-
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || user.email == null) {
-      navigator.pop(false);
-      return;
-    }
-    try {
-      final credential = EmailAuthProvider.credential(
-        email: user.email!,
-        password: password,
-      );
-      await user.reauthenticateWithCredential(credential);
-      if (mounted) navigator.pop(true);
-    } on FirebaseAuthException catch (e) {
-      if (!ctx.mounted) return;
-      setDialogState(() {
-        setError(AppStrings(LanguageNotifier.instance.isArabic).authError(e.code));
-      });
-    }
   }
 
   Future<void> _showSettingsMenu() async {
@@ -262,34 +148,92 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: Row(
-                  children: [
-                    const Icon(Icons.language_rounded,
-                        color: AppTheme.tealPrimary, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      s.languageLabel,
-                      style: GoogleFonts.nunito(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.grey[500],
+                padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
+                child: Container(
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(ctx, 'ar'),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: lang.isArabic
+                                  ? AppTheme.tealPrimary
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: lang.isArabic
+                                  ? [
+                                      BoxShadow(
+                                        color: AppTheme.tealPrimary
+                                            .withValues(alpha: 0.35),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      )
+                                    ]
+                                  : [],
+                            ),
+                            child: Center(
+                              child: Text(
+                                '🇸🇦  العربية',
+                                style: GoogleFonts.nunito(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: lang.isArabic
+                                      ? Colors.white
+                                      : Colors.grey[500],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(ctx, 'en'),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: !lang.isArabic
+                                  ? AppTheme.tealPrimary
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: !lang.isArabic
+                                  ? [
+                                      BoxShadow(
+                                        color: AppTheme.tealPrimary
+                                            .withValues(alpha: 0.35),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      )
+                                    ]
+                                  : [],
+                            ),
+                            child: Center(
+                              child: Text(
+                                '🇬🇧  English',
+                                style: GoogleFonts.nunito(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: !lang.isArabic
+                                      ? Colors.white
+                                      : Colors.grey[500],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              _LangOptionTile(
-                label: 'العربية',
-                flag: '🇸🇦',
-                isSelected: lang.isArabic,
-                onTap: () => Navigator.pop(ctx, 'ar'),
-              ),
-              _LangOptionTile(
-                label: 'English',
-                flag: '🇬🇧',
-                isSelected: !lang.isArabic,
-                onTap: () => Navigator.pop(ctx, 'en'),
               ),
               const Divider(height: 1, indent: 16, endIndent: 16),
               ListTile(
@@ -317,6 +261,8 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     } else if (selected == 'en') {
       await lang.setLanguage(false);
     } else if (selected == 'logout') {
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
           pageBuilder: (_, _, _) => const LoginScreen(),
@@ -342,37 +288,6 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
           bottom: 0, left: 0, right: 0,
           child: SizedBox(
               height: 120, child: CustomPaint(painter: CloudPainter())),
-        ),
-        SafeArea(
-          child: Align(
-            alignment: Alignment.topRight,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 8, right: 16),
-              child: GestureDetector(
-                onTap: _showSettingsMenu,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.82),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.teal.withValues(alpha: 0.12),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.settings_outlined,
-                    color: AppTheme.tealMid,
-                    size: 21,
-                  ),
-                ),
-              ),
-            ),
-          ),
         ),
         SafeArea(
           child: FadeTransition(
@@ -562,6 +477,38 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+        // Settings button rendered last so it sits above scroll content
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8, right: 16),
+              child: GestureDetector(
+                onTap: _showSettingsMenu,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.82),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.teal.withValues(alpha: 0.12),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.settings_outlined,
+                    color: AppTheme.tealMid,
+                    size: 21,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -815,38 +762,111 @@ class _LetsPlayButton extends StatelessWidget {
   }
 }
 
-// ─── Language option tile ─────────────────────────────────────────────────────
+// ─── Password dialog (owns its own TextEditingController) ─────────────────────
+// Using a proper StatefulWidget ensures the controller is disposed only after
+// the dialog widget is fully removed from the tree (post-animation), not
+// immediately when showDialog's future completes. Premature disposal while the
+// TextField is still mounted breaks InheritedWidget dependency cleanup and
+// triggers the '_dependents.isEmpty' assertion on physical Android devices.
 
-class _LangOptionTile extends StatelessWidget {
-  final String label;
-  final String flag;
-  final bool isSelected;
-  final VoidCallback onTap;
+class _PasswordDialog extends StatefulWidget {
+  const _PasswordDialog();
 
-  const _LangOptionTile({
-    required this.label,
-    required this.flag,
-    required this.isSelected,
-    required this.onTap,
-  });
+  @override
+  State<_PasswordDialog> createState() => _PasswordDialogState();
+}
+
+class _PasswordDialogState extends State<_PasswordDialog> {
+  final _passwordCtrl = TextEditingController();
+  bool _obscure = true;
+  String? _errorText;
+
+  @override
+  void dispose() {
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email == null) {
+      if (mounted) Navigator.of(context).pop(false);
+      return;
+    }
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: _passwordCtrl.text,
+      );
+      await user.reauthenticateWithCredential(credential);
+      if (mounted) Navigator.of(context).pop(true);
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorText =
+            AppStrings(LanguageNotifier.instance.isArabic).authError(e.code);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Text(flag, style: const TextStyle(fontSize: 22)),
-      title: Text(
-        label,
-        style: GoogleFonts.nunito(
-          fontSize: 15,
-          fontWeight: FontWeight.w800,
-          color: isSelected ? AppTheme.tealDark : Colors.grey[700],
-        ),
+    final s = AppStrings(LanguageNotifier.instance.isArabic);
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          const Icon(Icons.lock_rounded, color: AppTheme.tealMid),
+          const SizedBox(width: 8),
+          Text(s.parentsArea,
+              style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+        ],
       ),
-      trailing: isSelected
-          ? const Icon(Icons.check_circle_rounded,
-              color: AppTheme.tealPrimary, size: 22)
-          : null,
-      onTap: onTap,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            s.enterPasswordToContinue,
+            style: GoogleFonts.nunito(fontSize: 14, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _passwordCtrl,
+            obscureText: _obscure,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: s.password,
+              errorText: _errorText,
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              suffixIcon: IconButton(
+                icon:
+                    Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+                onPressed: () => setState(() => _obscure = !_obscure),
+              ),
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(s.cancel,
+              style: GoogleFonts.nunito(color: Colors.grey[600])),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.tealMid,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+          ),
+          child:
+              Text(s.confirm, style: GoogleFonts.nunito(color: Colors.white)),
+        ),
+      ],
     );
   }
 }

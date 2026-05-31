@@ -40,7 +40,7 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
   int? _highlightedLineIndex;
   late List<CodeBlockType> _availableBlocks;
   RobotConnectionStatus _connectionStatus = RobotConnectionStatus.disconnected;
-  String _animalChallenge11 = 'elephant';
+  final String _animalChallenge11 = 'cat';
   final SoundService _soundService = SoundService();
   bool _isArabic = false;
 
@@ -65,11 +65,6 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    if (widget.challenge.number == 11) {
-      const animals = ['elephant', 'lion', 'cat', 'dog'];
-      _animalChallenge11 = animals[math.Random().nextInt(animals.length)];
-    }
-
     final td = widget.challenge.targetDisplay ?? '';
     final isEmojiOnlyChallenge =
         (!td.contains('\n') && !td.contains(' ') && td.trim().isNotEmpty) ||
@@ -202,9 +197,35 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
     final steppedProgress = (oldProgress + 1).clamp(0, challenges.length);
     progressMap[2] = math.max(steppedProgress, reachedIndex);
 
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final lastIso = _progressChild.streakLastPlayedDateIso;
+    int nextStreak = _progressChild.streak;
+    if (lastIso == null) {
+      nextStreak = 1;
+    } else {
+      try {
+        final lastPlayed = DateTime.parse(lastIso);
+        final lastDay = DateTime.utc(lastPlayed.year, lastPlayed.month, lastPlayed.day);
+        final todayUtc = DateTime.utc(today.year, today.month, today.day);
+        final diffDays = todayUtc.difference(lastDay).inDays;
+        if (diffDays == 0) {
+          nextStreak = _progressChild.streak;
+        } else if (diffDays == 1) {
+          nextStreak = _progressChild.streak + 1;
+        } else {
+          nextStreak = 1;
+        }
+      } catch (_) {
+        nextStreak = 1;
+      }
+    }
+
     return _progressChild.copyWith(
       completedChallengeIds: completedSet.toList()..sort(),
       subLevelProgressByLevel: progressMap,
+      streak: nextStreak,
+      streakLastPlayedDateIso: today.toIso8601String(),
     );
   }
 
@@ -370,35 +391,36 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
 
     if (isCorrect) {
       setState(() => _isExecuting = false);
-      final streakBefore = _progressChild.streak;
-      final challenges = SoundChallenge.soundChallenges;
-      int reachedIndex = 0;
-      for (int i = 0; i < challenges.length; i++) {
-        if (challenges[i].number == widget.challenge.number) {
-          reachedIndex = i + 1;
-          break;
-        }
-      }
-      final childId = _progressChild.childId;
-      if (childId != null) {
-        try {
-          _progressChild = await _progressService.registerChallengeSuccessForLevel(
-            childId: childId,
-            child: _progressChild,
-            challengeNumber: widget.challenge.number,
-            levelNumber: widget.challenge.levelNumber,
-            reachedIndex: reachedIndex,
-            totalChallengesInLevel: challenges.length,
-          );
-        } catch (_) {
-          _progressChild = _markChallengeCompleted();
-        }
-      } else {
-        _progressChild = _markChallengeCompleted();
-      }
-      _streakRenewed = _progressChild.streak > streakBefore;
+
+      // Update child state synchronously so the overlay appears immediately.
+      final lastPlayedDateBefore = _progressChild.streakLastPlayedDateIso;
+      _progressChild = _markChallengeCompleted();
+      _streakRenewed = _progressChild.streakLastPlayedDateIso != lastPlayedDateBefore;
       setState(() => _challengeSuccessfullyCompleted = true);
       _showSuccessNotification();
+
+      // Persist to backend in the background.
+      final childId = _progressChild.childId;
+      if (childId != null) {
+        final challenges = SoundChallenge.soundChallenges;
+        int reachedIndex = 0;
+        for (int i = 0; i < challenges.length; i++) {
+          if (challenges[i].number == widget.challenge.number) {
+            reachedIndex = i + 1;
+            break;
+          }
+        }
+        _progressService.registerChallengeSuccessForLevel(
+          childId: childId,
+          child: _progressChild,
+          challengeNumber: widget.challenge.number,
+          levelNumber: widget.challenge.levelNumber,
+          reachedIndex: reachedIndex,
+          totalChallengesInLevel: challenges.length,
+        ).then((serverChild) {
+          if (mounted) setState(() => _progressChild = serverChild);
+        }).catchError((_) {});
+      }
     } else {
       setState(() {
         _progressChild = _progressChild.copyWith(
@@ -529,7 +551,13 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        Navigator.pop(context, _progressChild);
+      },
+      child: Scaffold(
       body: Stack(
         children: [
           Container(
@@ -800,7 +828,8 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
             ),
         ],
       ),
-    );
+    ), // Scaffold
+    ); // PopScope
   }
 }
 
@@ -923,27 +952,30 @@ class _HeaderBar extends StatelessWidget {
             ),
           ],
           const SizedBox(width: 6),
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFFFFF), Color(0xFFF2FFFB)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              border: Border.all(color: Colors.white, width: 1.8),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.tealPrimary.withValues(alpha: 0.25),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+          GestureDetector(
+            onTap: () => showChildProfileDialog(context, child),
+            child: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFFFFF), Color(0xFFF2FFFB)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
+                border: Border.all(color: Colors.white, width: 1.8),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(2.5),
+              child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender)),
             ),
-            padding: const EdgeInsets.all(2.5),
-            child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender)),
           ),
         ],
       ),
