@@ -73,16 +73,16 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.delete_sweep_rounded, color: Color(0xFFD84E4E)),
+                leading: const Icon(Icons.logout_rounded, color: Color(0xFFD84E4E)),
                 title: Text(
-                  'Remove demo children (Lina/Adam/Sara)',
+                  'Sign Out',
                   style: GoogleFonts.nunito(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFFD84E4E),
                   ),
                 ),
-                onTap: () => Navigator.pop(context, 'remove_demo'),
+                onTap: () => Navigator.pop(context, 'sign_out'),
               ),
             ],
           ),
@@ -90,29 +90,14 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
       },
     );
 
-    if (selected == 'remove_demo') {
-      await _removeDemoChildren();
-    }
-  }
-
-  Future<void> _removeDemoChildren() async {
-    final uid = _uid;
-    if (uid == null) return;
-    final demoNames = <String>{'Lina', 'Adam', 'Sara'};
-    final toDelete = _children.where((c) => demoNames.contains(c.name)).toList();
-    if (toDelete.isEmpty) return;
-
-    for (final child in toDelete) {
-      final id = child.childId;
-      if (id == null) continue;
-      try {
-        await _childService.deleteChild(childId: id, uid: uid);
-      } catch (e) {
-        _showError('Could not delete ${child.name}: $e');
+    if (selected == 'sign_out') {
+      await FirebaseAuth.instance.signOut();
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     }
-    await _loadChildren();
   }
+
 
   @override
   void initState() {
@@ -249,7 +234,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                   level: 1,
                   avatarSeed: _children.length % 3,
                   completedLevels: 0,
-                  totalLevels: 5,
+                  totalLevels: 4,
                   attempts: 0,
                   streak: 0,
                   progress: 0.0,

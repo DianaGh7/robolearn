@@ -1,9 +1,6 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../l10n/app_strings.dart';
@@ -32,7 +29,6 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isPasswordVisible = false;
   bool _isFormValid       = false;
   bool _isLoading         = false;
-  bool _isGoogleLoading   = false;
   final _resetEmailCtrl   = TextEditingController();
 
   // ── Animation ──────────────────────────────────────────────────────────────
@@ -74,7 +70,6 @@ class _LoginScreenState extends State<LoginScreen>
   // ── Language menu ──────────────────────────────────────────────────────────
   Future<void> _showLangMenu() async {
     final lang = LangScope.of(context);
-    final s = AppStrings(lang.isArabic);
     final selected = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -92,22 +87,101 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ],
         ),
-        child: ListTile(
-          leading: const Icon(Icons.language_rounded, color: AppTheme.tealPrimary),
-          title: Text(
-            s.languageOption,
-            style: GoogleFonts.nunito(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.tealDark,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
+          child: Container(
+            height: 46,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx, 'ar'),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: lang.isArabic
+                            ? AppTheme.tealPrimary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: lang.isArabic
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.tealPrimary
+                                      .withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : [],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '🇸🇦  العربية',
+                          style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: lang.isArabic
+                                ? Colors.white
+                                : Colors.grey[500],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx, 'en'),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: !lang.isArabic
+                            ? AppTheme.tealPrimary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: !lang.isArabic
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.tealPrimary
+                                      .withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : [],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '🇬🇧  English',
+                          style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: !lang.isArabic
+                                ? Colors.white
+                                : Colors.grey[500],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          onTap: () => Navigator.pop(ctx, 'lang'),
         ),
       ),
     );
-    if (selected == 'lang' && mounted) {
-      await lang.setLanguage(!lang.isArabic);
+    if (!mounted) return;
+    if (selected == 'ar') {
+      await lang.setLanguage(true);
+    } else if (selected == 'en') {
+      await lang.setLanguage(false);
     }
   }
 
@@ -154,75 +228,6 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  // Web client ID — required on Android to obtain the idToken Firebase needs.
-  static const _webClientId =
-      '570232335671-4riqb2etbno8pajv5tmcq3fpp0tphtmu.apps.googleusercontent.com';
-
-  Future<void> _onGoogleSignIn() async {
-    setState(() => _isGoogleLoading = true);
-    try {
-      UserCredential userCred;
-
-      if (kIsWeb) {
-        // Web: Firebase handles the Google popup natively — no google_sign_in needed.
-        final provider = GoogleAuthProvider();
-        userCred = await FirebaseAuth.instance.signInWithPopup(provider);
-      } else {
-        // Android / iOS: use the google_sign_in package.
-        final googleUser = await GoogleSignIn(
-          serverClientId: _webClientId,
-        ).signIn();
-        if (googleUser == null) return; // user cancelled
-        final googleAuth = await googleUser.authentication;
-        final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-        userCred = await FirebaseAuth.instance.signInWithCredential(credential);
-      }
-
-      final user = userCred.user;
-      if (user != null) {
-        await ParentService().upsertParentProfile(
-          uid: user.uid,
-          email: user.email ?? '',
-          displayName: user.displayName,
-        );
-      }
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(PageRouteBuilder(
-        pageBuilder: (_, _, _) => const ChooseChildScreen(),
-        transitionsBuilder: (_, anim, _, child) =>
-            FadeTransition(opacity: anim, child: child),
-        transitionDuration: const Duration(milliseconds: 500),
-      ));
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'popup-closed-by-user') return; // user dismissed — do nothing
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(_authErrorMessage(e), style: GoogleFonts.nunito()),
-        backgroundColor: Colors.red.shade700,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ));
-    } catch (e) {
-      if (!mounted) return;
-      final msg = e.toString();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-          msg.length > 80 ? '${msg.substring(0, 80)}…' : msg,
-          style: GoogleFonts.nunito(fontSize: 12),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        backgroundColor: Colors.red.shade700,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ));
-    } finally {
-      if (mounted) setState(() => _isGoogleLoading = false);
-    }
-  }
 
   void _goToSignUp() {
     Navigator.of(context).push(PageRouteBuilder(
@@ -238,6 +243,7 @@ class _LoginScreenState extends State<LoginScreen>
     showDialog(
       context: context,
       barrierColor: Colors.black26,
+      barrierDismissible: false,
       builder: (dialogContext) {
         bool sending = false;
         return StatefulBuilder(
@@ -278,21 +284,27 @@ class _LoginScreenState extends State<LoginScreen>
                       ? null
                       : () async {
                           final messenger = ScaffoldMessenger.of(context);
-                          final navigator = Navigator.of(dialogContext);
                           final email = _resetEmailCtrl.text.trim().toLowerCase();
                           final errStr = AppStrings(LanguageNotifier.instance.isArabic);
+                          if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$')
+                              .hasMatch(email)) {
+                            messenger.showSnackBar(SnackBar(
+                              content: Text(errStr.authError('invalid-email'),
+                                  style: GoogleFonts.nunito()),
+                              backgroundColor: Colors.red.shade700,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ));
+                            return;
+                          }
+                          setDialogState(() => sending = true);
                           try {
-                            if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$')
-                                .hasMatch(email)) {
-                              throw FirebaseAuthException(
-                                code: 'invalid-email',
-                                message: 'The email address format is invalid.',
-                              );
-                            }
-                            setDialogState(() => sending = true);
                             await FirebaseAuth.instance
                                 .sendPasswordResetEmail(email: email);
-                            navigator.pop();
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                            }
                             messenger.showSnackBar(SnackBar(
                               content: Text(errStr.resetEmailSent,
                                   style: GoogleFonts.nunito()),
@@ -302,7 +314,6 @@ class _LoginScreenState extends State<LoginScreen>
                                   borderRadius: BorderRadius.circular(12)),
                             ));
                           } on FirebaseAuthException catch (e) {
-                            setDialogState(() => sending = false);
                             messenger.showSnackBar(SnackBar(
                               content: Text(errStr.authError(e.code),
                                   style: GoogleFonts.nunito()),
@@ -311,6 +322,19 @@ class _LoginScreenState extends State<LoginScreen>
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12)),
                             ));
+                          } catch (_) {
+                            messenger.showSnackBar(SnackBar(
+                              content: Text(errStr.authError('network-request-failed'),
+                                  style: GoogleFonts.nunito()),
+                              backgroundColor: Colors.red.shade700,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ));
+                          } finally {
+                            if (dialogContext.mounted) {
+                              setDialogState(() => sending = false);
+                            }
                           }
                         },
                   child: sending
@@ -451,74 +475,6 @@ class _LoginScreenState extends State<LoginScreen>
 
                         const SizedBox(height: 20),
 
-                        // ── Divider ────────────────────────────────────────────
-                        Row(children: [
-                          Expanded(
-                              child: Divider(
-                                  color: Colors.white.withValues(alpha: 0.7),
-                                  thickness: 1)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: Text(s.orDivider,
-                                style: GoogleFonts.nunito(
-                                    color: AppTheme.tealMid,
-                                    fontWeight: FontWeight.w600)),
-                          ),
-                          Expanded(
-                              child: Divider(
-                                  color: Colors.white.withValues(alpha: 0.7),
-                                  thickness: 1)),
-                        ]),
-
-                        const SizedBox(height: 20),
-
-                        // ── Google Sign In ─────────────────────────────────────
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: (_isLoading || _isGoogleLoading)
-                                ? null
-                                : _onGoogleSignIn,
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.black87,
-                              disabledForegroundColor:
-                                  Colors.black38,
-                              side: BorderSide(
-                                  color: Colors.grey.shade300, width: 1.2),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14)),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 13),
-                            ),
-                            child: _isGoogleLoading
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: AppTheme.tealPrimary),
-                                  )
-                                : Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
-                                    children: [
-                                      const FaIcon(FontAwesomeIcons.google, color: Color(0xFF4285F4), size: 20),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        s.continueWithGoogle,
-                                        style: GoogleFonts.nunito(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 20),
-
                         // ── Go to Sign Up ──────────────────────────────────────
                         MouseRegion(
                           cursor: SystemMouseCursors.click,
@@ -549,6 +505,35 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ),
             ),
+
+              // ── Back to welcome ────────────────────────────────────────────
+              Positioned(
+                top: 8,
+                left: 16,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.82),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.teal.withValues(alpha: 0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: AppTheme.tealMid,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
 
               // ── Settings / language gear ───────────────────────────────────
               Positioned(

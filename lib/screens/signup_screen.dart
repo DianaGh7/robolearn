@@ -90,7 +90,6 @@ class _SignUpScreenState extends State<SignUpScreen>
   // ── Language menu ──────────────────────────────────────────────────────────
   Future<void> _showLangMenu() async {
     final lang = LangScope.of(context);
-    final s = AppStrings(lang.isArabic);
     final selected = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -108,22 +107,101 @@ class _SignUpScreenState extends State<SignUpScreen>
             ),
           ],
         ),
-        child: ListTile(
-          leading: const Icon(Icons.language_rounded, color: AppTheme.tealPrimary),
-          title: Text(
-            s.languageOption,
-            style: GoogleFonts.nunito(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.tealDark,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
+          child: Container(
+            height: 46,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx, 'ar'),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: lang.isArabic
+                            ? AppTheme.tealPrimary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: lang.isArabic
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.tealPrimary
+                                      .withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : [],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '🇸🇦  العربية',
+                          style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: lang.isArabic
+                                ? Colors.white
+                                : Colors.grey[500],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx, 'en'),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: !lang.isArabic
+                            ? AppTheme.tealPrimary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: !lang.isArabic
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.tealPrimary
+                                      .withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : [],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '🇬🇧  English',
+                          style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: !lang.isArabic
+                                ? Colors.white
+                                : Colors.grey[500],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          onTap: () => Navigator.pop(ctx, 'lang'),
         ),
       ),
     );
-    if (selected == 'lang' && mounted) {
-      await lang.setLanguage(!lang.isArabic);
+    if (!mounted) return;
+    if (selected == 'ar') {
+      await lang.setLanguage(true);
+    } else if (selected == 'en') {
+      await lang.setLanguage(false);
     }
   }
 

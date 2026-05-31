@@ -192,9 +192,10 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
     }
 
     final progressMap = Map<int, int>.from(_progressChild.subLevelProgressByLevel);
-    final oldProgress = progressMap[3] ?? 0;
+    final levelNum = widget.challenge.levelNumber;
+    final oldProgress = progressMap[levelNum] ?? 0;
     final steppedProgress = (oldProgress + 1).clamp(0, challenges.length);
-    progressMap[3] = math.max(steppedProgress, reachedIndex);
+    progressMap[levelNum] = math.max(steppedProgress, reachedIndex);
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -484,26 +485,28 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
           break;
         }
       }
-      final childId = _progressChild.childId;
-      if (childId != null) {
-        try {
-          _progressChild = await _progressService.registerChallengeSuccessForLevel(
-            childId: childId,
-            child: _progressChild,
-            challengeNumber: widget.challenge.number,
-            levelNumber: widget.challenge.levelNumber,
-            reachedIndex: reachedIndex,
-            totalChallengesInLevel: challenges.length,
-          );
-        } catch (_) {
-          _progressChild = _markChallengeCompleted();
-        }
-      } else {
-        _progressChild = _markChallengeCompleted();
-      }
+
+      // Update locally first so _progressChild is correct even if the user
+      // navigates away before the Firestore call completes.
+      _progressChild = _markChallengeCompleted();
       _streakRenewed = _progressChild.streakLastPlayedDateIso != lastPlayedDateBefore;
       setState(() => _challengeSuccessfullyCompleted = true);
       _showSuccessNotification();
+
+      // Persist to backend in the background.
+      final childId = _progressChild.childId;
+      if (childId != null) {
+        _progressService.registerChallengeSuccessForLevel(
+          childId: childId,
+          child: _progressChild,
+          challengeNumber: widget.challenge.number,
+          levelNumber: widget.challenge.levelNumber,
+          reachedIndex: reachedIndex,
+          totalChallengesInLevel: challenges.length,
+        ).then((serverChild) {
+          if (mounted) setState(() => _progressChild = serverChild);
+        }).catchError((_) {});
+      }
     } else {
       setState(() {
         _progressChild = _progressChild.copyWith(
