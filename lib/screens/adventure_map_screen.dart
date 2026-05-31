@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:google_fonts/google_fonts.dart';
+import '../l10n/app_strings.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
@@ -16,6 +17,7 @@ class AdventureMapScreen extends StatelessWidget {
   const AdventureMapScreen({super.key, required this.child});
 
   Future<void> _showSettingsMenu(BuildContext context) async {
+    final s = AppStrings.of(context);
     final selected = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -37,7 +39,7 @@ class AdventureMapScreen extends StatelessWidget {
           child: ListTile(
             leading: const Icon(Icons.logout_rounded, color: Color(0xFFD84E4E)),
             title: Text(
-              'Log out',
+              s.logout,
               style: GoogleFonts.nunito(
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
@@ -124,6 +126,7 @@ class AdventureMapScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
@@ -185,7 +188,7 @@ class AdventureMapScreen extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'Adventure Map',
+                          s.adventureMap,
                           style: GoogleFonts.nunito(
                             fontSize: 12,
                             color: AppTheme.tealMid,
@@ -221,7 +224,7 @@ class AdventureMapScreen extends StatelessWidget {
               ),
 
               Text(
-                'Choose a level to start coding!',
+                s.chooseLevelPrompt,
                 style: GoogleFonts.nunito(
                   fontSize: 13,
                   color: AppTheme.tealMid,
@@ -272,35 +275,17 @@ class AdventureMapScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _Stat(
-                      label: 'Completed',
+                      label: s.levelsLabel,
                       value: '${_countCompletedLevels(child)} / ${child.totalLevels}',
                     ),
-                    _Stat(label: 'Attempts', value: '${child.attempts}'),
                     _Stat(
-                      label: 'Streak',
-                      value: child.streak > 0 ? '🔥 ${child.streak}' : '—',
+                      label: s.challengesLabel,
+                      value: '${child.completedChallengeIds.length} / 20',
                     ),
-                    SizedBox(
-                      width: 36,
-                      height: 36,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          CircularProgressIndicator(
-                            value: child.progress,
-                            backgroundColor: Colors.grey.shade200,
-                            valueColor: const AlwaysStoppedAnimation(
-                              AppTheme.tealPrimary,
-                            ),
-                            strokeWidth: 4,
-                          ),
-                          const Icon(
-                            Icons.star_rounded,
-                            color: AppTheme.orange,
-                            size: 16,
-                          ),
-                        ],
-                      ),
+                    _Stat(label: s.attemptsLabel, value: '${child.attempts}'),
+                    _Stat(
+                      label: s.streakLabel,
+                      value: child.streak > 0 ? '🔥 ${child.streak}' : '—',
                     ),
                   ],
                 ),
@@ -423,10 +408,11 @@ class _LevelNode extends StatelessWidget {
                             );
                           });
                         } else {
+                          final s = AppStrings.of(context);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                'Level ${data.number}: ${data.title} — Coming soon!',
+                                s.comingSoon(data.number, data.title),
                                 style: GoogleFonts.nunito(),
                               ),
                               backgroundColor: AppTheme.tealPrimary,
@@ -510,10 +496,11 @@ class _LevelNode extends StatelessWidget {
                           );
                         });
                       } else {
+                        final s = AppStrings.of(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Level ${data.number}: ${data.title} — Coming soon!',
+                              s.comingSoon(data.number, data.title),
                               style: GoogleFonts.nunito(),
                             ),
                             backgroundColor: AppTheme.tealPrimary,
@@ -557,33 +544,38 @@ class _LevelNode extends StatelessWidget {
                         ],
                         border: Border.all(color: Colors.white, width: 3),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            isCompleted
-                                ? Icons.check_rounded
-                                : Icons.star_rounded,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                          Text(
-                            'Level',
-                            style: GoogleFonts.nunito(
-                              fontSize: 11,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            '${data.number}',
-                            style: GoogleFonts.nunito(
-                              fontSize: 20,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ],
+                      child: Builder(
+                        builder: (context) {
+                          final s = AppStrings.of(context);
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                isCompleted
+                                    ? Icons.check_rounded
+                                    : Icons.star_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                              Text(
+                                s.level,
+                                style: GoogleFonts.nunito(
+                                  fontSize: 11,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                '${data.number}',
+                                style: GoogleFonts.nunito(
+                                  fontSize: 20,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -592,13 +584,18 @@ class _LevelNode extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            data.title,
-            style: GoogleFonts.nunito(
-              fontSize: 12,
-              color: AppTheme.tealDark,
-              fontWeight: FontWeight.w700,
-            ),
+          Builder(
+            builder: (context) {
+              final s = AppStrings.of(context);
+              return Text(
+                s.levelTitle(data.number),
+                style: GoogleFonts.nunito(
+                  fontSize: 12,
+                  color: AppTheme.tealDark,
+                  fontWeight: FontWeight.w700,
+                ),
+              );
+            },
           ),
         ],
       ),

@@ -47,6 +47,7 @@ enum CodeBlockType {
   waitShort,
   ledRepeat3,
   ledRepeat2,
+  ledRepeat5,
   // Level 4 – Variables
   varSetScore,
   varSetZero,
@@ -130,6 +131,7 @@ class CodeBlock {
     CodeBlockType.waitShort: 'wait ⏱️',
     CodeBlockType.ledRepeat3: 'REPEAT 3×',
     CodeBlockType.ledRepeat2: 'REPEAT 2×',
+    CodeBlockType.ledRepeat5: 'REPEAT 5×',
     // Level 4 – Variables
     CodeBlockType.varSetScore: 'score = 10',
     CodeBlockType.varSetZero: 'score = 0',
@@ -196,6 +198,7 @@ class CodeBlock {
     CodeBlockType.waitShort: Color(0xFF8E24AA),
     CodeBlockType.ledRepeat3: Color(0xFF7E57C2),
     CodeBlockType.ledRepeat2: Color(0xFF5E35B1),
+    CodeBlockType.ledRepeat5: Color(0xFF4527A0),
     // Level 4 – Variables
     CodeBlockType.varSetScore: Color(0xFFE91E63),
     CodeBlockType.varSetZero: Color(0xFF9C27B0),
@@ -435,9 +438,9 @@ class SoundChallenge {
       number: 11,
       levelNumber: 3,
       title: 'Guess the Animal',
-      instruction: '🐾 Can the robot guess the animal?\n\nIf it\'s big:\n  • Big nose? → 🐘 Elephant\n  • Otherwise → 🦁 Lion\n\nIf it\'s not big:\n  • Fluffy? → 🐱 Cat\n  • Otherwise → 🐶 Dog',
+      instruction: '🐾 Can the robot guess the animal?\n\nIf it\'s big:\n  • Tall nose? → 🐘 Elephant\n  • Otherwise → 🦁 Lion\n\nIf it\'s not big:\n  • Fluffy? → 🐱 Cat\n  • Otherwise → 🐶 Dog',
       targetDisplay:
-          'big + big nose  →  🐘 elephant\n'
+          'big + tall nose  →  🐘 elephant\n'
           'big, no nose  →  🦁 lion\n'
           'small + fluffy  →  🐱 cat\n'
           'small, not fluffy  →  🐶 dog',
@@ -563,6 +566,10 @@ class LedChallenge {
   final List<int>? lineForBlock;
   final List<CodeBlockType> availableBlocks;
   final List<CodeBlockType> correctSequence;
+  // Optional: required nesting per block (null = no nesting validation).
+  final List<int>? correctNesting;
+  // How many lines the first repeat section is offset in targetDisplay.
+  final int repeatLineOffset;
 
   const LedChallenge({
     required this.number,
@@ -573,6 +580,8 @@ class LedChallenge {
     this.lineForBlock,
     required this.availableBlocks,
     required this.correctSequence,
+    this.correctNesting,
+    this.repeatLineOffset = 0,
   });
 
   int get displayNumber {
@@ -581,12 +590,12 @@ class LedChallenge {
   }
 
   static const List<LedChallenge> ledChallenges = [
-    // Challenge 12 – First Blink (intro: no loop, just sequence)
+    // Challenge 12 – Light It Up (simple intro: sequence without loop)
     LedChallenge(
       number: 12,
       levelNumber: 2,
-      title: 'First Blink',
-      instruction: 'Light it up! Turn the LED red, wait, then turn it off.',
+      title: 'Light It Up! 💡',
+      instruction: 'Turn the robot light red, wait a bit, then turn it off!',
       targetDisplay: '🔴 turn on\n⏱️ wait\n⚫ turn off',
       lineForBlock: [0, 1, 2],
       availableBlocks: [
@@ -600,12 +609,12 @@ class LedChallenge {
         CodeBlockType.ledOff,
       ],
     ),
-    // Challenge 13 – Blink 3 Times (basic repeat loop)
+    // Challenge 13 – Blink Blink Blink (first loop)
     LedChallenge(
       number: 13,
       levelNumber: 2,
-      title: 'Blink 3 Times',
-      instruction: 'Use REPEAT 3× to blink the red LED 3 times!',
+      title: 'Blink Blink Blink! 🔴',
+      instruction: 'Make the red light blink 3 times using a loop!',
       targetDisplay: 'REPEAT 3×\n🔴 on → ⚫ off',
       availableBlocks: [
         CodeBlockType.ledRepeat3,
@@ -618,39 +627,43 @@ class LedChallenge {
         CodeBlockType.ledOff,
       ],
     ),
-    // Challenge 14 – Color Parade (multiple actions inside loop)
-    LedChallenge(
-      number: 14,
-      levelNumber: 2,
-      title: 'Color Parade',
-      instruction: 'Inside the loop, show red, then green, then blue!',
-      targetDisplay: 'REPEAT 3×\n🔴 → 🟢 → 🔵',
-      availableBlocks: [
-        CodeBlockType.ledRepeat3,
-        CodeBlockType.setRed,
-        CodeBlockType.setGreen,
-        CodeBlockType.setBlue,
-      ],
-      correctSequence: [
-        CodeBlockType.ledRepeat3,
-        CodeBlockType.setRed,
-        CodeBlockType.setGreen,
-        CodeBlockType.setBlue,
-      ],
-    ),
-    // Challenge 16 – Traffic Light (chaining two loops)
+    // Challenge 16 – Stop the Cars! (loop in the middle with singles before & after)
     LedChallenge(
       number: 16,
       levelNumber: 2,
-      title: 'Traffic Light',
-      instruction: 'First blink red 3 times, then blink green 2 times!',
-      targetDisplay: 'REPEAT 3×: 🔴 blink\nREPEAT 2×: 🟢 blink',
+      title: 'Stop the Cars! 🚗',
+      instruction: 'Help people cross the road!\nTurn green first, blink red 3 times to stop cars, yellow to warn, then green again!',
+      targetDisplay: '🟢 go!\nREPEAT 3×: 🔴 stop\n🟡 warning\n🟢 go again!',
+      lineForBlock: [0, 2, 3],
+      repeatLineOffset: 1,
+      availableBlocks: [
+        CodeBlockType.setGreen,
+        CodeBlockType.ledRepeat3,
+        CodeBlockType.setRed,
+        CodeBlockType.setYellow,
+      ],
+      correctSequence: [
+        CodeBlockType.setGreen,
+        CodeBlockType.ledRepeat3,
+        CodeBlockType.setRed,
+        CodeBlockType.setYellow,
+        CodeBlockType.setGreen,
+      ],
+      correctNesting: [0, 0, 1, 0, 0],
+    ),
+    // Challenge 14 – Attack & Win! (2 sequential loops)
+    LedChallenge(
+      number: 14,
+      levelNumber: 2,
+      title: 'Attack & Win! ⚔️',
+      instruction: 'The enemy attacks! Blink red 3 times to fight back, then celebrate with 2 green blinks!',
+      targetDisplay: 'REPEAT 3×: 🔴 fight!\nREPEAT 2×: 🟢 win!',
       availableBlocks: [
         CodeBlockType.ledRepeat3,
-        CodeBlockType.ledRepeat2,
         CodeBlockType.setRed,
-        CodeBlockType.setGreen,
         CodeBlockType.ledOff,
+        CodeBlockType.ledRepeat2,
+        CodeBlockType.setGreen,
       ],
       correctSequence: [
         CodeBlockType.ledRepeat3,
@@ -661,30 +674,31 @@ class LedChallenge {
         CodeBlockType.ledOff,
       ],
     ),
-    // Challenge 17 – Rainbow Spin (complex multi-loop)
+    // Challenge 17 – Police Siren! (nested loops: outer 3×, inner 2× red, inner 2× blue)
     LedChallenge(
       number: 17,
       levelNumber: 2,
-      title: 'Rainbow Spin',
-      instruction: 'First blink red 2 times, then spin red → green → blue 3 times!',
-      targetDisplay: 'REPEAT 2×: 🔴 blink\nREPEAT 3×: 🔴 → 🟢 → 🔵',
+      title: 'Police Siren! 🚓',
+      instruction: 'Make a police siren!\nRepeat 3 times:\n  • Blink red 🔴 twice\n  • Blink blue 🔵 twice',
+      targetDisplay: 'REPEAT 3×\n  REPEAT 2×: 🔴 blink\n  REPEAT 2×: 🔵 blink',
+      lineForBlock: [0, 1, 1, 1, 2, 2, 2],
       availableBlocks: [
-        CodeBlockType.ledRepeat2,
         CodeBlockType.ledRepeat3,
+        CodeBlockType.ledRepeat2,
         CodeBlockType.setRed,
-        CodeBlockType.setGreen,
         CodeBlockType.setBlue,
         CodeBlockType.ledOff,
       ],
       correctSequence: [
+        CodeBlockType.ledRepeat3,
         CodeBlockType.ledRepeat2,
         CodeBlockType.setRed,
         CodeBlockType.ledOff,
-        CodeBlockType.ledRepeat3,
-        CodeBlockType.setRed,
-        CodeBlockType.setGreen,
+        CodeBlockType.ledRepeat2,
         CodeBlockType.setBlue,
+        CodeBlockType.ledOff,
       ],
+      correctNesting: [0, 1, 2, 2, 1, 2, 2],
     ),
   ];
 }

@@ -60,11 +60,7 @@ class SoundService {
         );
         break;
       case 'catSound':
-        await _playAnimalUrl(
-          'https://commons.wikimedia.org/wiki/Special:FilePath/Meow.ogg',
-          fallbackText: isArabic ? 'مياو' : 'Meow',
-          pitch: 1.6, rate: 0.45,
-        );
+        await _playAsset('assets/sounds/cat_meow.mp3');
         break;
       case 'dogSound':
         await _playAnimalUrl(

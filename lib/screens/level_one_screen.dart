@@ -117,9 +117,35 @@ class _LevelOneScreenState extends State<LevelOneScreen>
       reachedIndex,
     );
 
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final lastIso = _progressChild.streakLastPlayedDateIso;
+    int nextStreak = _progressChild.streak;
+    if (lastIso == null) {
+      nextStreak = 1;
+    } else {
+      try {
+        final lastPlayed = DateTime.parse(lastIso);
+        final lastDay = DateTime.utc(lastPlayed.year, lastPlayed.month, lastPlayed.day);
+        final todayUtc = DateTime.utc(today.year, today.month, today.day);
+        final diffDays = todayUtc.difference(lastDay).inDays;
+        if (diffDays == 0) {
+          nextStreak = _progressChild.streak;
+        } else if (diffDays == 1) {
+          nextStreak = _progressChild.streak + 1;
+        } else {
+          nextStreak = 1;
+        }
+      } catch (_) {
+        nextStreak = 1;
+      }
+    }
+
     return _progressChild.copyWith(
       completedChallengeIds: completedSet.toList()..sort(),
       subLevelProgressByLevel: progressMap,
+      streak: nextStreak,
+      streakLastPlayedDateIso: today.toIso8601String(),
     );
   }
 
@@ -278,7 +304,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
       isExecuting = false;
     });
     if (success) {
-      final streakBefore = _progressChild.streak;
+      final lastPlayedDateBefore = _progressChild.streakLastPlayedDateIso;
       final childId = _progressChild.childId;
       if (childId != null) {
         try {
@@ -294,7 +320,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
       } else {
         _progressChild = _markChallengeCompleted();
       }
-      _streakRenewed = _progressChild.streak > streakBefore;
+      _streakRenewed = _progressChild.streakLastPlayedDateIso != lastPlayedDateBefore;
       setState(() => _challengeSuccessfullyCompleted = true);
       _showSuccessNotification();
     } else {
@@ -770,27 +796,30 @@ class _HeaderBar extends StatelessWidget {
             ),
           ],
           const SizedBox(width: 6),
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFFFFF), Color(0xFFF2FFFB)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              border: Border.all(color: Colors.white, width: 1.8),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.tealPrimary.withValues(alpha: 0.25),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+          GestureDetector(
+            onTap: () => showChildProfileDialog(context, child),
+            child: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFFFFF), Color(0xFFF2FFFB)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
+                border: Border.all(color: Colors.white, width: 1.8),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(2.5),
+              child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender)),
             ),
-            padding: const EdgeInsets.all(2.5),
-            child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender)),
           ),
         ],
       ),

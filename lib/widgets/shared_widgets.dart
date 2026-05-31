@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_strings.dart';
+import '../models/child_model.dart';
+import '../models/challenge_model.dart';
 
 // ─── Background ──────────────────────────────────────────────────────────────
 
@@ -848,6 +850,169 @@ class PrimaryButton extends StatelessWidget {
             style: GoogleFonts.nunito(
                 fontSize: 20, fontWeight: FontWeight.w800)),
       ),
+    );
+  }
+}
+
+// ─── Child profile dialog ─────────────────────────────────────────────────────
+
+int _computeCompletedLevels(ChildModel child) {
+  final ids = child.completedChallengeIds.toSet();
+  int count = 0;
+  // Each group: all challenge numbers that belong to that level screen
+  final groups = [
+    Challenge.demoChallenge.map((c) => c.number).toSet(),
+    SoundChallenge.soundChallenges.map((c) => c.number).toSet(),
+    LedChallenge.ledChallenges.map((c) => c.number).toSet(),
+    VarChallenge.varChallenges.map((c) => c.number).toSet(),
+  ];
+  for (final group in groups) {
+    if (group.isNotEmpty && group.every(ids.contains)) count++;
+  }
+  return count;
+}
+
+void showChildProfileDialog(BuildContext context, ChildModel child) {
+  showDialog(
+    context: context,
+    barrierColor: Colors.black.withValues(alpha: 0.4),
+    builder: (_) => _ChildProfileDialog(child: child),
+  );
+}
+
+class _ChildProfileDialog extends StatelessWidget {
+  final ChildModel child;
+  const _ChildProfileDialog({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        width: 280,
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.teal.withValues(alpha: 0.18),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 84,
+              height: 84,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: child.palette,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border.all(color: Colors.white, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: child.palette[0].withValues(alpha: 0.45),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: AvatarFace(seed: child.avatarSeed, gender: child.gender),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              child.name,
+              style: GoogleFonts.nunito(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.tealDark,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              s.ageYears(child.age),
+              style: GoogleFonts.nunito(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.tealMid,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              height: 1,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE0F2EF),
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _ProfileStat(
+                  label: s.streakLabel,
+                  value: child.streak > 0 ? '🔥 ${child.streak}' : '—',
+                ),
+                _ProfileStat(
+                  label: s.challengesLabel,
+                  value: '${child.completedChallengeIds.length}',
+                ),
+                _ProfileStat(
+                  label: s.levelsLabel,
+                  value: '${_computeCompletedLevels(child)}',
+                ),
+                _ProfileStat(
+                  label: s.attemptsLabel,
+                  value: '${child.attempts}',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileStat extends StatelessWidget {
+  final String label;
+  final String value;
+  const _ProfileStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: GoogleFonts.nunito(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.tealDark,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: GoogleFonts.nunito(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.tealMid,
+          ),
+        ),
+      ],
     );
   }
 }

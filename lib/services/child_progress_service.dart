@@ -40,10 +40,12 @@ class ChildProgressService {
       if (lastPlayed == null) {
         nextStreak = 1;
       } else {
-        final lastDay = DateTime(lastPlayed.year, lastPlayed.month, lastPlayed.day);
-        if (lastDay.isAtSameMomentAs(today)) {
+        final lastDay = DateTime.utc(lastPlayed.year, lastPlayed.month, lastPlayed.day);
+        final todayUtc = DateTime.utc(today.year, today.month, today.day);
+        final diffDays = todayUtc.difference(lastDay).inDays;
+        if (diffDays == 0) {
           nextStreak = remote.streak; // already counted today
-        } else if (lastDay.add(const Duration(days: 1)).isAtSameMomentAs(today)) {
+        } else if (diffDays == 1) {
           nextStreak = remote.streak + 1;
         } else {
           nextStreak = 1;
@@ -127,10 +129,12 @@ class ChildProgressService {
       if (lastPlayed == null) {
         nextStreak = 1;
       } else {
-        final lastDay = DateTime(lastPlayed.year, lastPlayed.month, lastPlayed.day);
-        if (lastDay.isAtSameMomentAs(today)) {
+        final lastDay = DateTime.utc(lastPlayed.year, lastPlayed.month, lastPlayed.day);
+        final todayUtc = DateTime.utc(today.year, today.month, today.day);
+        final diffDays = todayUtc.difference(lastDay).inDays;
+        if (diffDays == 0) {
           nextStreak = remote.streak;
-        } else if (lastDay.add(const Duration(days: 1)).isAtSameMomentAs(today)) {
+        } else if (diffDays == 1) {
           nextStreak = remote.streak + 1;
         } else {
           nextStreak = 1;

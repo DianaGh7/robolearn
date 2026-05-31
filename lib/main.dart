@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:robolearn/firebase_options.dart';
-import 'package:robolearn/services/streak_service.dart';
 import 'package:robolearn/services/connection_state.dart' as conn_state;
 import 'package:robolearn/services/language_notifier.dart';
 import 'screens/splash_screen.dart';
@@ -14,9 +13,6 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
-  final streakService = StreakService();
-  await streakService.initialize();
 
   conn_state.ConnectionState().markDisconnected();
 

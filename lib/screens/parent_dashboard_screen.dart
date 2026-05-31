@@ -839,7 +839,7 @@ class _ChildProgressCard extends StatelessWidget {
                 _MiniStat(
                     icon: Icons.check_circle_outline_rounded,
                     label: 'Passed',
-                    value: '${_effectiveLevel(child) - 1}',
+                    value: '${child.completedChallengeIds.length}',
                     color: AppTheme.tealPrimary),
                 _MiniStat(
                     icon: Icons.refresh_rounded,
