@@ -70,7 +70,6 @@ class AdventureMapScreen extends StatelessWidget {
     _LevelData(number: 2, title: 'Play with Colors'),
     _LevelData(number: 3, title: 'Make Some Noise'),
     _LevelData(number: 4, title: 'Magic Screen'),
-    _LevelData(number: 5, title: 'Smart Moves'),
   ];
 
   static int _challengeNumber(dynamic c) => switch (c) {
@@ -161,19 +160,25 @@ class AdventureMapScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     // Child mini avatar
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: child.palette,
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                    GestureDetector(
+                      onTap: () => showChildProfileDialog(context, child),
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: child.palette,
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: AvatarFace(seed: child.avatarSeed),
                         ),
-                        border: Border.all(color: Colors.white, width: 2),
                       ),
-                      child: AvatarFace(seed: child.avatarSeed),
                     ),
                     const SizedBox(width: 10),
                     Column(
@@ -368,9 +373,9 @@ class _LevelNode extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.only(
-        left: isLeft ? 60 : 160,
-        right: isLeft ? 160 : 60,
-        bottom: 10,
+        left: isLeft ? 32 : 120,
+        right: isLeft ? 120 : 32,
+        bottom: 24,
       ),
       child: Column(
         children: [
@@ -515,13 +520,13 @@ class _LevelNode extends StatelessWidget {
                     }
                   : null,
               child: SizedBox(
-                width: 98,
-                height: 98,
+                width: 128,
+                height: 128,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
                     CustomPaint(
-                      size: const Size(98, 98),
+                      size: const Size(128, 128),
                       painter: _DashedCirclePainter(
                         completedColor: completedDashColor,
                         pendingColor: pendingDashColor,
@@ -530,19 +535,19 @@ class _LevelNode extends StatelessWidget {
                       ),
                     ),
                     Container(
-                      width: 82,
-                      height: 82,
+                      width: 110,
+                      height: 110,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: nodeColor,
                         boxShadow: [
                           BoxShadow(
                             color: nodeColor.withValues(alpha: 0.45),
-                            blurRadius: 16,
-                            spreadRadius: 1,
+                            blurRadius: 20,
+                            spreadRadius: 2,
                           ),
                         ],
-                        border: Border.all(color: Colors.white, width: 3),
+                        border: Border.all(color: Colors.white, width: 4),
                       ),
                       child: Builder(
                         builder: (context) {
@@ -555,12 +560,12 @@ class _LevelNode extends StatelessWidget {
                                     ? Icons.check_rounded
                                     : Icons.star_rounded,
                                 color: Colors.white,
-                                size: 22,
+                                size: 30,
                               ),
                               Text(
                                 s.level,
                                 style: GoogleFonts.nunito(
-                                  fontSize: 11,
+                                  fontSize: 13,
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -568,7 +573,7 @@ class _LevelNode extends StatelessWidget {
                               Text(
                                 '${data.number}',
                                 style: GoogleFonts.nunito(
-                                  fontSize: 20,
+                                  fontSize: 28,
                                   color: Colors.white,
                                   fontWeight: FontWeight.w900,
                                 ),
@@ -583,14 +588,14 @@ class _LevelNode extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Builder(
             builder: (context) {
               final s = AppStrings.of(context);
               return Text(
                 s.levelTitle(data.number),
                 style: GoogleFonts.nunito(
-                  fontSize: 12,
+                  fontSize: 14,
                   color: AppTheme.tealDark,
                   fontWeight: FontWeight.w700,
                 ),

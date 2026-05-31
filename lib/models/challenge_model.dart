@@ -367,7 +367,7 @@ class SoundChallenge {
       number: 8,
       levelNumber: 3,
       title: 'Sad Reaction',
-      instruction: 'Help the robot react when a sad emoji appears.',
+      instruction: 'Help the robot react when it\'s sad, and if it\'s not sad, make it smile',
       targetDisplay: '😢',
       lineForBlock: [0, 0, 1, 1],
       availableBlocks: [
@@ -594,7 +594,7 @@ class LedChallenge {
     LedChallenge(
       number: 12,
       levelNumber: 2,
-      title: 'Light It Up! 💡',
+      title: 'Light It Up',
       instruction: 'Turn the robot light red, wait a bit, then turn it off!',
       targetDisplay: '🔴 turn on\n⏱️ wait\n⚫ turn off',
       lineForBlock: [0, 1, 2],
@@ -613,7 +613,7 @@ class LedChallenge {
     LedChallenge(
       number: 13,
       levelNumber: 2,
-      title: 'Blink Blink Blink! 🔴',
+      title: 'Blink Three Times',
       instruction: 'Make the red light blink 3 times using a loop!',
       targetDisplay: 'REPEAT 3×\n🔴 on → ⚫ off',
       availableBlocks: [
@@ -627,35 +627,36 @@ class LedChallenge {
         CodeBlockType.ledOff,
       ],
     ),
-    // Challenge 16 – Stop the Cars! (loop in the middle with singles before & after)
+    // Challenge 16 – Stop the Cars! (real traffic light: green→yellow→red×3→yellow→green)
     LedChallenge(
       number: 16,
       levelNumber: 2,
-      title: 'Stop the Cars! 🚗',
-      instruction: 'Help people cross the road!\nTurn green first, blink red 3 times to stop cars, yellow to warn, then green again!',
-      targetDisplay: '🟢 go!\nREPEAT 3×: 🔴 stop\n🟡 warning\n🟢 go again!',
-      lineForBlock: [0, 2, 3],
-      repeatLineOffset: 1,
+      title: 'Stop the Cars',
+      instruction: 'Help people cross the road!\nGreen to go, yellow to warn, red 3 times to stop cars, yellow again, then green!',
+      targetDisplay: '🟢 go!\n🟡 warning\nREPEAT 3×: 🔴 stop\n🟡 warning\n🟢 go again!',
+      lineForBlock: [0, 1, 3, 4],
+      repeatLineOffset: 2,
       availableBlocks: [
         CodeBlockType.setGreen,
+        CodeBlockType.setYellow,
         CodeBlockType.ledRepeat3,
         CodeBlockType.setRed,
-        CodeBlockType.setYellow,
       ],
       correctSequence: [
         CodeBlockType.setGreen,
+        CodeBlockType.setYellow,
         CodeBlockType.ledRepeat3,
         CodeBlockType.setRed,
         CodeBlockType.setYellow,
         CodeBlockType.setGreen,
       ],
-      correctNesting: [0, 0, 1, 0, 0],
+      correctNesting: [0, 0, 0, 1, 0, 0],
     ),
     // Challenge 14 – Attack & Win! (2 sequential loops)
     LedChallenge(
       number: 14,
       levelNumber: 2,
-      title: 'Attack & Win! ⚔️',
+      title: 'Attack and Win',
       instruction: 'The enemy attacks! Blink red 3 times to fight back, then celebrate with 2 green blinks!',
       targetDisplay: 'REPEAT 3×: 🔴 fight!\nREPEAT 2×: 🟢 win!',
       availableBlocks: [
@@ -674,12 +675,12 @@ class LedChallenge {
         CodeBlockType.ledOff,
       ],
     ),
-    // Challenge 17 – Police Siren! (nested loops: outer 3×, inner 2× red, inner 2× blue)
+    // Challenge 17 – Police Lights! (nested loops: outer 3×, inner 2× red, inner 2× blue)
     LedChallenge(
       number: 17,
       levelNumber: 2,
-      title: 'Police Siren! 🚓',
-      instruction: 'Make a police siren!\nRepeat 3 times:\n  • Blink red 🔴 twice\n  • Blink blue 🔵 twice',
+      title: 'Police Lights',
+      instruction: 'Make police lights!\nRepeat 3 times:\n  • Blink red 🔴 twice\n  • Blink blue 🔵 twice',
       targetDisplay: 'REPEAT 3×\n  REPEAT 2×: 🔴 blink\n  REPEAT 2×: 🔵 blink',
       lineForBlock: [0, 1, 1, 1, 2, 2, 2],
       availableBlocks: [
@@ -820,7 +821,7 @@ class VarChallenge {
     VarChallenge(
       number: 22,
       levelNumber: 4,
-      title: 'Countdown!',
+      title: 'Countdown',
       instruction: 'Launch the rocket! 🚀\nSet countdown to 3 and show it, then use REPEAT 3× to subtract 1 and show each time.\nThe screen should print: 3 → 2 → 1 → 0',
       expectedOutput: '0',
       availableBlocks: [
@@ -839,3 +840,4 @@ class VarChallenge {
     ),
   ];
 }
+
