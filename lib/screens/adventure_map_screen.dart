@@ -1,13 +1,15 @@
 ﻿import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:google_fonts/google_fonts.dart';
+import '../l10n/app_strings.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
-import 'challenge_screen.dart';
-import 'sound_challenge_screen.dart';
-import 'led_challenge_screen.dart';
+import 'level_one_screen.dart';
+import 'level_two_screen.dart';
+import 'level_three_screen.dart';
+import 'level_four_screen.dart';
 import 'login_screen.dart';
 
 class AdventureMapScreen extends StatelessWidget {
@@ -15,6 +17,7 @@ class AdventureMapScreen extends StatelessWidget {
   const AdventureMapScreen({super.key, required this.child});
 
   Future<void> _showSettingsMenu(BuildContext context) async {
+    final s = AppStrings.of(context);
     final selected = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -36,7 +39,7 @@ class AdventureMapScreen extends StatelessWidget {
           child: ListTile(
             leading: const Icon(Icons.logout_rounded, color: Color(0xFFD84E4E)),
             title: Text(
-              'Log out',
+              s.logout,
               style: GoogleFonts.nunito(
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
@@ -64,46 +67,65 @@ class AdventureMapScreen extends StatelessWidget {
 
   static const List<_LevelData> _levels = [
     _LevelData(number: 1, title: 'Move Your Robot'),
-    _LevelData(number: 2, title: 'Make Some Noise'),
-    _LevelData(number: 3, title: 'Play with Colors'),
+    _LevelData(number: 2, title: 'Play with Colors'),
+    _LevelData(number: 3, title: 'Make Some Noise'),
     _LevelData(number: 4, title: 'Magic Screen'),
-    _LevelData(number: 5, title: 'Smart Moves'),
   ];
 
-  // Returns challenge numbers for a given level across all level types.
-  List<int> _challengeNumbersForLevel(int levelNumber) {
-    switch (levelNumber) {
-      case 2:
-        return SoundChallenge.soundChallenges.map((c) => c.number).toList();
-      case 3:
-        return LedChallenge.ledChallenges.map((c) => c.number).toList();
-      default:
-        return Challenge.demoChallenge
-            .where((c) => c.levelNumber == levelNumber)
-            .map((c) => c.number)
-            .toList();
+  static int _challengeNumber(dynamic c) => switch (c) {
+        Challenge c => c.number,
+        SoundChallenge c => c.number,
+        LedChallenge c => c.number,
+        VarChallenge c => c.number,
+        _ => 0,
+      };
+
+  static List<dynamic> _challengesForLevel(int levelNumber) {
+    if (levelNumber == 2) return LedChallenge.ledChallenges;
+    if (levelNumber == 3) return SoundChallenge.soundChallenges;
+    if (levelNumber == 4) return VarChallenge.varChallenges;
+    return Challenge.demoChallenge
+        .where((c) => c.levelNumber == levelNumber)
+        .toList()
+      ..sort((a, b) => a.number.compareTo(b.number));
+  }
+
+  int _countCompletedLevels(ChildModel child) {
+    int count = 0;
+    for (final level in _levels) {
+      final challenges = _challengesForLevel(level.number);
+      if (challenges.isEmpty) continue;
+      final int done = challenges
+          .where((c) => child.completedChallengeIds.contains(_challengeNumber(c)))
+          .length;
+      if (done >= challenges.length) count++;
     }
+    return count;
   }
 
   List<_LevelData> _getLevelsWithLockStatus(ChildModel child) {
     return _levels.map((level) {
-      // Levels 1 and 2 are always unlocked (2 kept open for testing).
       if (level.number == 1 || level.number == 2) {
         return _LevelData(number: level.number, title: level.title, unlocked: true);
       }
-      final previousNumbers = _challengeNumbersForLevel(level.number - 1);
-      if (previousNumbers.isEmpty) {
+      final prev = _challengesForLevel(level.number - 1);
+      if (prev.isEmpty) {
         return _LevelData(number: level.number, title: level.title, unlocked: false);
       }
-      final allCompleted = previousNumbers.every(
-        (n) => child.completedChallengeIds.contains(n),
+      final int done = prev
+          .where((c) => child.completedChallengeIds.contains(_challengeNumber(c)))
+          .length;
+      return _LevelData(
+        number: level.number,
+        title: level.title,
+        unlocked: done >= prev.length,
       );
-      return _LevelData(number: level.number, title: level.title, unlocked: allCompleted);
     }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
@@ -138,19 +160,25 @@ class AdventureMapScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     // Child mini avatar
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: child.palette,
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                    GestureDetector(
+                      onTap: () => showChildProfileDialog(context, child),
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: child.palette,
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: AvatarFace(seed: child.avatarSeed),
                         ),
-                        border: Border.all(color: Colors.white, width: 2),
                       ),
-                      child: AvatarFace(seed: child.avatarSeed),
                     ),
                     const SizedBox(width: 10),
                     Column(
@@ -165,7 +193,7 @@ class AdventureMapScreen extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'Adventure Map',
+                          s.adventureMap,
                           style: GoogleFonts.nunito(
                             fontSize: 12,
                             color: AppTheme.tealMid,
@@ -201,7 +229,7 @@ class AdventureMapScreen extends StatelessWidget {
               ),
 
               Text(
-                'Choose a level to start coding!',
+                s.chooseLevelPrompt,
                 style: GoogleFonts.nunito(
                   fontSize: 13,
                   color: AppTheme.tealMid,
@@ -252,31 +280,17 @@ class AdventureMapScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _Stat(
-                      label: 'Completed',
-                      value: '${child.completedLevels} / ${child.totalLevels}',
+                      label: s.levelsLabel,
+                      value: '${_countCompletedLevels(child)} / ${child.totalLevels}',
                     ),
-                    _Stat(label: 'Attempts', value: '${child.attempts}'),
-                    SizedBox(
-                      width: 36,
-                      height: 36,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          CircularProgressIndicator(
-                            value: child.progress,
-                            backgroundColor: Colors.grey.shade200,
-                            valueColor: const AlwaysStoppedAnimation(
-                              AppTheme.tealPrimary,
-                            ),
-                            strokeWidth: 4,
-                          ),
-                          const Icon(
-                            Icons.star_rounded,
-                            color: AppTheme.orange,
-                            size: 16,
-                          ),
-                        ],
-                      ),
+                    _Stat(
+                      label: s.challengesLabel,
+                      value: '${child.completedChallengeIds.length} / 20',
+                    ),
+                    _Stat(label: s.attemptsLabel, value: '${child.attempts}'),
+                    _Stat(
+                      label: s.streakLabel,
+                      value: child.streak > 0 ? '🔥 ${child.streak}' : '—',
                     ),
                   ],
                 ),
@@ -315,9 +329,11 @@ class _LevelNode extends StatelessWidget {
     // Get challenges based on level type
     late final List<dynamic> levelChallenges;
     if (data.number == 2) {
-      levelChallenges = SoundChallenge.soundChallenges;
-    } else if (data.number == 3) {
       levelChallenges = LedChallenge.ledChallenges;
+    } else if (data.number == 3) {
+      levelChallenges = SoundChallenge.soundChallenges;
+    } else if (data.number == 4) {
+      levelChallenges = VarChallenge.varChallenges;
     } else {
       levelChallenges =
           Challenge.demoChallenge
@@ -328,24 +344,20 @@ class _LevelNode extends StatelessWidget {
 
     final int totalSubLevels = levelChallenges.length;
 
-    int inferredProgress = 0;
+    int completedSubLevels = 0;
+    int firstUnsolvedIndex = 0;
+    bool foundUnsolved = false;
     for (int i = 0; i < levelChallenges.length; i++) {
-      final challenge = levelChallenges[i];
-      final int challengeNumber = switch (challenge) {
-        Challenge c => c.number,
-        SoundChallenge c => c.number,
-        LedChallenge c => c.number,
-        _ => 0,
-      };
-      if (child.completedChallengeIds.contains(challengeNumber)) {
-        inferredProgress = math.max(inferredProgress, i + 1);
+      final int num = AdventureMapScreen._challengeNumber(levelChallenges[i]);
+      if (child.completedChallengeIds.contains(num)) {
+        completedSubLevels++;
+      } else if (!foundUnsolved) {
+        firstUnsolvedIndex = i;
+        foundUnsolved = true;
       }
     }
-
-    final int savedProgress = child.subLevelProgressByLevel[data.number] ?? 0;
-    final int completedSubLevels = math
-        .max(savedProgress, inferredProgress)
-        .clamp(0, totalSubLevels);
+    // All solved → restart from beginning
+    if (!foundUnsolved) firstUnsolvedIndex = 0;
     final bool isCompleted = completedSubLevels >= totalSubLevels;
     const List<Color> levelColors = [
       Color(0xFF4DD0C4),
@@ -361,9 +373,9 @@ class _LevelNode extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.only(
-        left: isLeft ? 60 : 160,
-        right: isLeft ? 160 : 60,
-        bottom: 10,
+        left: isLeft ? 32 : 120,
+        right: isLeft ? 120 : 32,
+        bottom: 24,
       ),
       child: Column(
         children: [
@@ -374,23 +386,18 @@ class _LevelNode extends StatelessWidget {
             child: GestureDetector(
               onTap: data.unlocked
                   ? () {
-                      // Handle Level 2 (Sound Challenges) separately
+                      // Handle Level 2 (LED Challenges)
                       if (data.number == 2) {
-                        final List<SoundChallenge> soundChallenges =
-                            SoundChallenge.soundChallenges;
-                        if (soundChallenges.isNotEmpty) {
-                          final int startIndex = completedSubLevels.clamp(
-                            0,
-                            soundChallenges.length - 1,
-                          );
-                          final SoundChallenge selectedChallenge =
-                              soundChallenges[startIndex];
+                        final List<LedChallenge> ledChallenges =
+                            LedChallenge.ledChallenges;
+                        if (ledChallenges.isNotEmpty) {
+                          final int startIndex = firstUnsolvedIndex;
                           Navigator.push<ChildModel>(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => SoundChallengeScreen(
+                              builder: (context) => LevelThreeScreen(
                                 child: child,
-                                challenge: selectedChallenge,
+                                challenge: ledChallenges[startIndex],
                               ),
                             ),
                           ).then((updatedChild) {
@@ -406,10 +413,11 @@ class _LevelNode extends StatelessWidget {
                             );
                           });
                         } else {
+                          final s = AppStrings.of(context);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                'Level ${data.number}: ${data.title} — Coming soon!',
+                                s.comingSoon(data.number, data.title),
                                 style: GoogleFonts.nunito(),
                               ),
                               backgroundColor: AppTheme.tealPrimary,
@@ -422,19 +430,41 @@ class _LevelNode extends StatelessWidget {
                           );
                         }
                       } else if (data.number == 3 && levelChallenges.isNotEmpty) {
-                        // Handle Level 3 (LED Challenges)
-                        final List<LedChallenge> ledChallenges =
-                            LedChallenge.ledChallenges;
-                        final int startIndex = completedSubLevels.clamp(
-                          0,
-                          ledChallenges.length - 1,
-                        );
+                        // Handle Level 3 (Sound Challenges)
+                        final List<SoundChallenge> soundChallenges =
+                            SoundChallenge.soundChallenges;
+                        final int startIndex = firstUnsolvedIndex;
+                        final SoundChallenge selectedChallenge =
+                            soundChallenges[startIndex];
                         Navigator.push<ChildModel>(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => LedChallengeScreen(
+                            builder: (context) => LevelTwoScreen(
                               child: child,
-                              challenge: ledChallenges[startIndex],
+                              challenge: selectedChallenge,
+                            ),
+                          ),
+                        ).then((updatedChild) {
+                          if (updatedChild == null || !context.mounted) return;
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AdventureMapScreen(child: updatedChild),
+                            ),
+                          );
+                        });
+                      } else if (data.number == 4 && levelChallenges.isNotEmpty) {
+                        // Handle Level 4 (Variable Challenges)
+                        final List<VarChallenge> varChallenges =
+                            VarChallenge.varChallenges;
+                        final int startIndex = firstUnsolvedIndex;
+                        Navigator.push<ChildModel>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => LevelFourScreen(
+                              child: child,
+                              challenge: varChallenges[startIndex],
                             ),
                           ),
                         ).then((updatedChild) {
@@ -449,16 +479,13 @@ class _LevelNode extends StatelessWidget {
                         });
                       } else if (levelChallenges.isNotEmpty) {
                         // Handle other levels (Movement challenges)
-                        final int startIndex = completedSubLevels.clamp(
-                          0,
-                          levelChallenges.length - 1,
-                        );
+                        final int startIndex = firstUnsolvedIndex;
                         final Challenge selectedChallenge =
                             levelChallenges[startIndex];
                         Navigator.push<ChildModel>(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => ChallengeScreen(
+                            builder: (context) => LevelOneScreen(
                               child: child,
                               challenge: selectedChallenge,
                             ),
@@ -474,10 +501,11 @@ class _LevelNode extends StatelessWidget {
                           );
                         });
                       } else {
+                        final s = AppStrings.of(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Level ${data.number}: ${data.title} — Coming soon!',
+                              s.comingSoon(data.number, data.title),
                               style: GoogleFonts.nunito(),
                             ),
                             backgroundColor: AppTheme.tealPrimary,
@@ -492,13 +520,13 @@ class _LevelNode extends StatelessWidget {
                     }
                   : null,
               child: SizedBox(
-                width: 98,
-                height: 98,
+                width: 128,
+                height: 128,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
                     CustomPaint(
-                      size: const Size(98, 98),
+                      size: const Size(128, 128),
                       painter: _DashedCirclePainter(
                         completedColor: completedDashColor,
                         pendingColor: pendingDashColor,
@@ -507,47 +535,52 @@ class _LevelNode extends StatelessWidget {
                       ),
                     ),
                     Container(
-                      width: 82,
-                      height: 82,
+                      width: 110,
+                      height: 110,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: nodeColor,
                         boxShadow: [
                           BoxShadow(
                             color: nodeColor.withValues(alpha: 0.45),
-                            blurRadius: 16,
-                            spreadRadius: 1,
+                            blurRadius: 20,
+                            spreadRadius: 2,
                           ),
                         ],
-                        border: Border.all(color: Colors.white, width: 3),
+                        border: Border.all(color: Colors.white, width: 4),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            isCompleted
-                                ? Icons.check_rounded
-                                : Icons.star_rounded,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                          Text(
-                            'Level',
-                            style: GoogleFonts.nunito(
-                              fontSize: 11,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            '${data.number}',
-                            style: GoogleFonts.nunito(
-                              fontSize: 20,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ],
+                      child: Builder(
+                        builder: (context) {
+                          final s = AppStrings.of(context);
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                isCompleted
+                                    ? Icons.check_rounded
+                                    : Icons.star_rounded,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                              Text(
+                                s.level,
+                                style: GoogleFonts.nunito(
+                                  fontSize: 13,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                '${data.number}',
+                                style: GoogleFonts.nunito(
+                                  fontSize: 28,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -555,14 +588,19 @@ class _LevelNode extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            data.title,
-            style: GoogleFonts.nunito(
-              fontSize: 12,
-              color: AppTheme.tealDark,
-              fontWeight: FontWeight.w700,
-            ),
+          const SizedBox(height: 6),
+          Builder(
+            builder: (context) {
+              final s = AppStrings.of(context);
+              return Text(
+                s.levelTitle(data.number),
+                style: GoogleFonts.nunito(
+                  fontSize: 14,
+                  color: AppTheme.tealDark,
+                  fontWeight: FontWeight.w700,
+                ),
+              );
+            },
           ),
         ],
       ),

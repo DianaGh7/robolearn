@@ -47,6 +47,32 @@ enum CodeBlockType {
   waitShort,
   ledRepeat3,
   ledRepeat2,
+  ledRepeat5,
+  // Level 4 – Variables
+  varSetScore,
+  varSetZero,
+  varAdd5,
+  varShowScore,
+  varSetCount,
+  varRepeat3,
+  varAddOne,
+  varShowCount,
+  varSetTempHot,
+  varIfHot,
+  varShowSun,
+  varElse,
+  varShowSnow,
+  varSetA,
+  varSetB,
+  varShowFaster,
+  // Level 4 – Challenge 5 replacement: Plant Watering
+  varSetWater,
+  varWaterPlant,
+  varShowPlant,
+  // Level 4 – Challenge 3 replacement: Countdown
+  varSetCountdown,
+  varMinusOne,
+  varShowCountdown,
 }
 
 class CodeBlock {
@@ -54,12 +80,14 @@ class CodeBlock {
   final CodeBlockType type;
   final String label;
   final Color color;
+  final int nesting;
 
   const CodeBlock({
     required this.id,
     required this.type,
     required this.label,
     required this.color,
+    this.nesting = 0,
   });
 
   static const Map<CodeBlockType, String> typeLabels = {
@@ -73,12 +101,12 @@ class CodeBlock {
     CodeBlockType.end: 'END',
     CodeBlockType.beep: 'beep 🔊',
     CodeBlockType.clap: 'clap 👏',
-    CodeBlockType.happy: 'happy 😊',
+    CodeBlockType.happy: 'smile 😊',
     CodeBlockType.repeat: 'repeat',
     CodeBlockType.ifHappy: 'IF happy 😊',
     CodeBlockType.music: 'play music 🎵',
     CodeBlockType.ifSad: 'IF sad 😢',
-    CodeBlockType.cry: 'cry 💧',
+    CodeBlockType.cry: 'sad tone',
     CodeBlockType.ifMoon: 'IF moon 🌙',
     CodeBlockType.thenNight: 'show night 🌃',
     CodeBlockType.elseIfSun: 'ELSE IF sun ☀️',
@@ -89,10 +117,10 @@ class CodeBlock {
     CodeBlockType.elseBlock: 'ELSE',
     CodeBlockType.encourage: 'keep going! 💪',
     CodeBlockType.ifBig: 'IF big 🐾',
-    CodeBlockType.ifHasTrunk: 'IF has trunk 🦣',
+    CodeBlockType.ifHasTrunk: 'IF tall nose 🐽',
     CodeBlockType.elephantSound: 'elephant 🐘',
     CodeBlockType.lionSound: 'lion 🦁',
-    CodeBlockType.ifFluffy: 'IF fluffy 🐱',
+    CodeBlockType.ifFluffy: 'IF fluffy',
     CodeBlockType.catSound: 'cat 🐱',
     CodeBlockType.dogSound: 'dog 🐶',
     CodeBlockType.setRed: 'set RED 🔴',
@@ -103,6 +131,30 @@ class CodeBlock {
     CodeBlockType.waitShort: 'wait ⏱️',
     CodeBlockType.ledRepeat3: 'REPEAT 3×',
     CodeBlockType.ledRepeat2: 'REPEAT 2×',
+    CodeBlockType.ledRepeat5: 'REPEAT 5×',
+    // Level 4 – Variables
+    CodeBlockType.varSetScore: 'score = 10',
+    CodeBlockType.varSetZero: 'score = 0',
+    CodeBlockType.varAdd5: 'score = score + 5',
+    CodeBlockType.varShowScore: 'show score',
+    CodeBlockType.varSetCount: 'count = 0',
+    CodeBlockType.varRepeat3: 'REPEAT 3×',
+    CodeBlockType.varAddOne: 'count + 1',
+    CodeBlockType.varShowCount: 'show count',
+    CodeBlockType.varSetTempHot: 'temp = 40',
+    CodeBlockType.varIfHot: 'IF temp > 30',
+    CodeBlockType.varShowSun: 'show ☀️',
+    CodeBlockType.varElse: 'ELSE',
+    CodeBlockType.varShowSnow: 'show ❄️',
+    CodeBlockType.varSetA: 'speedA = 8',
+    CodeBlockType.varSetB: 'speedB = 3',
+    CodeBlockType.varShowFaster: 'show winner',
+    CodeBlockType.varSetWater: 'water = 0',
+    CodeBlockType.varWaterPlant: 'water = water + 1',
+    CodeBlockType.varShowPlant: 'show plant',
+    CodeBlockType.varSetCountdown: 'countdown = 3',
+    CodeBlockType.varMinusOne: 'countdown = countdown - 1',
+    CodeBlockType.varShowCountdown: 'show countdown',
   };
 
   static const Map<CodeBlockType, Color> typeColors = {
@@ -146,14 +198,39 @@ class CodeBlock {
     CodeBlockType.waitShort: Color(0xFF8E24AA),
     CodeBlockType.ledRepeat3: Color(0xFF7E57C2),
     CodeBlockType.ledRepeat2: Color(0xFF5E35B1),
+    CodeBlockType.ledRepeat5: Color(0xFF4527A0),
+    // Level 4 – Variables
+    CodeBlockType.varSetScore: Color(0xFFE91E63),
+    CodeBlockType.varSetZero: Color(0xFF9C27B0),
+    CodeBlockType.varAdd5: Color(0xFF4CAF50),
+    CodeBlockType.varShowScore: Color(0xFF1565C0),
+    CodeBlockType.varSetCount: Color(0xFF9C27B0),
+    CodeBlockType.varRepeat3: Color(0xFF7E57C2),
+    CodeBlockType.varAddOne: Color(0xFF4CAF50),
+    CodeBlockType.varShowCount: Color(0xFF1565C0),
+    CodeBlockType.varSetTempHot: Color(0xFFFF5722),
+    CodeBlockType.varIfHot: Color(0xFFFF9800),
+    CodeBlockType.varShowSun: Color(0xFFFFC107),
+    CodeBlockType.varElse: Color(0xFF607D8B),
+    CodeBlockType.varShowSnow: Color(0xFF29B6F6),
+    CodeBlockType.varSetA: Color(0xFFF44336),
+    CodeBlockType.varSetB: Color(0xFF26A69A),
+    CodeBlockType.varShowFaster: Color(0xFFFFB300),
+    CodeBlockType.varSetWater: Color(0xFF0288D1),
+    CodeBlockType.varWaterPlant: Color(0xFF26C6DA),
+    CodeBlockType.varShowPlant: Color(0xFF43A047),
+    CodeBlockType.varSetCountdown: Color(0xFFE53935),
+    CodeBlockType.varMinusOne: Color(0xFFFF7043),
+    CodeBlockType.varShowCountdown: Color(0xFF8E24AA),
   };
 
-  factory CodeBlock.fromType(CodeBlockType type) {
+  factory CodeBlock.fromType(CodeBlockType type, {int nesting = 0}) {
     return CodeBlock(
       id: '${type.toString()}_${DateTime.now().millisecondsSinceEpoch}',
       type: type,
       label: typeLabels[type]!,
       color: typeColors[type]!,
+      nesting: nesting,
     );
   }
 }
@@ -242,6 +319,8 @@ class SoundChallenge {
   final String title;
   final String instruction;
   final String? targetDisplay;
+  // Optional separate logic card shown below the emoji display.
+  final String? logicDisplay;
   // Maps each correctSequence index to a targetDisplay line index for highlighting.
   // null means no per-line highlighting.
   final List<int>? lineForBlock;
@@ -254,6 +333,7 @@ class SoundChallenge {
     required this.title,
     required this.instruction,
     this.targetDisplay,
+    this.logicDisplay,
     this.lineForBlock,
     required this.availableBlocks,
     required this.correctSequence,
@@ -265,16 +345,15 @@ class SoundChallenge {
     return index + 1;
   }
 
-  // Level 2 Sound Challenges (internal numbers start at 7 to avoid collision with Level 1)
+  // Level 3 Sound Challenges (internal numbers start at 7 to avoid collision with Level 1)
   static final List<SoundChallenge> soundChallenges = [
-    // Challenge 1 – highlights matching Logic to Match row on execution
+    // Challenge 1 – shows emoji cue only; child solves independently
     const SoundChallenge(
       number: 7,
-      levelNumber: 2,
+      levelNumber: 3,
       title: 'Happy Music',
-      instruction: 'Build the logic when a happy emoji appears:',
-      targetDisplay: 'IF 😊 happy\n→ 🎵 play music',
-      lineForBlock: [0, 1], // ifHappy→line0, music→line1
+      instruction: 'Help the robot react when a happy emoji appears.',
+      targetDisplay: '😊',
       availableBlocks: [
         CodeBlockType.start,
         CodeBlockType.ifHappy,
@@ -283,88 +362,88 @@ class SoundChallenge {
       ],
       correctSequence: [CodeBlockType.ifHappy, CodeBlockType.music],
     ),
-    // Challenge 2 – shows emoji cue only; child solves independently
+    // Challenge 2 – if sad → cry, else → happy
     const SoundChallenge(
       number: 8,
-      levelNumber: 2,
+      levelNumber: 3,
       title: 'Sad Reaction',
-      instruction: 'Build the logic when a sad emoji appears:',
+      instruction: 'Help the robot react when it\'s sad, and if it\'s not sad, make it smile',
       targetDisplay: '😢',
+      lineForBlock: [0, 0, 1, 1],
       availableBlocks: [
         CodeBlockType.start,
         CodeBlockType.ifSad,
         CodeBlockType.cry,
+        CodeBlockType.elseBlock,
+        CodeBlockType.happy,
         CodeBlockType.end,
       ],
-      correctSequence: [CodeBlockType.ifSad, CodeBlockType.cry],
+      correctSequence: [
+        CodeBlockType.ifSad,
+        CodeBlockType.cry,
+        CodeBlockType.elseBlock,
+        CodeBlockType.happy,
+      ],
     ),
     // Challenge 3 – highlights matching row on execution
     const SoundChallenge(
       number: 9,
-      levelNumber: 2,
-      title: 'Day and Night',
-      instruction:
-          'Represent the following logic with appropriate code blocks:',
-      targetDisplay: '🌙 → 🌃 night\n☀️ → 🌅 morning',
-      lineForBlock: [0, 0, 1, 1], // ifMoon/thenNight→line0, elseIfSun/thenMorning→line1
+      levelNumber: 3,
+      title: 'Streaks',
+      instruction: '🤖 Mission: Help the robot cheer you on!\n• Big streak? → Celebrate! 🎉\n• Medium streak? → Clap! 👏\n• Small streak? → Encourage the robot! 💪',
+      targetDisplay: '🔥 streak 5+  →  Celebrate! 🎉\n📈 streak 2+  →  Clap! 👏\n💪 else  →  Keep going!',
       availableBlocks: [
         CodeBlockType.start,
-        CodeBlockType.ifMoon,
-        CodeBlockType.thenNight,
-        CodeBlockType.elseIfSun,
-        CodeBlockType.thenMorning,
+        CodeBlockType.ifStreak5,
+        CodeBlockType.cheering,
+        CodeBlockType.elseIfStreak2,
+        CodeBlockType.clap,
+        CodeBlockType.elseBlock,
+        CodeBlockType.encourage,
         CodeBlockType.end,
       ],
       correctSequence: [
-        CodeBlockType.ifMoon,
-        CodeBlockType.thenNight,
-        CodeBlockType.elseIfSun,
-        CodeBlockType.thenMorning,
+        CodeBlockType.ifStreak5,
+        CodeBlockType.cheering,
+        CodeBlockType.elseIfStreak2,
+        CodeBlockType.clap,
+        CodeBlockType.elseBlock,
+        CodeBlockType.encourage,
       ],
     ),
-    // Challenge 4 – highlights matching row on execution
+    // Challenge 4 – time-based: executes moon branch at night, sun branch during day
     const SoundChallenge(
       number: 10,
-      levelNumber: 2,
-      title: 'Streaks',
-      instruction: 'Build the streak reward system using code blocks!',
-      targetDisplay: 'streak >= 5  →  🎉\nstreak >= 2  →  👏\nelse  →  keep going! 💪',
-      lineForBlock: [0, 0, 1, 1, 2, 2], // ifStreak5/cheering→0, elseIfStreak2/clap→1, elseBlock/encourage→2
+      levelNumber: 3,
+      title: 'Day and Night',
+      instruction: 'Help the robot react based on the time of day.',
+      targetDisplay: '🌙 → 🌃 night\n☀️ → 🌅 morning',
       availableBlocks: [
         CodeBlockType.start,
-        CodeBlockType.ifStreak5,
-        CodeBlockType.cheering,
-        CodeBlockType.elseIfStreak2,
-        CodeBlockType.clap,
-        CodeBlockType.elseBlock,
-        CodeBlockType.encourage,
+        CodeBlockType.ifMoon,
+        CodeBlockType.thenNight,
+        CodeBlockType.elseIfSun,
+        CodeBlockType.thenMorning,
         CodeBlockType.end,
       ],
       correctSequence: [
-        CodeBlockType.ifStreak5,
-        CodeBlockType.cheering,
-        CodeBlockType.elseIfStreak2,
-        CodeBlockType.clap,
-        CodeBlockType.elseBlock,
-        CodeBlockType.encourage,
+        CodeBlockType.ifMoon,
+        CodeBlockType.thenNight,
+        CodeBlockType.elseIfSun,
+        CodeBlockType.thenMorning,
       ],
     ),
     // Challenge 5 – Guess the Animal (nested if)
     const SoundChallenge(
       number: 11,
-      levelNumber: 2,
+      levelNumber: 3,
       title: 'Guess the Animal',
-      instruction: 'Guess the animal using nested if blocks:',
+      instruction: '🐾 Can the robot guess the animal?\n\nIf it\'s big:\n  • Tall nose? → 🐘 Elephant\n  • Otherwise → 🦁 Lion\n\nIf it\'s not big:\n  • Fluffy? → 🐱 Cat\n  • Otherwise → 🐶 Dog',
       targetDisplay:
-          'big + trunk  →  🐘 elephant\n'
-          'big, no trunk  →  🦁 lion\n'
+          'big + tall nose  →  🐘 elephant\n'
+          'big, no nose  →  🦁 lion\n'
           'small + fluffy  →  🐱 cat\n'
           'small, not fluffy  →  🐶 dog',
-      // ifBig→0, ifHasTrunk→0, elephant→0,
-      // ELSE(no trunk)→1, lion→1,
-      // ELSE(small)→2, ifFluffy→2, cat→2,
-      // ELSE(not fluffy)→3, dog→3
-      lineForBlock: [0, 0, 0, 1, 1, 2, 2, 2, 3, 3],
       availableBlocks: [
         CodeBlockType.start,
         CodeBlockType.ifBig,
@@ -423,22 +502,22 @@ class Challenge {
       number: 1,
       levelNumber: 1,
       title: 'Move Forward',
-      instruction: 'Try to move your robot one block forward',
-      initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 2, y: 1, direction: Direction.up),
-      gridWidth: 5,
-      gridHeight: 5,
+      instruction: 'Try to move your robot one block forward ⬆️',
+      initialRobotState: RobotState(x: 1, y: 2, direction: Direction.up),
+      targetRobotState: RobotState(x: 1, y: 1, direction: Direction.up),
+      gridWidth: 4,
+      gridHeight: 4,
       availableBlocks: [CodeBlockType.moveForward],
     ),
     const Challenge(
       number: 2,
       levelNumber: 1,
       title: 'Move Backward',
-      instruction: 'Try to move your robot one block backward',
-      initialRobotState: RobotState(x: 2, y: 2, direction: Direction.up),
-      targetRobotState: RobotState(x: 2, y: 3, direction: Direction.up),
-      gridWidth: 5,
-      gridHeight: 5,
+      instruction: 'Try to move your robot one block backward ⬇️',
+      initialRobotState: RobotState(x: 1, y: 2, direction: Direction.up),
+      targetRobotState: RobotState(x: 1, y: 3, direction: Direction.up),
+      gridWidth: 4,
+      gridHeight: 4,
       availableBlocks: [CodeBlockType.moveBackward],
     ),
     const Challenge(
@@ -446,44 +525,33 @@ class Challenge {
       levelNumber: 1,
       title: 'Move Right',
       instruction: 'Move your robot to the right',
-      initialRobotState: RobotState(x: 0, y: 2, direction: Direction.right),
-      targetRobotState: RobotState(x: 1, y: 2, direction: Direction.right),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [CodeBlockType.moveRight],
+      initialRobotState: RobotState(x: 1, y: 2, direction: Direction.up),
+      targetRobotState: RobotState(x: 2, y: 2, direction: Direction.right),
+      gridWidth: 4,
+      gridHeight: 4,
+      availableBlocks: [CodeBlockType.turnRight, CodeBlockType.moveForward],
     ),
     const Challenge(
       number: 4,
       levelNumber: 1,
       title: 'Move Right - Multiple',
-      instruction: 'Move your robot 3 blocks to the right',
-      initialRobotState: RobotState(x: 0, y: 2, direction: Direction.right),
+      instruction: 'Move your robot 2 blocks to the right',
+      initialRobotState: RobotState(x: 1, y: 2, direction: Direction.up),
       targetRobotState: RobotState(x: 3, y: 2, direction: Direction.right),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [CodeBlockType.moveRight],
+      gridWidth: 4,
+      gridHeight: 4,
+      availableBlocks: [CodeBlockType.turnRight, CodeBlockType.moveForward],
     ),
     const Challenge(
       number: 5,
       levelNumber: 1,
       title: 'Move Left',
       instruction: 'Move your robot to the left',
-      initialRobotState: RobotState(x: 4, y: 2, direction: Direction.left),
-      targetRobotState: RobotState(x: 3, y: 2, direction: Direction.left),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [CodeBlockType.moveLeft],
-    ),
-    const Challenge(
-      number: 6,
-      levelNumber: 1,
-      title: 'Move Left - Multiple',
-      instruction: 'Move your robot 2 blocks to the left',
-      initialRobotState: RobotState(x: 4, y: 2, direction: Direction.left),
-      targetRobotState: RobotState(x: 2, y: 2, direction: Direction.left),
-      gridWidth: 5,
-      gridHeight: 5,
-      availableBlocks: [CodeBlockType.moveLeft],
+      initialRobotState: RobotState(x: 1, y: 2, direction: Direction.up),
+      targetRobotState: RobotState(x: 0, y: 2, direction: Direction.left),
+      gridWidth: 4,
+      gridHeight: 4,
+      availableBlocks: [CodeBlockType.turnLeft, CodeBlockType.moveForward],
     ),
   ];
 }
@@ -498,6 +566,10 @@ class LedChallenge {
   final List<int>? lineForBlock;
   final List<CodeBlockType> availableBlocks;
   final List<CodeBlockType> correctSequence;
+  // Optional: required nesting per block (null = no nesting validation).
+  final List<int>? correctNesting;
+  // How many lines the first repeat section is offset in targetDisplay.
+  final int repeatLineOffset;
 
   const LedChallenge({
     required this.number,
@@ -508,6 +580,8 @@ class LedChallenge {
     this.lineForBlock,
     required this.availableBlocks,
     required this.correctSequence,
+    this.correctNesting,
+    this.repeatLineOffset = 0,
   });
 
   int get displayNumber {
@@ -516,12 +590,12 @@ class LedChallenge {
   }
 
   static const List<LedChallenge> ledChallenges = [
-    // Challenge 12 – First Blink (intro: no loop, just sequence)
+    // Challenge 12 – Light It Up (simple intro: sequence without loop)
     LedChallenge(
       number: 12,
-      levelNumber: 3,
-      title: 'First Blink',
-      instruction: 'Light it up! Turn the LED red, wait, then turn it off.',
+      levelNumber: 2,
+      title: 'Light It Up',
+      instruction: 'Turn the robot light red, wait a bit, then turn it off!',
       targetDisplay: '🔴 turn on\n⏱️ wait\n⚫ turn off',
       lineForBlock: [0, 1, 2],
       availableBlocks: [
@@ -535,12 +609,12 @@ class LedChallenge {
         CodeBlockType.ledOff,
       ],
     ),
-    // Challenge 13 – Blink 3 Times (basic repeat loop)
+    // Challenge 13 – Blink Blink Blink (first loop)
     LedChallenge(
       number: 13,
-      levelNumber: 3,
-      title: 'Blink 3 Times',
-      instruction: 'Use REPEAT 3× to blink the red LED 3 times!',
+      levelNumber: 2,
+      title: 'Blink Three Times',
+      instruction: 'Make the red light blink 3 times using a loop!',
       targetDisplay: 'REPEAT 3×\n🔴 on → ⚫ off',
       availableBlocks: [
         CodeBlockType.ledRepeat3,
@@ -553,57 +627,44 @@ class LedChallenge {
         CodeBlockType.ledOff,
       ],
     ),
-    // Challenge 14 – Color Parade (multiple actions inside loop)
-    LedChallenge(
-      number: 14,
-      levelNumber: 3,
-      title: 'Color Parade',
-      instruction: 'Inside the loop, show red, then green, then blue!',
-      targetDisplay: 'REPEAT 3×\n🔴 → 🟢 → 🔵',
-      availableBlocks: [
-        CodeBlockType.ledRepeat3,
-        CodeBlockType.setRed,
-        CodeBlockType.setGreen,
-        CodeBlockType.setBlue,
-      ],
-      correctSequence: [
-        CodeBlockType.ledRepeat3,
-        CodeBlockType.setRed,
-        CodeBlockType.setGreen,
-        CodeBlockType.setBlue,
-      ],
-    ),
-    // Challenge 15 – Yellow Blink (repeat 2×, different count)
-    LedChallenge(
-      number: 15,
-      levelNumber: 3,
-      title: 'Yellow Blink',
-      instruction: 'Blink the yellow LED 2 times using REPEAT 2×!',
-      targetDisplay: 'REPEAT 2×\n🟡 on → ⚫ off',
-      availableBlocks: [
-        CodeBlockType.ledRepeat2,
-        CodeBlockType.setYellow,
-        CodeBlockType.ledOff,
-      ],
-      correctSequence: [
-        CodeBlockType.ledRepeat2,
-        CodeBlockType.setYellow,
-        CodeBlockType.ledOff,
-      ],
-    ),
-    // Challenge 16 – Traffic Light (chaining two loops)
+    // Challenge 16 – Stop the Cars! (real traffic light: green→yellow→red×3→yellow→green)
     LedChallenge(
       number: 16,
-      levelNumber: 3,
-      title: 'Traffic Light',
-      instruction: 'First blink red 3 times, then blink green 2 times!',
-      targetDisplay: 'REPEAT 3×: 🔴 blink\nREPEAT 2×: 🟢 blink',
+      levelNumber: 2,
+      title: 'Stop the Cars',
+      instruction: 'Help people cross the road!\nGreen to go, yellow to warn, red 3 times to stop cars, yellow again, then green!',
+      targetDisplay: '🟢 go!\n🟡 warning\nREPEAT 3×: 🔴 stop\n🟡 warning\n🟢 go again!',
+      lineForBlock: [0, 1, 3, 4],
+      repeatLineOffset: 2,
+      availableBlocks: [
+        CodeBlockType.setGreen,
+        CodeBlockType.setYellow,
+        CodeBlockType.ledRepeat3,
+        CodeBlockType.setRed,
+      ],
+      correctSequence: [
+        CodeBlockType.setGreen,
+        CodeBlockType.setYellow,
+        CodeBlockType.ledRepeat3,
+        CodeBlockType.setRed,
+        CodeBlockType.setYellow,
+        CodeBlockType.setGreen,
+      ],
+      correctNesting: [0, 0, 0, 1, 0, 0],
+    ),
+    // Challenge 14 – Attack & Win! (2 sequential loops)
+    LedChallenge(
+      number: 14,
+      levelNumber: 2,
+      title: 'Attack and Win',
+      instruction: 'The enemy attacks! Blink red 3 times to fight back, then celebrate with 2 green blinks!',
+      targetDisplay: 'REPEAT 3×: 🔴 fight!\nREPEAT 2×: 🟢 win!',
       availableBlocks: [
         CodeBlockType.ledRepeat3,
-        CodeBlockType.ledRepeat2,
         CodeBlockType.setRed,
-        CodeBlockType.setGreen,
         CodeBlockType.ledOff,
+        CodeBlockType.ledRepeat2,
+        CodeBlockType.setGreen,
       ],
       correctSequence: [
         CodeBlockType.ledRepeat3,
@@ -614,30 +675,169 @@ class LedChallenge {
         CodeBlockType.ledOff,
       ],
     ),
-    // Challenge 17 – Rainbow Spin (complex multi-loop)
+    // Challenge 17 – Police Lights! (nested loops: outer 3×, inner 2× red, inner 2× blue)
     LedChallenge(
       number: 17,
-      levelNumber: 3,
-      title: 'Rainbow Spin',
-      instruction: 'First blink red 2 times, then spin red → green → blue 3 times!',
-      targetDisplay: 'REPEAT 2×: 🔴 blink\nREPEAT 3×: 🔴 → 🟢 → 🔵',
+      levelNumber: 2,
+      title: 'Police Lights',
+      instruction: 'Make police lights!\nRepeat 3 times:\n  • Blink red 🔴 twice\n  • Blink blue 🔵 twice',
+      targetDisplay: 'REPEAT 3×\n  REPEAT 2×: 🔴 blink\n  REPEAT 2×: 🔵 blink',
+      lineForBlock: [0, 1, 1, 1, 2, 2, 2],
       availableBlocks: [
-        CodeBlockType.ledRepeat2,
         CodeBlockType.ledRepeat3,
+        CodeBlockType.ledRepeat2,
         CodeBlockType.setRed,
-        CodeBlockType.setGreen,
         CodeBlockType.setBlue,
         CodeBlockType.ledOff,
       ],
       correctSequence: [
+        CodeBlockType.ledRepeat3,
         CodeBlockType.ledRepeat2,
         CodeBlockType.setRed,
         CodeBlockType.ledOff,
-        CodeBlockType.ledRepeat3,
-        CodeBlockType.setRed,
-        CodeBlockType.setGreen,
+        CodeBlockType.ledRepeat2,
         CodeBlockType.setBlue,
+        CodeBlockType.ledOff,
+      ],
+      correctNesting: [0, 1, 2, 2, 1, 2, 2],
+    ),
+  ];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Level 4 – Variable Challenge definition
+// ─────────────────────────────────────────────────────────────────────────────
+class VarChallenge {
+  final int number;
+  final int levelNumber;
+  final String title;
+  final String instruction;
+  final String? targetDisplay;
+  final String? expectedOutput;
+  final List<int?>? lineForBlock;
+  final List<CodeBlockType> availableBlocks;
+  final List<CodeBlockType> correctSequence;
+  // Optional: if set, each block's nesting level must match this list exactly.
+  final List<int>? correctNesting;
+
+  const VarChallenge({
+    required this.number,
+    required this.levelNumber,
+    required this.title,
+    required this.instruction,
+    this.targetDisplay,
+    this.expectedOutput,
+    this.lineForBlock,
+    required this.availableBlocks,
+    required this.correctSequence,
+    this.correctNesting,
+  });
+
+  int get displayNumber {
+    final index = varChallenges.indexWhere((c) => c.number == number);
+    return index + 1;
+  }
+
+  static const List<VarChallenge> varChallenges = [
+    // Challenge 18 – My First Variable (set + show)
+    VarChallenge(
+      number: 18,
+      levelNumber: 4,
+      title: 'My First Variable',
+      instruction: 'Set the score to 10, then show it on the robot screen.',
+      expectedOutput: 'score = 10',
+      availableBlocks: [
+        CodeBlockType.varSetScore,
+        CodeBlockType.varShowScore,
+      ],
+      correctSequence: [
+        CodeBlockType.varSetScore,
+        CodeBlockType.varShowScore,
+      ],
+    ),
+    // Challenge 19 – Add Points (modify a variable)
+    VarChallenge(
+      number: 19,
+      levelNumber: 4,
+      title: 'Add Points',
+      instruction: 'Start score at 0, add 5 points, then show the result.',
+      expectedOutput: 'score = 5',
+      availableBlocks: [
+        CodeBlockType.varSetZero,
+        CodeBlockType.varAdd5,
+        CodeBlockType.varShowScore,
+      ],
+      correctSequence: [
+        CodeBlockType.varSetZero,
+        CodeBlockType.varAdd5,
+        CodeBlockType.varShowScore,
+      ],
+    ),
+    // Challenge 20 – Plant Watering (variable + loop + conditional display)
+    VarChallenge(
+      number: 20,
+      levelNumber: 4,
+      title: 'Plant Watering',
+      instruction: 'Water the plant! Set water to 0, then use REPEAT 3× — inside the loop: water it and show the plant each time. Watch it grow! 🌻',
+      expectedOutput: '🌻',
+      availableBlocks: [
+        CodeBlockType.varSetWater,
+        CodeBlockType.varRepeat3,
+        CodeBlockType.varWaterPlant,
+        CodeBlockType.varShowPlant,
+      ],
+      correctSequence: [
+        CodeBlockType.varSetWater,
+        CodeBlockType.varRepeat3,
+        CodeBlockType.varWaterPlant,
+        CodeBlockType.varShowPlant,
+      ],
+      // varWaterPlant and varShowPlant must both be nested inside REPEAT 3×
+      correctNesting: [0, 0, 1, 1],
+    ),
+    // Challenge 21 – Temperature Check (variable + if/else)
+    VarChallenge(
+      number: 21,
+      levelNumber: 4,
+      title: 'Temperature Check',
+      instruction: 'Set temp to 40. IF it is hot → show ☀️  inside the IF block. ELSE → show ❄️  inside the ELSE block.',
+      expectedOutput: '☀️',
+      availableBlocks: [
+        CodeBlockType.varSetTempHot,
+        CodeBlockType.varIfHot,
+        CodeBlockType.varShowSun,
+        CodeBlockType.varElse,
+        CodeBlockType.varShowSnow,
+      ],
+      correctSequence: [
+        CodeBlockType.varSetTempHot,
+        CodeBlockType.varIfHot,
+        CodeBlockType.varShowSun,
+        CodeBlockType.varElse,
+        CodeBlockType.varShowSnow,
+      ],
+    ),
+    // Challenge 22 – Countdown (variable + loop + subtraction)
+    VarChallenge(
+      number: 22,
+      levelNumber: 4,
+      title: 'Countdown',
+      instruction: 'Launch the rocket! 🚀\nSet countdown to 3 and show it, then use REPEAT 3× to subtract 1 and show each time.\nThe screen should print: 3 → 2 → 1 → 0',
+      expectedOutput: '0',
+      availableBlocks: [
+        CodeBlockType.varSetCountdown,
+        CodeBlockType.varShowCountdown,
+        CodeBlockType.varRepeat3,
+        CodeBlockType.varMinusOne,
+      ],
+      correctSequence: [
+        CodeBlockType.varSetCountdown,
+        CodeBlockType.varShowCountdown,
+        CodeBlockType.varRepeat3,
+        CodeBlockType.varMinusOne,
+        CodeBlockType.varShowCountdown,
       ],
     ),
   ];
 }
+

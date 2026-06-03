@@ -6,33 +6,38 @@ import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../services/child_progress_service.dart';
+import '../l10n/app_strings.dart';
+import 'level_one_intro_screen.dart';
 
 enum RobotConnectionStatus { disconnected, connecting, connected, executing }
 
-class ChallengeScreen extends StatefulWidget {
+class LevelOneScreen extends StatefulWidget {
   final ChildModel child;
   final Challenge challenge;
 
-  const ChallengeScreen({
+  const LevelOneScreen({
     super.key,
     required this.child,
     required this.challenge,
   });
 
   @override
-  State<ChallengeScreen> createState() => _ChallengeScreenState();
+  State<LevelOneScreen> createState() => _LevelOneScreenState();
 }
 
-class _ChallengeScreenState extends State<ChallengeScreen>
+class _LevelOneScreenState extends State<LevelOneScreen>
     with TickerProviderStateMixin {
   List<CodeBlock> arrangedBlocks = [];
   late ChildModel _progressChild;
   late RobotState currentRobotState;
   bool isExecuting = false;
-  bool _showSuccessToast = false;
+  bool _showCelebrationOverlay = false;
   bool _showFailToast = false;
+  bool _showConnectedToast = false;
   bool _challengeSuccessfullyCompleted = false;
+  bool _streakRenewed = false;
   int? _activeBlockIndex;
+  late List<CodeBlockType> _availableBlocks;
   RobotConnectionStatus _connectionStatus = RobotConnectionStatus.disconnected;
 
   late AnimationController _pulseController;
@@ -45,6 +50,13 @@ class _ChallengeScreenState extends State<ChallengeScreen>
     _progressChild = widget.child;
     currentRobotState = widget.challenge.initialRobotState;
     arrangedBlocks = [];
+    _challengeSuccessfullyCompleted =
+        widget.child.completedChallengeIds.contains(widget.challenge.number);
+    _availableBlocks = ({
+      ...widget.challenge.availableBlocks,
+      CodeBlockType.start,
+      CodeBlockType.end,
+    }).toList()..shuffle();
 
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
@@ -53,6 +65,22 @@ class _ChallengeScreenState extends State<ChallengeScreen>
     _pulseAnim = Tween<double>(begin: 0.95, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    // Auto-show intro the first time a child opens Level 1 without any
+    // completed Level 1 challenges.
+    final bool isFirstLevel1Visit =
+        widget.challenge.levelNumber == 1 &&
+        widget.challenge.number == 1 &&
+        !Challenge.demoChallenge
+            .where((c) => c.levelNumber == 1)
+            .any((c) => widget.child.completedChallengeIds.contains(c.number));
+
+    if (isFirstLevel1Visit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _showTutorial();
+      });
+    }
   }
 
   ChildModel _markChallengeCompleted() {
@@ -89,9 +117,35 @@ class _ChallengeScreenState extends State<ChallengeScreen>
       reachedIndex,
     );
 
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final lastIso = _progressChild.streakLastPlayedDateIso;
+    int nextStreak = _progressChild.streak;
+    if (lastIso == null) {
+      nextStreak = 1;
+    } else {
+      try {
+        final lastPlayed = DateTime.parse(lastIso);
+        final lastDay = DateTime.utc(lastPlayed.year, lastPlayed.month, lastPlayed.day);
+        final todayUtc = DateTime.utc(today.year, today.month, today.day);
+        final diffDays = todayUtc.difference(lastDay).inDays;
+        if (diffDays == 0) {
+          nextStreak = _progressChild.streak;
+        } else if (diffDays == 1) {
+          nextStreak = _progressChild.streak + 1;
+        } else {
+          nextStreak = 1;
+        }
+      } catch (_) {
+        nextStreak = 1;
+      }
+    }
+
     return _progressChild.copyWith(
       completedChallengeIds: completedSet.toList()..sort(),
       subLevelProgressByLevel: progressMap,
+      streak: nextStreak,
+      streakLastPlayedDateIso: today.toIso8601String(),
     );
   }
 
@@ -140,36 +194,31 @@ class _ChallengeScreenState extends State<ChallengeScreen>
     });
   }
 
-  List<CodeBlockType> get _availableBlocks {
-    final blocks = <CodeBlockType>[
-      ...widget.challenge.availableBlocks,
-      CodeBlockType.start,
-      CodeBlockType.end,
-    ];
-    return blocks.toSet().toList();
-  }
 
   void _showSuccessNotification() {
     if (!mounted) return;
     setState(() {
       _showFailToast = false;
-      _showSuccessToast = true;
-    });
-    Future.delayed(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      setState(() => _showSuccessToast = false);
+      _showCelebrationOverlay = true;
     });
   }
 
   void _showFailNotification() {
     if (!mounted) return;
     setState(() {
-      _showSuccessToast = false;
       _showFailToast = true;
     });
     Future.delayed(const Duration(seconds: 3), () {
       if (!mounted) return;
       setState(() => _showFailToast = false);
+    });
+  }
+
+  void _showConnectedNotification() {
+    if (!mounted) return;
+    setState(() => _showConnectedToast = true);
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _showConnectedToast = false);
     });
   }
 
@@ -181,12 +230,19 @@ class _ChallengeScreenState extends State<ChallengeScreen>
 
   Future<void> _executeCode() async {
     if (isExecuting) return;
-    if (_connectionStatus != RobotConnectionStatus.connected) {
-      _showFailNotification();
-      return;
-    }
     if (!_hasValidStartEndOrder) {
+      setState(() {
+        _progressChild = _progressChild.copyWith(
+          attempts: _progressChild.attempts + 1,
+        );
+      });
       _showFailNotification();
+      final eChildId = _progressChild.childId;
+      if (eChildId != null) {
+        _progressService
+            .registerChallengeFail(childId: eChildId, child: _progressChild)
+            .catchError((_) => _progressChild);
+      }
       return;
     }
 
@@ -195,7 +251,6 @@ class _ChallengeScreenState extends State<ChallengeScreen>
 
     setState(() {
       isExecuting = true;
-      _connectionStatus = RobotConnectionStatus.executing;
       currentRobotState = initialRobotState;
       _activeBlockIndex = null;
     });
@@ -247,10 +302,9 @@ class _ChallengeScreenState extends State<ChallengeScreen>
 
     setState(() {
       isExecuting = false;
-      _connectionStatus = RobotConnectionStatus.connected;
     });
     if (success) {
-      // Persist progress + streak (per child) to Firestore when possible.
+      final lastPlayedDateBefore = _progressChild.streakLastPlayedDateIso;
       final childId = _progressChild.childId;
       if (childId != null) {
         try {
@@ -266,10 +320,24 @@ class _ChallengeScreenState extends State<ChallengeScreen>
       } else {
         _progressChild = _markChallengeCompleted();
       }
+      _streakRenewed = _progressChild.streakLastPlayedDateIso != lastPlayedDateBefore;
       setState(() => _challengeSuccessfullyCompleted = true);
       _showSuccessNotification();
     } else {
+      // Increment locally first so the count is accurate when the user
+      // navigates back. Persist to Firestore in the background.
+      setState(() {
+        _progressChild = _progressChild.copyWith(
+          attempts: _progressChild.attempts + 1,
+        );
+      });
       _showFailNotification();
+      final childId = _progressChild.childId;
+      if (childId != null) {
+        _progressService
+            .registerChallengeFail(childId: childId, child: _progressChild)
+            .catchError((_) => _progressChild);
+      }
     }
   }
 
@@ -283,7 +351,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
       final ChildModel? updatedChild = await Navigator.push<ChildModel>(
         context,
         MaterialPageRoute(
-          builder: (context) => ChallengeScreen(
+          builder: (context) => LevelOneScreen(
             child: _progressChild,
             challenge: previousChallenge,
           ),
@@ -305,7 +373,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
         context,
         MaterialPageRoute(
           builder: (context) =>
-              ChallengeScreen(child: _progressChild, challenge: nextChallenge),
+              LevelOneScreen(child: _progressChild, challenge: nextChallenge),
         ),
       );
       if (!mounted) return;
@@ -316,36 +384,40 @@ class _ChallengeScreenState extends State<ChallengeScreen>
     }
   }
 
-  Future<void> _handleRobotAction() async {
-    if (_connectionStatus == RobotConnectionStatus.disconnected) {
-      setState(() => _connectionStatus = RobotConnectionStatus.connecting);
-      await Future.delayed(const Duration(milliseconds: 900));
-      if (!mounted) return;
-      setState(() => _connectionStatus = RobotConnectionStatus.connected);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Robot connected successfully.',
-            style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
-          ),
-          backgroundColor: AppTheme.tealDark,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+  void _showTutorial() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context2, animation, secondaryAnimation) =>
+            LevelOneIntroScreen(
+          child: _progressChild,
+          challenge: widget.challenge,
+          isReplay: true,
         ),
-      );
-      return;
-    }
+        transitionsBuilder: (context2, anim, secondaryAnimation, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
+  }
 
-    if (_connectionStatus == RobotConnectionStatus.connected) {
-      await _executeCode();
-    }
+  Future<void> _handleConnect() async {
+    if (_connectionStatus != RobotConnectionStatus.disconnected) return;
+    setState(() => _connectionStatus = RobotConnectionStatus.connecting);
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+    setState(() => _connectionStatus = RobotConnectionStatus.connected);
+    _showConnectedNotification();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        Navigator.pop(context, _progressChild);
+      },
+      child: Scaffold(
       body: Stack(
         children: [
           // ── Background gradient ──────────────────────────
@@ -372,7 +444,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                   challenge: widget.challenge,
                   isExecuting: isExecuting,
                   connectionStatus: _connectionStatus,
-                  onRobotActionPressed: _handleRobotAction,
+                  onConnectPressed: _handleConnect,
                   onBackPressed: () => Navigator.pop(context, _progressChild),
                 ),
 
@@ -395,15 +467,19 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                         );
 
                         return SingleChildScrollView(
+                          padding: const EdgeInsets.only(bottom: 84),
                           child: ConstrainedBox(
                             constraints: BoxConstraints(minHeight: totalHeight),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _InstructionCard(
-                                  instruction: widget.challenge.instruction,
+                                  instruction: AppStrings.of(context).challengeInstruction(
+                                    widget.challenge.number,
+                                    widget.challenge.instruction,
+                                  ),
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 3),
                                 SizedBox(
                                   height: gridSize,
                                   child: Center(
@@ -420,7 +496,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 3),
                                 SizedBox(
                                   height: codeAreaHeight,
                                   child: _CodeBlocksArea(
@@ -432,6 +508,8 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                                     onAddBlock: _addBlock,
                                     isExecuting: isExecuting,
                                     activeBlockIndex: _activeBlockIndex,
+                                    onRun: _executeCode,
+                                    onShowTutorial: _showTutorial,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -451,23 +529,20 @@ class _ChallengeScreenState extends State<ChallengeScreen>
             left: 16,
             right: 16,
             child: IgnorePointer(
-              ignoring: !_showSuccessToast && !_showFailToast,
+              ignoring: !_showFailToast && !_showConnectedToast,
               child: AnimatedSlide(
-                offset: (_showSuccessToast || _showFailToast)
+                offset: (_showFailToast || _showConnectedToast)
                     ? Offset.zero
                     : const Offset(0, -1),
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOut,
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 220),
-                  opacity: (_showSuccessToast || _showFailToast) ? 1 : 0,
+                  opacity: (_showFailToast || _showConnectedToast) ? 1 : 0,
                   child: SafeArea(
                     bottom: false,
-                    child: _showSuccessToast
-                        ? _SuccessBanner(
-                            child: _progressChild,
-                            challenge: widget.challenge,
-                          )
+                    child: _showConnectedToast
+                        ? const _ConnectedBanner()
                         : const _FailBanner(),
                   ),
                 ),
@@ -521,7 +596,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Previous',
+                              AppStrings.of(context).previous,
                               style: GoogleFonts.nunito(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
@@ -534,7 +609,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     // Next button
                     Expanded(
                       child: ElevatedButton(
@@ -556,7 +631,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'Next',
+                              AppStrings.of(context).next,
                               style: GoogleFonts.nunito(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
@@ -582,9 +657,20 @@ class _ChallengeScreenState extends State<ChallengeScreen>
               ),
             ),
           ),
+          if (_showCelebrationOverlay)
+            CelebrationOverlay(
+              streak: _progressChild.streak,
+              streakRenewed: _streakRenewed,
+              onDismiss: () => setState(() => _showCelebrationOverlay = false),
+              onContinue: () {
+                setState(() => _showCelebrationOverlay = false);
+                _goToNextChallenge();
+              },
+            ),
         ],
       ),
-    );
+    ), // Scaffold
+  ); // PopScope
   }
 }
 
@@ -596,16 +682,16 @@ class _HeaderBar extends StatelessWidget {
   final Challenge challenge;
   final bool isExecuting;
   final RobotConnectionStatus connectionStatus;
-  final VoidCallback onRobotActionPressed;
   final VoidCallback onBackPressed;
+  final VoidCallback onConnectPressed;
 
   const _HeaderBar({
     required this.child,
     required this.challenge,
     required this.isExecuting,
     required this.connectionStatus,
-    required this.onRobotActionPressed,
     required this.onBackPressed,
+    required this.onConnectPressed,
   });
 
   @override
@@ -640,7 +726,7 @@ class _HeaderBar extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  '${challenge.number}',
+                  '${challenge.number})',
                   style: GoogleFonts.nunito(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
@@ -650,7 +736,7 @@ class _HeaderBar extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    challenge.title,
+                    AppStrings.of(context).challengeTitle(challenge.number, challenge.title),
                     style: GoogleFonts.nunito(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
@@ -663,104 +749,79 @@ class _HeaderBar extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          _StreakBadge(streak: child.streak),
-          const SizedBox(width: 3),
-          _RobotStatusBadge(status: connectionStatus),
-          const SizedBox(width: 6),
-          _RobotActionMiniButton(
-            status: connectionStatus,
-            onPressed: onRobotActionPressed,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            child.name,
-            style: GoogleFonts.nunito(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.tealMid,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFFFFF), Color(0xFFF2FFFB)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              border: Border.all(color: Colors.white, width: 1.8),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.tealPrimary.withValues(alpha: 0.25),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(2.5),
-            child: ClipOval(child: AvatarFace(seed: child.avatarSeed)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RobotActionMiniButton extends StatelessWidget {
-  final RobotConnectionStatus status;
-  final VoidCallback onPressed;
-
-  const _RobotActionMiniButton({required this.status, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    final busy =
-        status == RobotConnectionStatus.connecting ||
-        status == RobotConnectionStatus.executing;
-    final isDisconnected = status == RobotConnectionStatus.disconnected;
-    final icon = isDisconnected
-        ? Icons.bluetooth_searching_rounded
-        : busy
-        ? Icons.hourglass_top_rounded
-        : Icons.play_arrow_rounded;
-    final label = isDisconnected
-        ? 'Connect'
-        : busy
-        ? 'Running'
-        : 'Run';
-
-    return GestureDetector(
-      onTap: busy ? null : onPressed,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: busy
-              ? const Color(0xFF9CCFC5)
-              : isDisconnected
-              ? const Color(0xFF5EA1D8)
-              : AppTheme.tealPrimary,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.white, size: 13),
+          const SizedBox(width: 8),
+          if (connectionStatus != RobotConnectionStatus.disconnected)
+            _RobotStatusBadge(status: connectionStatus, compact: true),
+          if (connectionStatus == RobotConnectionStatus.disconnected ||
+              connectionStatus == RobotConnectionStatus.connecting) ...[
             const SizedBox(width: 4),
-            Text(
-              label,
-              style: GoogleFonts.nunito(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
+            GestureDetector(
+              onTap: connectionStatus == RobotConnectionStatus.disconnected
+                  ? onConnectPressed
+                  : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                decoration: BoxDecoration(
+                  color: connectionStatus == RobotConnectionStatus.disconnected
+                      ? const Color(0xFF5EA1D8)
+                      : const Color(0xFF9CCFC5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      connectionStatus == RobotConnectionStatus.disconnected
+                          ? Icons.bluetooth_searching_rounded
+                          : Icons.hourglass_top_rounded,
+                      color: Colors.white,
+                      size: 13,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      connectionStatus == RobotConnectionStatus.disconnected
+                          ? AppStrings.of(context).connectBtn
+                          : '...',
+                      style: GoogleFonts.nunito(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
-        ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () => showChildProfileDialog(context, child),
+            child: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFFFFF), Color(0xFFF2FFFB)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border.all(color: Colors.white, width: 1.8),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(2.5),
+              child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender)),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -768,60 +829,62 @@ class _RobotActionMiniButton extends StatelessWidget {
 
 class _RobotStatusBadge extends StatelessWidget {
   final RobotConnectionStatus status;
-  const _RobotStatusBadge({required this.status});
+  final bool compact;
+  const _RobotStatusBadge({required this.status, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
-    final data = _statusData(status);
+    final s = AppStrings.of(context);
+    final (Color clr, IconData icon, String label) = switch (status) {
+      RobotConnectionStatus.disconnected => (
+        const Color(0xFFD84343),
+        Icons.bluetooth_disabled_rounded,
+        s.offline,
+      ),
+      RobotConnectionStatus.connecting => (
+        const Color(0xFFE7A63D),
+        Icons.bluetooth_searching_rounded,
+        s.connectingStatus,
+      ),
+      RobotConnectionStatus.connected => (
+        const Color(0xFF2A9D7D),
+        Icons.bluetooth_connected_rounded,
+        s.connectedStatus,
+      ),
+      RobotConnectionStatus.executing => (
+        const Color(0xFF4D8ED8),
+        Icons.smart_toy_rounded,
+        s.executingStatus,
+      ),
+    };
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: compact
+          ? const EdgeInsets.symmetric(horizontal: 6, vertical: 3)
+          : const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: data.$1.withValues(alpha: 0.14),
+        color: clr.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: data.$1.withValues(alpha: 0.34)),
+        border: Border.all(color: clr.withValues(alpha: 0.34)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(data.$2, size: 13, color: data.$1),
-          const SizedBox(width: 5),
-          Text(
-            data.$3,
-            style: GoogleFonts.nunito(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: data.$1,
+          Icon(icon, size: compact ? 11 : 13, color: clr),
+          if (!compact) ...[
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: GoogleFonts.nunito(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: clr,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
-  }
-
-  (Color, IconData, String) _statusData(RobotConnectionStatus status) {
-    switch (status) {
-      case RobotConnectionStatus.disconnected:
-        return (
-          const Color(0xFFD84343),
-          Icons.bluetooth_disabled_rounded,
-          'Offline',
-        );
-      case RobotConnectionStatus.connecting:
-        return (
-          const Color(0xFFE7A63D),
-          Icons.bluetooth_searching_rounded,
-          'Connecting',
-        );
-      case RobotConnectionStatus.connected:
-        return (
-          const Color(0xFF2A9D7D),
-          Icons.bluetooth_connected_rounded,
-          'Connected',
-        );
-      case RobotConnectionStatus.executing:
-        return (const Color(0xFF4D8ED8), Icons.smart_toy_rounded, 'Executing');
-    }
   }
 }
 
@@ -864,7 +927,7 @@ class _InstructionCard extends StatelessWidget {
             child: Text(
               instruction,
               style: GoogleFonts.nunito(
-                fontSize: 15,
+                fontSize: 17,
                 fontWeight: FontWeight.w700,
                 color: Colors.black87,
                 height: 1.45,
@@ -919,7 +982,7 @@ class _RobotGridWidget extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                'Grid',
+                AppStrings.of(context).grid,
                 style: GoogleFonts.nunito(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
@@ -928,9 +991,9 @@ class _RobotGridWidget extends StatelessWidget {
               ),
               const Spacer(),
               // Legend
-              const _LegendDot(color: AppTheme.tealPrimary, label: 'Robot'),
+              _LegendDot(color: AppTheme.tealPrimary, label: AppStrings.of(context).robot),
               const SizedBox(width: 10),
-              _LegendDot(color: Colors.amber.shade400, label: 'Target'),
+              _LegendDot(color: Colors.amber.shade400, label: AppStrings.of(context).target),
             ],
           ),
           const SizedBox(height: 8),
@@ -1123,6 +1186,8 @@ class _CodeBlocksArea extends StatelessWidget {
   final Function(CodeBlockType) onAddBlock;
   final bool isExecuting;
   final int? activeBlockIndex;
+  final VoidCallback onRun;
+  final VoidCallback onShowTutorial;
 
   const _CodeBlocksArea({
     required this.arrangedBlocks,
@@ -1133,6 +1198,8 @@ class _CodeBlocksArea extends StatelessWidget {
     required this.onAddBlock,
     required this.isExecuting,
     required this.activeBlockIndex,
+    required this.onRun,
+    required this.onShowTutorial,
   });
 
   @override
@@ -1159,20 +1226,75 @@ class _CodeBlocksArea extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                'Your Code',
+                AppStrings.of(context).yourCode,
                 style: GoogleFonts.nunito(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark,
                 ),
               ),
               const Spacer(),
-              Text(
-                '${arrangedBlocks.length} block${arrangedBlocks.length != 1 ? 's' : ''}',
-                style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.tealMid,
+              // Tutorial replay button
+              GestureDetector(
+                onTap: onShowTutorial,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C4DFF).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF7C4DFF).withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.ondemand_video_rounded,
+                    color: Color(0xFF7C4DFF),
+                    size: 16,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: isExecuting ? null : onRun,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: isExecuting
+                        ? const Color(0xFF9CCFC5)
+                        : AppTheme.tealPrimary,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: isExecuting
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: AppTheme.tealPrimary.withValues(alpha: 0.35),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isExecuting
+                            ? Icons.hourglass_top_rounded
+                            : Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 15,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isExecuting ? AppStrings.of(context).running : AppStrings.of(context).run,
+                        style: GoogleFonts.nunito(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1261,44 +1383,24 @@ class _CodeBlocksArea extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              const Icon(
-                Icons.widgets_rounded,
-                size: 14,
-                color: AppTheme.tealPrimary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Available Blocks',
-                style: GoogleFonts.nunito(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.tealDark,
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 6),
+            child: Row(
+              children: [
+                const Icon(Icons.widgets_rounded, size: 13, color: AppTheme.tealPrimary),
+                const SizedBox(width: 5),
+                Text(
+                  AppStrings.of(context).availableBlocks,
+                  style: GoogleFonts.nunito(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.tealDark,
+                  ),
                 ),
-              ),
-              const Spacer(),
-              Text(
-                '${availableBlocks.length} block${availableBlocks.length != 1 ? 's' : ''}',
-                style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.tealMid,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Tap or drag blocks to build your solution:',
-            style: GoogleFonts.nunito(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey.shade600,
+              ],
             ),
           ),
-          const SizedBox(height: 8),
 
           Expanded(
             flex: 1,
@@ -1358,7 +1460,7 @@ class _CodeBlockWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: block.color,
         borderRadius: BorderRadius.circular(10),
@@ -1378,14 +1480,14 @@ class _CodeBlockWidget extends StatelessWidget {
           Icon(
             _blockIcon(block.type),
             color: Colors.white.withValues(alpha: 0.9),
-            size: 16,
+            size: 14,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Expanded(
             child: Text(
               block.label,
               style: GoogleFonts.nunito(
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.w800,
                 color: Colors.white,
               ),
@@ -1483,17 +1585,17 @@ class _PaletteChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
-        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: elevated
             ? [
                 BoxShadow(
-                  color: color.withValues(alpha: 0.35),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  color: color.withValues(alpha: 0.28),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
               ]
             : null,
@@ -1501,12 +1603,12 @@ class _PaletteChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_blockIcon(blockType), size: 14, color: color),
-          const SizedBox(width: 5),
+          Icon(_blockIcon(blockType), size: 13, color: color),
+          const SizedBox(width: 4),
           Text(
             CodeBlock.typeLabels[blockType]!,
             style: GoogleFonts.nunito(
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
               color: color,
             ),
@@ -1563,109 +1665,55 @@ IconData _blockIcon(CodeBlockType type) {
   }
 }
 
-// ─────────────────────────────────────────────────────
-// Success Banner
-// ─────────────────────────────────────────────────────
-class _SuccessBanner extends StatefulWidget {
-  final ChildModel child;
-  final Challenge challenge;
-
-  const _SuccessBanner({required this.child, required this.challenge});
-
-  @override
-  State<_SuccessBanner> createState() => _SuccessBannerState();
-}
-
-class _SuccessBannerState extends State<_SuccessBanner>
-    with TickerProviderStateMixin {
-  late AnimationController _scaleController;
-  late Animation<double> _scaleAnimation;
-  int _currentStreak = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
-    );
-    _scaleController.forward();
-
-    _currentStreak = widget.child.streak;
-  }
-
-  @override
-  void dispose() {
-    _scaleController.dispose();
-    super.dispose();
-  }
+class _ConnectedBanner extends StatelessWidget {
+  const _ConnectedBanner();
 
   @override
   Widget build(BuildContext context) {
-    final streakMessage = _currentStreak > 0
-        ? '🔥 Streak: $_currentStreak!'
-        : 'Excellent work! Keep it up 🌟';
-
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFE0F7FA), Color(0xFFB2EBF2)],
+        ),
+        border: Border.all(color: AppTheme.tealPrimary, width: 2),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.tealPrimary,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.bluetooth_connected_rounded, color: Colors.white, size: 22),
           ),
-          border: Border.all(color: const Color(0xFF4CAF50), width: 2),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Color(0xFF4CAF50),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Challenge Completed! 🎉',
-                    style: GoogleFonts.nunito(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF2E7D32),
-                    ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppStrings.of(context).robotConnectedTitle,
+                  style: GoogleFonts.nunito(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.tealDark,
                   ),
-                  Text(
-                    streakMessage,
-                    style: GoogleFonts.nunito(
-                      fontSize: 12,
-                      color: const Color(0xFF388E3C),
-                    ),
+                ),
+                Text(
+                  AppStrings.of(context).robotConnectedSub,
+                  style: GoogleFonts.nunito(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.tealPrimary,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1705,7 +1753,7 @@ class _FailBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Try again',
+                  AppStrings.of(context).tryAgain,
                   style: GoogleFonts.nunito(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
@@ -1713,7 +1761,7 @@ class _FailBanner extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Wrong order or wrong solution. Fix it and run again.',
+                  AppStrings.of(context).wrongOrderMsg,
                   style: GoogleFonts.nunito(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -1729,49 +1777,3 @@ class _FailBanner extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────
-// Streak Badge
-// ─────────────────────────────────────────────────────
-class _StreakBadge extends StatefulWidget {
-  final int streak;
-  const _StreakBadge({required this.streak});
-
-  @override
-  State<_StreakBadge> createState() => _StreakBadgeState();
-}
-
-class _StreakBadgeState extends State<_StreakBadge> {
-  @override
-  Widget build(BuildContext context) {
-    if (widget.streak == 0) {
-      return const SizedBox.shrink(); // Don't show if no streak
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFF6B6B).withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: const Color(0xFFFF6B6B).withValues(alpha: 0.4),
-          width: 1.2,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('🔥', style: TextStyle(fontSize: 13)),
-          const SizedBox(width: 3),
-          Text(
-            '${widget.streak}',
-            style: GoogleFonts.nunito(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFFFF6B6B),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

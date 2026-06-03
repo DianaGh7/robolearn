@@ -40,10 +40,12 @@ class ChildProgressService {
       if (lastPlayed == null) {
         nextStreak = 1;
       } else {
-        final lastDay = DateTime(lastPlayed.year, lastPlayed.month, lastPlayed.day);
-        if (lastDay.isAtSameMomentAs(today)) {
+        final lastDay = DateTime.utc(lastPlayed.year, lastPlayed.month, lastPlayed.day);
+        final todayUtc = DateTime.utc(today.year, today.month, today.day);
+        final diffDays = todayUtc.difference(lastDay).inDays;
+        if (diffDays == 0) {
           nextStreak = remote.streak; // already counted today
-        } else if (lastDay.add(const Duration(days: 1)).isAtSameMomentAs(today)) {
+        } else if (diffDays == 1) {
           nextStreak = remote.streak + 1;
         } else {
           nextStreak = 1;
@@ -89,6 +91,100 @@ class ChildProgressService {
         writeData,
         SetOptions(merge: true),
       );
+
+      return updated;
+    });
+  }
+
+  /// Same as [registerChallengeSuccess] but for Level 2 / Level 3 challenges
+  /// that use their own model types (SoundChallenge, LedChallenge).
+  Future<ChildModel> registerChallengeSuccessForLevel({
+    required String childId,
+    required ChildModel child,
+    required int challengeNumber,
+    required int levelNumber,
+    required int reachedIndex,
+    required int totalChallengesInLevel,
+  }) async {
+    final doc = FirebaseRefs.childDoc(childId);
+
+    return FirebaseRefs.firestore.runTransaction<ChildModel>((tx) async {
+      final snap = await tx.get(doc);
+      final remote = snap.exists ? ChildModel.fromFirestore(snap) : child;
+
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      final lastIso = remote.streakLastPlayedDateIso;
+      DateTime? lastPlayed;
+      if (lastIso != null) {
+        try {
+          lastPlayed = DateTime.parse(lastIso);
+        } catch (_) {
+          lastPlayed = null;
+        }
+      }
+
+      int nextStreak = remote.streak;
+      if (lastPlayed == null) {
+        nextStreak = 1;
+      } else {
+        final lastDay = DateTime.utc(lastPlayed.year, lastPlayed.month, lastPlayed.day);
+        final todayUtc = DateTime.utc(today.year, today.month, today.day);
+        final diffDays = todayUtc.difference(lastDay).inDays;
+        if (diffDays == 0) {
+          nextStreak = remote.streak;
+        } else if (diffDays == 1) {
+          nextStreak = remote.streak + 1;
+        } else {
+          nextStreak = 1;
+        }
+      }
+
+      final completedSet = <int>{...remote.completedChallengeIds, challengeNumber};
+
+      final progressMap = Map<int, int>.from(remote.subLevelProgressByLevel);
+      final oldProgress = progressMap[levelNumber] ?? 0;
+      final steppedProgress = (oldProgress + 1).clamp(0, totalChallengesInLevel);
+      progressMap[levelNumber] = math.max(steppedProgress, reachedIndex);
+
+      final updated = remote.copyWith(
+        childId: childId,
+        streak: nextStreak,
+        streakLastPlayedDateIso: today.toIso8601String(),
+        completedChallengeIds: completedSet.toList()..sort(),
+        subLevelProgressByLevel: progressMap,
+      );
+
+      final writeData = updated.toFirestore(includeTimestamps: false);
+      writeData['updatedAt'] = FieldValue.serverTimestamp();
+
+      tx.set(doc, writeData, SetOptions(merge: true));
+
+      return updated;
+    });
+  }
+
+  /// Increments the attempts counter when a child runs incorrect code.
+  Future<ChildModel> registerChallengeFail({
+    required String childId,
+    required ChildModel child,
+  }) async {
+    final doc = FirebaseRefs.childDoc(childId);
+
+    return FirebaseRefs.firestore.runTransaction<ChildModel>((tx) async {
+      final snap = await tx.get(doc);
+      final remote = snap.exists ? ChildModel.fromFirestore(snap) : child;
+
+      final updated = remote.copyWith(
+        childId: childId,
+        attempts: remote.attempts + 1,
+      );
+
+      final writeData = updated.toFirestore(includeTimestamps: false);
+      writeData['updatedAt'] = FieldValue.serverTimestamp();
+
+      tx.set(doc, writeData, SetOptions(merge: true));
 
       return updated;
     });

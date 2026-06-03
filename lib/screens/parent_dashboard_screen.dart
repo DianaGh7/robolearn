@@ -2,9 +2,35 @@
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/child_model.dart';
+import '../models/challenge_model.dart';
 import '../services/child_firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+
+// ── Derived-stats helpers ─────────────────────────────────────────────────────
+// completedLevels / progress / level are stale in Firestore (set at creation,
+// never updated).  Compute them from completedChallengeIds instead.
+
+int _effectiveLevel(ChildModel c) {
+  final ids = c.completedChallengeIds;
+  final groups = [
+    Challenge.demoChallenge.where((ch) => ch.levelNumber == 1).map((ch) => ch.number).toList(),
+    SoundChallenge.soundChallenges.map((ch) => ch.number).toList(),
+    LedChallenge.ledChallenges.map((ch) => ch.number).toList(),
+    VarChallenge.varChallenges.map((ch) => ch.number).toList(),
+  ];
+  int level = 1;
+  for (final group in groups) {
+    if (group.isEmpty || !group.every(ids.contains)) break;
+    level++;
+  }
+  return level;
+}
+
+double _effectiveProgress(ChildModel c) {
+  const total = 20; // 5 challenges × 4 levels
+  return (c.completedChallengeIds.length / total).clamp(0.0, 1.0);
+}
 
 class ParentDashboardScreen extends StatefulWidget {
   const ParentDashboardScreen({super.key});
@@ -47,16 +73,16 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.delete_sweep_rounded, color: Color(0xFFD84E4E)),
+                leading: const Icon(Icons.logout_rounded, color: Color(0xFFD84E4E)),
                 title: Text(
-                  'Remove demo children (Lina/Adam/Sara)',
+                  'Sign Out',
                   style: GoogleFonts.nunito(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFFD84E4E),
                   ),
                 ),
-                onTap: () => Navigator.pop(context, 'remove_demo'),
+                onTap: () => Navigator.pop(context, 'sign_out'),
               ),
             ],
           ),
@@ -64,29 +90,14 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
       },
     );
 
-    if (selected == 'remove_demo') {
-      await _removeDemoChildren();
-    }
-  }
-
-  Future<void> _removeDemoChildren() async {
-    final uid = _uid;
-    if (uid == null) return;
-    final demoNames = <String>{'Lina', 'Adam', 'Sara'};
-    final toDelete = _children.where((c) => demoNames.contains(c.name)).toList();
-    if (toDelete.isEmpty) return;
-
-    for (final child in toDelete) {
-      final id = child.childId;
-      if (id == null) continue;
-      try {
-        await _childService.deleteChild(childId: id, uid: uid);
-      } catch (e) {
-        _showError('Could not delete ${child.name}: $e');
+    if (selected == 'sign_out') {
+      await FirebaseAuth.instance.signOut();
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     }
-    await _loadChildren();
   }
+
 
   @override
   void initState() {
@@ -223,7 +234,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                   level: 1,
                   avatarSeed: _children.length % 3,
                   completedLevels: 0,
-                  totalLevels: 5,
+                  totalLevels: 4,
                   attempts: 0,
                   streak: 0,
                   progress: 0.0,
@@ -456,10 +467,10 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
   @override
   Widget build(BuildContext context) {
     final totalLessons =
-        _children.fold<int>(0, (s, c) => s + c.completedLevels);
+        _children.fold<int>(0, (s, c) => s + c.completedChallengeIds.length);
     final avgProgress = _children.isEmpty
         ? 0.0
-        : _children.fold<double>(0, (s, c) => s + c.progress) /
+        : _children.fold<double>(0, (s, c) => s + _effectiveProgress(c)) /
             _children.length;
     final totalStreak = _children.fold<int>(0, (s, c) => s + c.streak);
 
@@ -741,7 +752,7 @@ class _ChildProgressCard extends StatelessWidget {
                         blurRadius: 8)
                   ],
                 ),
-                child: AvatarFace(seed: child.avatarSeed),
+                child: AvatarFace(seed: child.avatarSeed, gender: child.gender),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -762,7 +773,7 @@ class _ChildProgressCard extends StatelessWidget {
                             color: AppTheme.tealPrimary.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text('Lv ${child.level}',
+                          child: Text('Lv ${_effectiveLevel(child)}',
                               style: GoogleFonts.nunito(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
@@ -777,7 +788,7 @@ class _ChildProgressCard extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(6),
                         child: LinearProgressIndicator(
-                          value: child.progress,
+                          value: _effectiveProgress(child),
                           backgroundColor: Colors.grey.shade200,
                           valueColor:
                               AlwaysStoppedAnimation<Color>(child.palette[0]),
@@ -786,7 +797,7 @@ class _ChildProgressCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${child.completedLevels} / ${child.totalLevels} levels  •  ${(child.progress * 100).toInt()}%',
+                        '${_effectiveLevel(child) - 1} / ${child.totalLevels} levels  •  ${(_effectiveProgress(child) * 100).toInt()}%',
                         style: GoogleFonts.nunito(
                             fontSize: 11, color: Colors.grey.shade500),
                       ),
@@ -813,7 +824,7 @@ class _ChildProgressCard extends StatelessWidget {
                 _MiniStat(
                     icon: Icons.check_circle_outline_rounded,
                     label: 'Passed',
-                    value: '${child.completedLevels}',
+                    value: '${child.completedChallengeIds.length}',
                     color: AppTheme.tealPrimary),
                 _MiniStat(
                     icon: Icons.refresh_rounded,

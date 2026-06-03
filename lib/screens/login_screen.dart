@@ -1,8 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import '../l10n/app_strings.dart';
+import '../services/language_notifier.dart';
 import 'signup_screen.dart';
 import 'choose_child_screen.dart';
 import '../services/parent_service.dart';
@@ -20,6 +22,9 @@ class _LoginScreenState extends State<LoginScreen>
   final _emailCtrl    = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
+  // ── Focus nodes ────────────────────────────────────────────────────────────
+  final _passwordFocus = FocusNode();
+
   // ── State ──────────────────────────────────────────────────────────────────
   bool _isPasswordVisible = false;
   bool _isFormValid       = false;
@@ -34,7 +39,6 @@ class _LoginScreenState extends State<LoginScreen>
   void initState() {
     super.initState();
 
-    // Slide-in animation
     _animCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 700));
     _slideAnim =
@@ -42,14 +46,13 @@ class _LoginScreenState extends State<LoginScreen>
             CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut));
     _animCtrl.forward();
 
-    // Validate on every keystroke
     _emailCtrl.addListener(_validate);
     _passwordCtrl.addListener(_validate);
   }
 
   void _validate() {
     final emailOk =
-    RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(_emailCtrl.text);
+    RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(_emailCtrl.text.trim());
     setState(
             () => _isFormValid = emailOk && _passwordCtrl.text.length >= 8);
   }
@@ -59,29 +62,132 @@ class _LoginScreenState extends State<LoginScreen>
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _resetEmailCtrl.dispose();
+    _passwordFocus.dispose();
     _animCtrl.dispose();
     super.dispose();
   }
 
-  // ── Navigation helpers ─────────────────────────────────────────────────────
-  String _authErrorMessage(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'invalid-email':
-        return 'The email address format is invalid.';
-      case 'user-disabled':
-        return 'This account has been disabled.';
-      case 'user-not-found':
-      case 'wrong-password':
-      case 'invalid-credential':
-        return 'Incorrect email or password.';
-      case 'too-many-requests':
-        return 'Too many attempts. Please try again later.';
-      case 'network-request-failed':
-        return 'Network error. Check your connection and retry.';
-      default:
-        return 'Authentication failed. Please try again.';
+  // ── Language menu ──────────────────────────────────────────────────────────
+  Future<void> _showLangMenu() async {
+    final lang = LangScope.of(context);
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
+          child: Container(
+            height: 46,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx, 'ar'),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: lang.isArabic
+                            ? AppTheme.tealPrimary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: lang.isArabic
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.tealPrimary
+                                      .withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : [],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '🇸🇦  العربية',
+                          style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: lang.isArabic
+                                ? Colors.white
+                                : Colors.grey[500],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx, 'en'),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: !lang.isArabic
+                            ? AppTheme.tealPrimary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: !lang.isArabic
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.tealPrimary
+                                      .withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : [],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '🇬🇧  English',
+                          style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: !lang.isArabic
+                                ? Colors.white
+                                : Colors.grey[500],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (selected == 'ar') {
+      await lang.setLanguage(true);
+    } else if (selected == 'en') {
+      await lang.setLanguage(false);
     }
   }
+
+  // ── Auth helpers ───────────────────────────────────────────────────────────
+  String _authErrorMessage(FirebaseAuthException e) =>
+      AppStrings(LanguageNotifier.instance.isArabic).authError(e.code);
 
   Future<void> _onLogin() async {
     setState(() => _isLoading = true);
@@ -118,11 +224,10 @@ class _LoginScreenState extends State<LoginScreen>
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
+
 
   void _goToSignUp() {
     Navigator.of(context).push(PageRouteBuilder(
@@ -138,232 +243,327 @@ class _LoginScreenState extends State<LoginScreen>
     showDialog(
       context: context,
       barrierColor: Colors.black26,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        title: Text('Forgot Password?',
-            style: GoogleFonts.nunito(
-                fontWeight: FontWeight.w800, color: AppTheme.tealDark)),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(
-            'Enter your email and we will send you a reset link.',
-            style: GoogleFonts.nunito(fontSize: 14, color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 16),
-          _ThemedField(
-            hint: 'Your email',
-            icon: Icons.mail_outline_rounded,
-            controller: _resetEmailCtrl,
-            keyboardType: TextInputType.emailAddress,
-          ),
-        ]),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel',
-                style: GoogleFonts.nunito(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.tealPrimary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-            ),
-            onPressed: () async {
-              final messenger = ScaffoldMessenger.of(context);
-              final navigator = Navigator.of(context);
-              final email = _resetEmailCtrl.text.trim().toLowerCase();
-              try {
-                if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(email)) {
-                  throw FirebaseAuthException(
-                    code: 'invalid-email',
-                    message: 'The email address format is invalid.',
-                  );
-                }
-
-                await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-                navigator.pop();
-                messenger.showSnackBar(SnackBar(
-                  content: Text(
-                      'If this email exists, a reset link has been sent.',
-                      style: GoogleFonts.nunito()),
-                  backgroundColor: AppTheme.tealPrimary,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ));
-              } on FirebaseAuthException catch (e) {
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(_authErrorMessage(e), style: GoogleFonts.nunito()),
-                    backgroundColor: Colors.red.shade700,
-                    behavior: SnackBarBehavior.floating,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        bool sending = false;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final s = AppStrings.of(ctx);
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+              title: Text(s.forgotPassword,
+                  style: GoogleFonts.nunito(
+                      fontWeight: FontWeight.w800, color: AppTheme.tealDark)),
+              content: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(
+                  s.forgotPasswordDialogBody,
+                  style: GoogleFonts.nunito(fontSize: 14, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 16),
+                _ThemedField(
+                  hint: s.yourEmail,
+                  icon: Icons.mail_outline_rounded,
+                  controller: _resetEmailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                ),
+              ]),
+              actions: [
+                TextButton(
+                  onPressed: sending ? null : () => Navigator.pop(dialogContext),
+                  child: Text(s.cancel,
+                      style: GoogleFonts.nunito(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.tealPrimary,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(14)),
                   ),
-                );
-              }
-            },
-            child: Text('Send Link',
-                style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
+                  onPressed: sending
+                      ? null
+                      : () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final email = _resetEmailCtrl.text.trim().toLowerCase();
+                          final errStr = AppStrings(LanguageNotifier.instance.isArabic);
+                          if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$')
+                              .hasMatch(email)) {
+                            messenger.showSnackBar(SnackBar(
+                              content: Text(errStr.authError('invalid-email'),
+                                  style: GoogleFonts.nunito()),
+                              backgroundColor: Colors.red.shade700,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ));
+                            return;
+                          }
+                          setDialogState(() => sending = true);
+                          try {
+                            await FirebaseAuth.instance
+                                .sendPasswordResetEmail(email: email);
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                            }
+                            messenger.showSnackBar(SnackBar(
+                              content: Text(errStr.resetEmailSent,
+                                  style: GoogleFonts.nunito()),
+                              backgroundColor: AppTheme.tealPrimary,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ));
+                          } on FirebaseAuthException catch (e) {
+                            messenger.showSnackBar(SnackBar(
+                              content: Text(errStr.authError(e.code),
+                                  style: GoogleFonts.nunito()),
+                              backgroundColor: Colors.red.shade700,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ));
+                          } catch (_) {
+                            messenger.showSnackBar(SnackBar(
+                              content: Text(errStr.authError('network-request-failed'),
+                                  style: GoogleFonts.nunito()),
+                              backgroundColor: Colors.red.shade700,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ));
+                          } finally {
+                            if (dialogContext.mounted) {
+                              setDialogState(() => sending = false);
+                            }
+                          }
+                        },
+                  child: sending
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(s.sendLink,
+                          style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: SlideTransition(
-            position: _slideAnim,
-            child: FadeTransition(
-              opacity: _animCtrl,
-              child: SingleChildScrollView(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 20),
-
-                    // ── Logo ───────────────────────────────────────────────
-                    Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(26),
-                        boxShadow: [
-                          BoxShadow(
-                              color: AppTheme.tealPrimary.withValues(alpha: 0.35),
-                              blurRadius: 20,
-                              spreadRadius: 3)
-                        ],
+          child: Stack(
+            children: [
+              SlideTransition(
+                position: _slideAnim,
+                child: FadeTransition(
+                  opacity: _animCtrl,
+                  child: SingleChildScrollView(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: MediaQuery.of(context).size.height
+                            - MediaQuery.of(context).padding.top
+                            - MediaQuery.of(context).padding.bottom
+                            - 40,
                       ),
-                      child: const RobotLogoIcon(),
-                    ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.max,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
 
-                    const SizedBox(height: 18),
-
-                    Text('Welcome Back! 👋',
-                        style: GoogleFonts.nunito(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: AppTheme.tealDark)),
-
-                    const SizedBox(height: 6),
-
-                    Text('Sign in to continue your adventure',
-                        style: GoogleFonts.nunito(
-                            fontSize: 14, color: AppTheme.tealMid)),
-
-                    const SizedBox(height: 36),
-
-                    // ── Email field ────────────────────────────────────────
-                    _ThemedField(
-                      hint: 'Parent\'s Email',
-                      icon: Icons.mail_outline_rounded,
-                      controller: _emailCtrl,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // ── Password field ─────────────────────────────────────
-                    _ThemedPasswordField(
-                      hint: 'Password',
-                      controller: _passwordCtrl,
-                      isVisible: _isPasswordVisible,
-                      onToggle: () => setState(
-                              () => _isPasswordVisible = !_isPasswordVisible),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    // ── Forgot password ────────────────────────────────────
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: _onForgotPassword,
-                          child: Text('Forgot Password?',
-                              style: GoogleFonts.nunito(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.tealMid)),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // ── Login button ───────────────────────────────────────
-                    _GradientButton(
-                      label: 'Sign In',
-                      icon: Icons.login_rounded,
-                      enabled: _isFormValid && !_isLoading,
-                      onPressed: _onLogin,
-                    ),
-                    if (_isLoading) ...[
-                      const SizedBox(height: 12),
-                      const CircularProgressIndicator(),
-                    ],
-
-                    const SizedBox(height: 20),
-
-                    // ── Divider ────────────────────────────────────────────
-                    Row(children: [
-                      Expanded(
-                          child: Divider(color: Colors.white.withValues(alpha: 0.7),
-                              thickness: 1)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text('or',
-                            style: GoogleFonts.nunito(
-                                color: AppTheme.tealMid,
-                                fontWeight: FontWeight.w600)),
-                      ),
-                      Expanded(
-                          child: Divider(color: Colors.white.withValues(alpha: 0.7),
-                              thickness: 1)),
-                    ]),
-
-                    const SizedBox(height: 20),
-
-                    // ── Go to Sign Up ──────────────────────────────────────
-                    MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: _goToSignUp,
-                        child: RichText(
-                          text: TextSpan(
-                            text: 'Don\'t have an account? ',
-                            style: GoogleFonts.nunito(
-                                color: AppTheme.tealMid, fontSize: 14),
-                            children: [
-                              TextSpan(
-                                text: 'Sign Up',
-                                style: GoogleFonts.nunito(
-                                    color: AppTheme.tealDark,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 14),
-                              ),
+                          // ── Logo ───────────────────────────────────────────────
+                        Container(
+                          width: 90,
+                          height: 90,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(26),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: AppTheme.tealPrimary.withValues(alpha: 0.35),
+                                  blurRadius: 20,
+                                  spreadRadius: 3)
                             ],
                           ),
+                          child: const RobotLogoIcon(),
                         ),
-                      ),
-                    ),
 
-                    const SizedBox(height: 30),
-                  ],
+                        const SizedBox(height: 18),
+
+                        Text(s.welcomeBack,
+                            style: GoogleFonts.nunito(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.tealDark)),
+
+                        const SizedBox(height: 6),
+
+                        Text(s.signInToContinue,
+                            style: GoogleFonts.nunito(
+                                fontSize: 14, color: AppTheme.tealMid)),
+
+                        const SizedBox(height: 36),
+
+                        // ── Email field ────────────────────────────────────────
+                        _ThemedField(
+                          hint: s.parentsEmail,
+                          icon: Icons.mail_outline_rounded,
+                          controller: _emailCtrl,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: (_) => _passwordFocus.requestFocus(),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // ── Password field ─────────────────────────────────────
+                        _ThemedPasswordField(
+                          hint: s.password,
+                          controller: _passwordCtrl,
+                          isVisible: _isPasswordVisible,
+                          onToggle: () => setState(
+                                  () => _isPasswordVisible = !_isPasswordVisible),
+                          focusNode: _passwordFocus,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) { if (_isFormValid && !_isLoading) _onLogin(); },
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        // ── Forgot password ────────────────────────────────────
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: _onForgotPassword,
+                              child: Text(s.forgotPassword,
+                                  style: GoogleFonts.nunito(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.tealMid)),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // ── Login button ───────────────────────────────────────
+                        _GradientButton(
+                          label: s.signIn,
+                          icon: Icons.login_rounded,
+                          enabled: _isFormValid && !_isLoading,
+                          onPressed: _onLogin,
+                        ),
+                        if (_isLoading) ...[
+                          const SizedBox(height: 12),
+                          const CircularProgressIndicator(),
+                        ],
+
+                        const SizedBox(height: 20),
+
+                        // ── Go to Sign Up ──────────────────────────────────────
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: _goToSignUp,
+                            child: RichText(
+                              text: TextSpan(
+                                text: s.noAccount,
+                                style: GoogleFonts.nunito(
+                                    color: AppTheme.tealMid, fontSize: 14),
+                                children: [
+                                  TextSpan(
+                                    text: s.signUpLink,
+                                    style: GoogleFonts.nunito(
+                                        color: AppTheme.tealDark,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
+
+              // ── Back to welcome ────────────────────────────────────────────
+              Positioned(
+                top: 8,
+                left: 16,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.82),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.teal.withValues(alpha: 0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: AppTheme.tealMid,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+
+              // ── Settings / language gear ───────────────────────────────────
+              Positioned(
+                top: 8,
+                right: 16,
+                child: GestureDetector(
+                  onTap: _showLangMenu,
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.82),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.teal.withValues(alpha: 0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.settings_outlined,
+                      color: AppTheme.tealMid,
+                      size: 21,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -372,23 +572,24 @@ class _LoginScreenState extends State<LoginScreen>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// sign_up_screen.dart  ←  lives in the same file for simplicity
-// (we keep it in a separate file — see sign_up_screen.dart)
+// Shared field widgets
 // ─────────────────────────────────────────────────────────────────────────────
-
-// ── Shared field widgets (used by both Login & SignUp) ────────────────────────
 
 class _ThemedField extends StatelessWidget {
   final String hint;
   final IconData icon;
   final TextEditingController controller;
   final TextInputType keyboardType;
+  final TextInputAction textInputAction;
+  final ValueChanged<String>? onSubmitted;
 
   const _ThemedField({
     required this.hint,
     required this.icon,
     required this.controller,
     this.keyboardType = TextInputType.text,
+    this.textInputAction = TextInputAction.next,
+    this.onSubmitted,
   });
 
   @override
@@ -396,6 +597,8 @@ class _ThemedField extends StatelessWidget {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
       style: GoogleFonts.nunito(color: AppTheme.tealDark),
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: AppTheme.tealMid, size: 22),
@@ -424,19 +627,28 @@ class _ThemedPasswordField extends StatelessWidget {
   final TextEditingController controller;
   final bool isVisible;
   final VoidCallback onToggle;
+  final FocusNode? focusNode;
+  final TextInputAction textInputAction;
+  final ValueChanged<String>? onSubmitted;
 
   const _ThemedPasswordField({
     required this.hint,
     required this.controller,
     required this.isVisible,
     required this.onToggle,
+    this.focusNode,
+    this.textInputAction = TextInputAction.done,
+    this.onSubmitted,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       obscureText: !isVisible,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
       style: GoogleFonts.nunito(color: AppTheme.tealDark),
       decoration: InputDecoration(
         prefixIcon:
@@ -526,3 +738,4 @@ class _GradientButton extends StatelessWidget {
     );
   }
 }
+
