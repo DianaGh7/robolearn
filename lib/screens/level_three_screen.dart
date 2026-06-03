@@ -554,7 +554,7 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     setState(() => _connectionStatus = _RobotConnectionStatus.connected);
-    _showConnectedNotification();
+    // _showConnectedNotification();
   }
 
   Future<void> _handleRobotAction() async {

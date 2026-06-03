@@ -406,7 +406,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     setState(() => _connectionStatus = RobotConnectionStatus.connected);
-    _showConnectedNotification();
+    // _showConnectedNotification();
   }
 
   @override
