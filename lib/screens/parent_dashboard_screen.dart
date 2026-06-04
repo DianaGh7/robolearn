@@ -6,6 +6,7 @@ import '../models/challenge_model.dart';
 import '../services/child_firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import '../l10n/app_strings.dart';
 
 // ── Derived-stats helpers ─────────────────────────────────────────────────────
 // completedLevels / progress / level are stale in Firestore (set at creation,
@@ -473,6 +474,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
         : _children.fold<double>(0, (s, c) => s + _effectiveProgress(c)) /
             _children.length;
     final totalStreak = _children.fold<int>(0, (s, c) => s + c.streak);
+    final isArabic = AppStrings.of(context).isArabic;
 
     return Scaffold(
       body: AppBackground(
@@ -484,48 +486,57 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  children: [
+                    Row(children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded,
+                              color: AppTheme.tealDark, size: 20),
+                        ),
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new_rounded,
-                          color: AppTheme.tealDark, size: 20),
+                      const SizedBox(width: 12),
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const RobotLogoIcon(),
+                      ),
+                      const SizedBox(width: 10),
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Parent Dashboard',
+                            style: GoogleFonts.nunito(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.tealDark)),
+                        Text('Track your children\'s progress',
+                            style: GoogleFonts.nunito(
+                                fontSize: 11, color: AppTheme.tealMid)),
+                      ]),
+                      const Spacer(),
+                    ]),
+                    Positioned(
+                      top: 0,
+                      left: isArabic ? 0 : null,
+                      right: isArabic ? null : 0,
+                      child: GestureDetector(
+                        onTap: _showSettingsMenu,
+                        child: const Icon(
+                          Icons.settings_outlined,
+                          color: AppTheme.tealMid,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 36, height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const RobotLogoIcon(),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Parent Dashboard',
-                        style: GoogleFonts.nunito(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            color: AppTheme.tealDark)),
-                    Text('Track your children\'s progress',
-                        style: GoogleFonts.nunito(
-                            fontSize: 11, color: AppTheme.tealMid)),
-                  ]),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: _showSettingsMenu,
-                    child: const Icon(
-                      Icons.settings_outlined,
-                      color: AppTheme.tealMid,
-                    ),
-                  ),
-                ]),
+                  ],
+                ),
               ),
 
               Expanded(

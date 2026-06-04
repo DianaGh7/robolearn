@@ -34,6 +34,7 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
   bool _showCelebrationOverlay = false;
   bool _showFailToast = false;
   bool _showConnectedToast = false;
+  bool _suppressFailToast = false;
   bool _challengeSuccessfullyCompleted = false;
   bool _streakRenewed = false;
   int? _activeBlockIndex;
@@ -238,9 +239,10 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
   }
 
   void _showFailNotification() {
-    if (!mounted) return;
+    if (!mounted || _suppressFailToast) return;
     setState(() {
       _showFailToast = true;
+      _showConnectedToast = false;
     });
     Future.delayed(const Duration(seconds: 3), () {
       if (!mounted) return;
@@ -250,9 +252,17 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
 
   void _showConnectedNotification() {
     if (!mounted) return;
-    setState(() => _showConnectedToast = true);
+    setState(() {
+      _suppressFailToast = true;
+      _showConnectedToast = true;
+      _showFailToast = false;
+    });
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _showConnectedToast = false);
+      if (!mounted) return;
+      setState(() {
+        _showConnectedToast = false;
+        _suppressFailToast = false;
+      });
     });
   }
 

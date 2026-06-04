@@ -54,6 +54,7 @@ class _LevelFourScreenState extends State<LevelFourScreen>
   bool _showCelebrationOverlay = false;
   bool _showFailToast = false;
   bool _showConnectedToast = false;
+  bool _suppressFailToast = false;
   bool _challengeSuccessfullyCompleted = false;
   bool _streakRenewed = false;
   int? _activeBlockIndex;
@@ -191,18 +192,32 @@ class _LevelFourScreenState extends State<LevelFourScreen>
   }
 
   void _showFailNotification() {
-    if (!mounted) return;
-    setState(() => _showFailToast = true);
+    if (!mounted || _suppressFailToast) return;
+    setState(() {
+      _showFailToast = true;
+      _showConnectedToast = false;
+    });
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _showFailToast = false);
+      if (mounted) {
+        setState(() => _showFailToast = false);
+      }
     });
   }
 
   void _showConnectedNotification() {
     if (!mounted) return;
-    setState(() => _showConnectedToast = true);
+    setState(() {
+      _suppressFailToast = true;
+      _showConnectedToast = true;
+      _showFailToast = false;
+    });
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _showConnectedToast = false);
+      if (mounted) {
+        setState(() {
+          _showConnectedToast = false;
+          _suppressFailToast = false;
+        });
+      }
     });
   }
 
