@@ -302,6 +302,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final isArabic = s.isArabic;
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
@@ -548,7 +549,8 @@ class _SignUpScreenState extends State<SignUpScreen>
               // ── Settings / language gear ───────────────────────────────────
               Positioned(
                 top: 8,
-                right: 16,
+                left: isArabic ? 16 : null,
+                right: isArabic ? null : 16,
                 child: GestureDetector(
                   onTap: _showLangMenu,
                   child: Container(

@@ -163,6 +163,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final isArabic = s.isArabic;
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
@@ -318,7 +319,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               // ── Settings icon (fixed) ─────────────────────────
               Positioned(
                 top: 8,
-                right: 16,
+                left: isArabic ? 16 : null,
+                right: isArabic ? null : 16,
                 child: GestureDetector(
                   onTap: _showLangMenu,
                   child: Container(

@@ -278,6 +278,7 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final isArabic = s.isArabic;
     return Scaffold(
       body: Stack(children: [
         Container(decoration: AppTheme.backgroundDecoration),
@@ -483,9 +484,13 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
         // Settings button rendered last so it sits above scroll content
         SafeArea(
           child: Align(
-            alignment: Alignment.topRight,
+            alignment: isArabic ? Alignment.topLeft : Alignment.topRight,
             child: Padding(
-              padding: const EdgeInsets.only(top: 8, right: 16),
+              padding: EdgeInsets.only(
+                top: 8,
+                left: isArabic ? 16 : 0,
+                right: isArabic ? 0 : 16,
+              ),
               child: GestureDetector(
                 onTap: _showSettingsMenu,
                 child: Container(
