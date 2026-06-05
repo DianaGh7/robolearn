@@ -914,6 +914,10 @@ class HandleOnlyDraggable<T extends Object> extends StatefulWidget {
   final bool enabled;
   final Widget feedback;
   final int maxSimultaneousDrags;
+  final VoidCallback? onDragStarted;
+  final void Function(DraggableDetails details)? onDragEnd;
+  final void Function(DragUpdateDetails details)? onDragUpdate;
+  final void Function(Velocity velocity, Offset offset)? onDraggableCanceled;
   final Widget Function(bool isDragging, Widget? dragHandle) builder;
 
   const HandleOnlyDraggable({
@@ -923,6 +927,10 @@ class HandleOnlyDraggable<T extends Object> extends StatefulWidget {
     required this.feedback,
     required this.builder,
     this.maxSimultaneousDrags = 1,
+    this.onDragStarted,
+    this.onDragEnd,
+    this.onDragUpdate,
+    this.onDraggableCanceled,
   });
 
   @override
@@ -945,9 +953,19 @@ class _HandleOnlyDraggableState<T extends Object> extends State<HandleOnlyDragga
       dragHandle = Draggable<T>(
         data: widget.data,
         maxSimultaneousDrags: widget.maxSimultaneousDrags,
-        onDragStarted: () => _setDragging(true),
-        onDragEnd: (_) => _setDragging(false),
-        onDraggableCanceled: (_, dragPosition) => _setDragging(false),
+        onDragStarted: () {
+          _setDragging(true);
+          widget.onDragStarted?.call();
+        },
+        onDragEnd: (details) {
+          _setDragging(false);
+          widget.onDragEnd?.call(details);
+        },
+        onDragUpdate: widget.onDragUpdate,
+        onDraggableCanceled: (velocity, offset) {
+          _setDragging(false);
+          widget.onDraggableCanceled?.call(velocity, offset);
+        },
         feedback: widget.feedback,
         childWhenDragging: SizedBox(
           width: BlockControlShell.minTapSize,
