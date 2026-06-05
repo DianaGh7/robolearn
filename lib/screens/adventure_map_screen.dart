@@ -126,6 +126,7 @@ class AdventureMapScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final isArabic = AppStrings.of(context).isArabic;
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
@@ -137,90 +138,105 @@ class AdventureMapScreen extends StatelessWidget {
                   horizontal: 16,
                   vertical: 12,
                 ),
-                child: Row(
+                child: Stack(
                   children: [
-                    // Back button
-                    MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.8),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            color: AppTheme.tealDark,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Child mini avatar
-                    GestureDetector(
-                      onTap: () => showChildProfileDialog(context, child),
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: child.palette,
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: AvatarFace(seed: child.avatarSeed),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
                       children: [
-                        Text(
-                          child.name,
-                          style: GoogleFonts.nunito(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.tealDark,
+                        // Back button
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                color: AppTheme.tealDark,
+                                size: 20,
+                              ),
+                            ),
                           ),
                         ),
-                        Text(
-                          s.adventureMap,
-                          style: GoogleFonts.nunito(
-                            fontSize: 12,
-                            color: AppTheme.tealMid,
+                        const SizedBox(width: 12),
+                        // Child mini avatar
+                        GestureDetector(
+                          onTap: () => showChildProfileDialog(context, child),
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: child.palette,
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: AvatarFace(seed: child.avatarSeed),
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                child.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.nunito(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.tealDark,
+                                ),
+                              ),
+                              Text(
+                                s.adventureMap,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.nunito(
+                                  fontSize: 12,
+                                  color: AppTheme.tealMid,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 44),
                       ],
                     ),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => _showSettingsMenu(context),
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.82),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.teal.withValues(alpha: 0.12),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.settings_outlined,
-                          color: AppTheme.tealMid,
+                    Positioned(
+                      top: 0,
+                      left: isArabic ? 0 : null,
+                      right: isArabic ? null : 0,
+                      child: GestureDetector(
+                        onTap: () => _showSettingsMenu(context),
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.82),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.teal.withValues(alpha: 0.12),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.settings_outlined,
+                            color: AppTheme.tealMid,
+                          ),
                         ),
                       ),
                     ),

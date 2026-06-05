@@ -46,6 +46,7 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
   bool _showCelebrationOverlay = false;
   bool _showFailToast = false;
   bool _showConnectedToast = false;
+  bool _suppressFailToast = false;
   bool _challengeSuccessfullyCompleted = false;
   bool _streakRenewed = false;
   int? _activeBlockIndex;
@@ -160,20 +161,32 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
   }
 
   void _showFailNotification() {
-    if (!mounted) return;
+    if (!mounted || _suppressFailToast) return;
     setState(() {
       _showFailToast = true;
+      _showConnectedToast = false;
     });
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _showFailToast = false);
+      if (mounted) {
+        setState(() => _showFailToast = false);
+      }
     });
   }
 
   void _showConnectedNotification() {
     if (!mounted) return;
-    setState(() => _showConnectedToast = true);
+    setState(() {
+      _suppressFailToast = true;
+      _showConnectedToast = true;
+      _showFailToast = false;
+    });
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _showConnectedToast = false);
+      if (mounted) {
+        setState(() {
+          _showConnectedToast = false;
+          _suppressFailToast = false;
+        });
+      }
     });
   }
 
@@ -649,7 +662,10 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
                                 FractionallySizedBox(
                                   widthFactor: 0.96,
                                   child: _LedVisualizationCard(
-                                    targetDisplay: widget.challenge.targetDisplay ?? '',
+                                    targetDisplay: AppStrings.of(context)
+                                        .challengeTargetDisplay(
+                                            widget.challenge.number,
+                                            widget.challenge.targetDisplay ?? ''),
                                     highlightedLineIndex: _highlightedLineIndex,
                                     ledColor: _ledColor,
                                     glowAnim: _glowAnim,
@@ -1781,7 +1797,7 @@ class _PaletteChip extends StatelessWidget {
           Icon(_blockIcon(blockType), size: 13, color: color),
           const SizedBox(width: 4),
           Text(
-            CodeBlock.typeLabels[blockType]!,
+            AppStrings.of(context).blockLabel(blockType),
             style: GoogleFonts.nunito(
               fontSize: 12,
               fontWeight: FontWeight.w800,
@@ -1860,7 +1876,7 @@ class _BodyDropHintState extends State<_BodyDropHint> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'drop block here',
+                  AppStrings.of(context).dropBlockHere,
                   style: GoogleFonts.nunito(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
