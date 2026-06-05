@@ -252,25 +252,44 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           title: s.howItWorks,
                           icon: Icons.settings_outlined,
                           color: AppTheme.skyBlue,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _Step(
-                                  icon: Icons.send_rounded,
-                                  label: s.stepSendLabel,
-                                  desc: s.stepSendDesc,
-                                  color: AppTheme.tealPrimary),
-                              _Step(
-                                  icon: Icons.play_circle_fill_rounded,
-                                  label: s.stepExecuteLabel,
-                                  desc: s.stepExecuteDesc,
-                                  color: AppTheme.skyBlue),
-                              _Step(
-                                  icon: Icons.school_rounded,
-                                  label: s.stepLearnLabel,
-                                  desc: s.stepLearnDesc,
-                                  color: AppTheme.orange),
-                            ],
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final steps = [
+                                _Step(
+                                    icon: Icons.send_rounded,
+                                    label: s.stepSendLabel,
+                                    desc: s.stepSendDesc,
+                                    color: AppTheme.tealPrimary),
+                                _Step(
+                                    icon: Icons.play_circle_fill_rounded,
+                                    label: s.stepExecuteLabel,
+                                    desc: s.stepExecuteDesc,
+                                    color: AppTheme.skyBlue),
+                                _Step(
+                                    icon: Icons.school_rounded,
+                                    label: s.stepLearnLabel,
+                                    desc: s.stepLearnDesc,
+                                    color: AppTheme.orange),
+                              ];
+                              if (constraints.maxWidth < 300) {
+                                return Column(
+                                  children: [
+                                    for (int i = 0; i < steps.length; i++) ...[
+                                      if (i > 0) const SizedBox(height: 12),
+                                      steps[i],
+                                    ],
+                                  ],
+                                );
+                              }
+                              return Row(
+                                children: [
+                                  for (int i = 0; i < steps.length; i++) ...[
+                                    if (i > 0) const SizedBox(width: 8),
+                                    Expanded(child: steps[i]),
+                                  ],
+                                ],
+                              );
+                            },
                           ),
                         ),
 
@@ -366,9 +385,7 @@ class _Step extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 92,
-      child: Column(children: [
+    return Column(children: [
         Container(
           width: 48,
           height: 48,
@@ -390,8 +407,7 @@ class _Step extends StatelessWidget {
                 height: 1.3,
                 color: const Color(0xFF5A9A95)),
             textAlign: TextAlign.center),
-      ]),
-    );
+      ]);
   }
 }
 

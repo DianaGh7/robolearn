@@ -580,14 +580,18 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
 
                           // ── Children header + Add button ───────────────────
                           Row(children: [
-                            Text(
-                              s.yourChildren(_children.length),
-                              style: GoogleFonts.nunito(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.tealDark),
+                            Expanded(
+                              child: Text(
+                                s.yourChildren(_children.length),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.nunito(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.tealDark),
+                              ),
                             ),
-                            const Spacer(),
+                            const SizedBox(width: 8),
                             GestureDetector(
                               onTap: _showAddChildDialog,
                               child: Container(
@@ -772,11 +776,15 @@ class _ChildProgressCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(children: [
-                        Text(child.name,
-                            style: GoogleFonts.nunito(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.tealDark)),
+                        Expanded(
+                          child: Text(child.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.nunito(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.tealDark)),
+                        ),
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
