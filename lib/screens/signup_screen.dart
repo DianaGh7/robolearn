@@ -218,9 +218,13 @@ class _SignUpScreenState extends State<SignUpScreen>
           title: Row(children: [
             const RobotLogoIconSmall(),
             const SizedBox(width: 10),
-            Text(s.termsDialogTitle,
-                style: GoogleFonts.nunito(
-                    fontWeight: FontWeight.w800, color: AppTheme.tealDark)),
+            Expanded(
+              child: Text(s.termsDialogTitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.nunito(
+                      fontWeight: FontWeight.w800, color: AppTheme.tealDark)),
+            ),
           ]),
           content: SingleChildScrollView(
             child: Text(
@@ -444,9 +448,14 @@ class _SignUpScreenState extends State<SignUpScreen>
                             const Icon(Icons.warning_amber_rounded,
                                 color: Colors.orange, size: 16),
                             const SizedBox(width: 6),
-                            Text(s.passwordsDoNotMatch,
-                                style: GoogleFonts.nunito(
-                                    fontSize: 12, color: Colors.orange.shade700)),
+                            Expanded(
+                              child: Text(s.passwordsDoNotMatch,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.nunito(
+                                      fontSize: 12,
+                                      color: Colors.orange.shade700)),
+                            ),
                           ]),
                         ],
 

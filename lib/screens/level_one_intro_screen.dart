@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
+import '../utils/responsive.dart';
 import 'level_one_screen.dart';
 
 class LevelOneIntroScreen extends StatefulWidget {
@@ -340,52 +341,48 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppTheme.tealPrimary.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.4)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.star_rounded, color: Color(0xFFFFB300), size: 15),
-                const SizedBox(width: 5),
-                Text('Level 1',
-                    style: GoogleFonts.nunito(
-                        color: AppTheme.tealDark,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800)),
-              ],
-            ),
+      child: IntroTutorialHeaderRow(
+        badge: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppTheme.tealPrimary.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.4)),
           ),
-          const Spacer(),
-          Text('Sequential Logic',
-              style: GoogleFonts.nunito(
-                  color: AppTheme.tealMid,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600)),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: _onPlay,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.75),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
-              ),
-              child: Text('Skip',
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.star_rounded, color: Color(0xFFFFB300), size: 15),
+              const SizedBox(width: 5),
+              Text('Level 1',
                   style: GoogleFonts.nunito(
                       color: AppTheme.tealDark,
                       fontSize: 15,
-                      fontWeight: FontWeight.w700)),
-            ),
+                      fontWeight: FontWeight.w800)),
+            ],
           ),
-        ],
+        ),
+        title: 'Sequential Logic',
+        titleStyle: GoogleFonts.nunito(
+            color: AppTheme.tealMid,
+            fontSize: 15,
+            fontWeight: FontWeight.w600),
+        skipButton: GestureDetector(
+          onTap: _onPlay,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.75),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
+            ),
+            child: Text('Skip',
+                style: GoogleFonts.nunito(
+                    color: AppTheme.tealDark,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700)),
+          ),
+        ),
       ),
     ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.3, end: 0);
   }
@@ -437,13 +434,9 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
               ],
             ),
             const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildMiniGrid(),
-                const SizedBox(width: 14),
-                Column(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final legend = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 16),
@@ -491,8 +484,26 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                       ),
                     ),
                   ],
-                ),
-              ],
+                );
+                if (constraints.maxWidth < 280) {
+                  return Column(
+                    children: [
+                      _buildMiniGrid(),
+                      const SizedBox(height: 12),
+                      legend,
+                    ],
+                  );
+                }
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildMiniGrid(),
+                    const SizedBox(width: 14),
+                    Expanded(child: legend),
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -722,11 +733,15 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                Text('Press the Run button above! ▶️',
-                                    style: GoogleFonts.nunito(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppTheme.tealDark)),
+                                Expanded(
+                                  child: Text('Press the Run button above! ▶️',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.nunito(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppTheme.tealDark)),
+                                ),
                               ],
                             ),
                           )
@@ -796,11 +811,15 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                                   ),
                                 ),
                                 const SizedBox(width: 7),
-                                Text('Drag blocks to build your code',
-                                    style: GoogleFonts.nunito(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppTheme.tealDark)),
+                                Expanded(
+                                  child: Text('Drag blocks to build your code',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.nunito(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppTheme.tealDark)),
+                                ),
                               ],
                             ),
                           )
@@ -1071,11 +1090,16 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
               const Icon(Icons.play_circle_fill_rounded,
                   color: Colors.white, size: 28),
               const SizedBox(width: 12),
-              Text("Let's Play! 🎮",
-                  style: GoogleFonts.nunito(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800)),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text("Let's Play! 🎮",
+                      style: GoogleFonts.nunito(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800)),
+                ),
+              ),
             ],
           ),
         ),

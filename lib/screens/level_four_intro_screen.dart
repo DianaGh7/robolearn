@@ -6,6 +6,7 @@ import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_strings.dart';
+import '../utils/responsive.dart';
 import 'level_four_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -333,56 +334,51 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
   Widget _header() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppTheme.tealPrimary.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: AppTheme.tealPrimary.withValues(alpha: 0.45)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.star_rounded,
-                    color: Color(0xFFFFB300), size: 15),
-                const SizedBox(width: 5),
-                Text('Level 4',
-                    style: GoogleFonts.nunito(
-                        color: AppTheme.tealDark,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800)),
-              ],
-            ),
+      child: IntroTutorialHeaderRow(
+        badge: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppTheme.tealPrimary.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: AppTheme.tealPrimary.withValues(alpha: 0.45)),
           ),
-          const Spacer(),
-          Text('Variables',
-              style: GoogleFonts.nunito(
-                  color: AppTheme.tealPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600)),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: _onPlay,
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
-              ),
-              child: Text(_t('Skip', 'تخطي'),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.star_rounded,
+                  color: Color(0xFFFFB300), size: 15),
+              const SizedBox(width: 5),
+              Text('Level 4',
                   style: GoogleFonts.nunito(
                       color: AppTheme.tealDark,
                       fontSize: 15,
-                      fontWeight: FontWeight.w700)),
-            ),
+                      fontWeight: FontWeight.w800)),
+            ],
           ),
-        ],
+        ),
+        title: 'Variables',
+        titleStyle: GoogleFonts.nunito(
+            color: AppTheme.tealPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w600),
+        skipButton: GestureDetector(
+          onTap: _onPlay,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
+            ),
+            child: Text(_t('Skip', 'تخطي'),
+                style: GoogleFonts.nunito(
+                    color: AppTheme.tealDark,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700)),
+          ),
+        ),
       ),
     ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.3, end: 0);
   }
@@ -442,15 +438,28 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
                     color: AppTheme.tealDark)),
           ),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _VarBox(label: 'score', value: '0'),
-              const Text('→', style: TextStyle(fontSize: 28)),
-              _VarBox(label: 'score', value: '5', active: true),
-              const Text('→', style: TextStyle(fontSize: 28)),
-              _VarBox(label: 'score', value: '10', active: true),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final boxes = [
+                _VarBox(label: 'score', value: '0'),
+                const Text('→', style: TextStyle(fontSize: 28)),
+                _VarBox(label: 'score', value: '5', active: true),
+                const Text('→', style: TextStyle(fontSize: 28)),
+                _VarBox(label: 'score', value: '10', active: true),
+              ];
+              if (constraints.maxWidth < 300) {
+                return Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: boxes,
+                );
+              }
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: boxes,
+              );
+            },
           ),
           const SizedBox(height: 14),
           Container(
@@ -666,11 +675,16 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
               const Icon(Icons.play_circle_fill_rounded,
                   color: Colors.white, size: 30),
               const SizedBox(width: 12),
-              Text(_t("Let's Play! 🎮", 'هيا بنا نلعب! 🎮'),
-                  style: GoogleFonts.nunito(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900)),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(_t("Let's Play! 🎮", 'هيا بنا نلعب! 🎮'),
+                      style: GoogleFonts.nunito(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900)),
+                ),
+              ),
             ],
           ),
         ),
@@ -726,39 +740,16 @@ class _SpeechBubble extends StatelessWidget {
                 text,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.nunito(
-                  fontSize: 20,
+                  fontSize: Responsive.fontSize(context, 20),
                   fontWeight: FontWeight.w700,
                   color: AppTheme.tealDark,
                   height: 1.55,
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  if (showBackHint)
-                    GestureDetector(
-                      onTap: onBack,
-                      child: Text(
-                        '◀ tap to go back',
-                        style: GoogleFonts.nunito(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.tealPrimary.withValues(alpha: 0.55),
-                        ),
-                      ),
-                    )
-                  else
-                    const SizedBox(),
-                  Text(
-                    'tap to continue ▶',
-                    style: GoogleFonts.nunito(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.tealPrimary.withValues(alpha: 0.55),
-                    ),
-                  ),
-                ],
+              SpeechBubbleHintRow(
+                showBackHint: showBackHint,
+                onBack: onBack,
               ),
             ],
           ),

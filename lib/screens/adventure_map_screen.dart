@@ -184,26 +184,33 @@ class AdventureMapScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              child.name,
-                              style: GoogleFonts.nunito(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.tealDark,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                child.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.nunito(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.tealDark,
+                                ),
                               ),
-                            ),
-                            Text(
-                              s.adventureMap,
-                              style: GoogleFonts.nunito(
-                                fontSize: 12,
-                                color: AppTheme.tealMid,
+                              Text(
+                                s.adventureMap,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.nunito(
+                                  fontSize: 12,
+                                  color: AppTheme.tealMid,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 44),
                       ],
                     ),
                     Positioned(

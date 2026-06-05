@@ -6,6 +6,7 @@ import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_strings.dart';
+import '../utils/responsive.dart';
 import 'level_two_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -354,55 +355,51 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
   Widget _header() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-      child: Row(
-        children: [
-          Container(
+      child: IntroTutorialHeaderRow(
+        badge: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFF7E8DF1).withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: const Color(0xFF7E8DF1).withValues(alpha: 0.45)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.star_rounded,
+                  color: Color(0xFFFFB300), size: 15),
+              const SizedBox(width: 5),
+              Text('Level 3',
+                  style: GoogleFonts.nunito(
+                      color: const Color(0xFF3949AB),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800)),
+            ],
+          ),
+        ),
+        title: 'Conditional Statements',
+        titleStyle: GoogleFonts.nunito(
+            color: const Color(0xFF5C6BC0),
+            fontSize: 15,
+            fontWeight: FontWeight.w600),
+        skipButton: GestureDetector(
+          onTap: _onPlay,
+          child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFF7E8DF1).withValues(alpha: 0.18),
+              color: Colors.white.withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                  color: const Color(0xFF7E8DF1).withValues(alpha: 0.45)),
+                  color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.star_rounded,
-                    color: Color(0xFFFFB300), size: 15),
-                const SizedBox(width: 5),
-                Text('Level 3',
-                    style: GoogleFonts.nunito(
-                        color: const Color(0xFF3949AB),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800)),
-              ],
-            ),
+            child: Text(AppStrings.of(context).isArabic ? 'تخطي' : 'Skip',
+                style: GoogleFonts.nunito(
+                    color: AppTheme.tealDark,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700)),
           ),
-          const Spacer(),
-          Text('Conditional Statements',
-              style: GoogleFonts.nunito(
-                  color: const Color(0xFF5C6BC0),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600)),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: _onPlay,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
-              ),
-              child: Text(AppStrings.of(context).isArabic ? 'تخطي' : 'Skip',
-                  style: GoogleFonts.nunito(
-                      color: AppTheme.tealDark,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700)),
-            ),
-          ),
-        ],
+        ),
       ),
     ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.3, end: 0);
   }
@@ -633,11 +630,13 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
               children: [
                 const Text('↩️', style: TextStyle(fontSize: 28)),
                 const SizedBox(width: 12),
-                Text(_t('ELSE  →  anything else!', 'ELSE  →  أي شيء آخر!'),
-                    style: GoogleFonts.nunito(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.grey.shade700)),
+                Expanded(
+                  child: Text(_t('ELSE  →  anything else!', 'ELSE  →  أي شيء آخر!'),
+                      style: GoogleFonts.nunito(
+                          fontSize: Responsive.fontSize(context, 19),
+                          fontWeight: FontWeight.w800,
+                          color: Colors.grey.shade700)),
+                ),
               ],
             ),
           ),
@@ -842,11 +841,16 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
               const Icon(Icons.play_circle_fill_rounded,
                   color: Colors.white, size: 30),
               const SizedBox(width: 12),
-              Text("Let's Play! 🎮",
-                  style: GoogleFonts.nunito(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900)),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text("Let's Play! 🎮",
+                      style: GoogleFonts.nunito(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900)),
+                ),
+              ),
             ],
           ),
         ),
@@ -902,39 +906,16 @@ class _SpeechBubble extends StatelessWidget {
                 text,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.nunito(
-                  fontSize: 20,
+                  fontSize: Responsive.fontSize(context, 20),
                   fontWeight: FontWeight.w700,
                   color: AppTheme.tealDark,
                   height: 1.55,
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  if (showBackHint)
-                    GestureDetector(
-                      onTap: onBack,
-                      child: Text(
-                        '◀ tap to go back',
-                        style: GoogleFonts.nunito(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.tealPrimary.withValues(alpha: 0.55),
-                        ),
-                      ),
-                    )
-                  else
-                    const SizedBox(),
-                  Text(
-                    'tap to continue ▶',
-                    style: GoogleFonts.nunito(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.tealPrimary.withValues(alpha: 0.55),
-                    ),
-                  ),
-                ],
+              SpeechBubbleHintRow(
+                showBackHint: showBackHint,
+                onBack: onBack,
               ),
             ],
           ),
