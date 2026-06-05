@@ -7,6 +7,7 @@ import 'package:robolearn/models/challenge_model.dart';
 import 'package:robolearn/models/child_model.dart';
 import 'package:robolearn/widgets/shared_widgets.dart';
 import 'package:robolearn/services/child_progress_service.dart';
+import 'package:robolearn/services/robot_connection_helper.dart';
 import 'package:robolearn/l10n/app_strings.dart';
 import 'level_four_intro_screen.dart';
 
@@ -71,6 +72,10 @@ class _LevelFourScreenState extends State<LevelFourScreen> with TickerProviderSt
       begin: 0.6,
       end: 1.0,
     ).animate(CurvedAnimation(parent: _glowController, curve: Curves.easeInOut));
+
+    if (RobotConnectionHelper.isAlreadyConnected) {
+      _connectionStatus = _RobotConnectionStatus.connected;
+    }
 
     final bool isFirstLevel4Visit =
         widget.challenge.number == VarChallenge.varChallenges.first.number &&
@@ -251,6 +256,7 @@ class _LevelFourScreenState extends State<LevelFourScreen> with TickerProviderSt
 
   // Side log = variable state changes. Screen output = only explicit "show" blocks.
   void _applyVarAction(CodeBlockType type) {
+    RobotConnectionHelper.sendBlockIfConnected(type);
     switch (type) {
       case CodeBlockType.varSetScore:
         _variables['score'] = 10;
@@ -572,10 +578,12 @@ class _LevelFourScreenState extends State<LevelFourScreen> with TickerProviderSt
   Future<void> _handleConnect() async {
     if (_connectionStatus != _RobotConnectionStatus.disconnected) return;
     setState(() => _connectionStatus = _RobotConnectionStatus.connecting);
-    await Future.delayed(const Duration(milliseconds: 900));
+    final ok = await RobotConnectionHelper.connect();
     if (!mounted) return;
-    setState(() => _connectionStatus = _RobotConnectionStatus.connected);
-    _showConnectedNotification();
+    RobotConnectionHelper.logConnectionResult(ok);
+    setState(() => _connectionStatus = ok
+        ? _RobotConnectionStatus.connected
+        : _RobotConnectionStatus.disconnected);
   }
 
   // ── Navigation ────────────────────────────────────────────────────────────

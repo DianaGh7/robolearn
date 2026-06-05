@@ -8,6 +8,7 @@ import 'package:robolearn/models/challenge_model.dart';
 import 'package:robolearn/models/child_model.dart';
 import 'package:robolearn/widgets/shared_widgets.dart';
 import 'package:robolearn/services/child_progress_service.dart';
+import 'package:robolearn/services/robot_connection_helper.dart';
 import 'package:robolearn/l10n/app_strings.dart';
 import 'level_two_intro_screen.dart';
 
@@ -76,6 +77,10 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
       _waveController.repeat(reverse: true);
     }
 
+    if (RobotConnectionHelper.isAlreadyConnected) {
+      _connectionStatus = RobotConnectionStatus.connected;
+    }
+
     // Auto-show tutorial the first time a child opens Level 2 with no
     // completed Level 2 challenges (same pattern as Level 1 intro).
     final bool isFirstLevel2Visit =
@@ -130,7 +135,7 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
       if (type != CodeBlockType.end &&
           arrangedBlocks.isNotEmpty &&
           arrangedBlocks.last.type == CodeBlockType.end) {
-        // Always keep END last ù insert new block before it
+        // Always keep END last ? insert new block before it
         arrangedBlocks.insert(
             arrangedBlocks.length - 1, CodeBlock.fromType(type));
       } else {
@@ -459,6 +464,8 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
   }
 
   Future<void> _executeSound(CodeBlockType type, {bool playSound = false}) async {
+    await RobotConnectionHelper.sendBlockIfConnected(type);
+
     // Fire sound concurrently with animation; only plays if solution is correct.
     if (playSound) {
       _soundService.playForBlock(type.name, isArabic: _isArabic);
@@ -553,10 +560,12 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
   Future<void> _handleConnect() async {
     if (_connectionStatus != RobotConnectionStatus.disconnected) return;
     setState(() => _connectionStatus = RobotConnectionStatus.connecting);
-    await Future.delayed(const Duration(milliseconds: 900));
+    final ok = await RobotConnectionHelper.connect();
     if (!mounted) return;
-    setState(() => _connectionStatus = RobotConnectionStatus.connected);
-    _showConnectedNotification();
+    RobotConnectionHelper.logConnectionResult(ok);
+    setState(() => _connectionStatus = ok
+        ? RobotConnectionStatus.connected
+        : RobotConnectionStatus.disconnected);
   }
 
   @override
@@ -1353,7 +1362,7 @@ class _CodeBlocksArea extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              // Tutorial replay button ù matches Level 1 style
+              // Tutorial replay button ? matches Level 1 style
               GestureDetector(
                 onTap: onShowTutorial,
                 child: Container(

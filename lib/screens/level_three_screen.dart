@@ -7,6 +7,7 @@ import 'package:robolearn/models/challenge_model.dart';
 import 'package:robolearn/models/child_model.dart';
 import 'package:robolearn/widgets/shared_widgets.dart';
 import 'package:robolearn/services/child_progress_service.dart';
+import 'package:robolearn/services/robot_connection_helper.dart';
 import 'package:robolearn/l10n/app_strings.dart';
 import 'level_three_intro_screen.dart';
 
@@ -75,6 +76,10 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
     _glowAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
+
+    if (RobotConnectionHelper.isAlreadyConnected) {
+      _connectionStatus = _RobotConnectionStatus.connected;
+    }
 
     // Auto-show tutorial the first time a child opens Level 3 with no
     // completed Level 3 challenges (same pattern as Levels 1 & 2).
@@ -564,10 +569,12 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
   Future<void> _handleConnect() async {
     if (_connectionStatus != _RobotConnectionStatus.disconnected) return;
     setState(() => _connectionStatus = _RobotConnectionStatus.connecting);
-    await Future.delayed(const Duration(milliseconds: 900));
+    final ok = await RobotConnectionHelper.connect();
     if (!mounted) return;
-    setState(() => _connectionStatus = _RobotConnectionStatus.connected);
-    _showConnectedNotification();
+    RobotConnectionHelper.logConnectionResult(ok);
+    setState(() => _connectionStatus = ok
+        ? _RobotConnectionStatus.connected
+        : _RobotConnectionStatus.disconnected);
   }
 
   Future<void> _handleRobotAction() async {
