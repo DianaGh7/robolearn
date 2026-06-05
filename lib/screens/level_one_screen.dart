@@ -6,6 +6,7 @@ import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../services/child_progress_service.dart';
+import '../services/robot_connection_helper.dart';
 import '../l10n/app_strings.dart';
 import 'level_one_intro_screen.dart';
 
@@ -66,6 +67,10 @@ class _LevelOneScreenState extends State<LevelOneScreen>
     _pulseAnim = Tween<double>(begin: 0.95, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    if (RobotConnectionHelper.isAlreadyConnected) {
+      _connectionStatus = RobotConnectionStatus.connected;
+    }
 
     // Auto-show intro the first time a child opens Level 1 without any
     // completed Level 1 challenges.
@@ -272,6 +277,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
         continue;
       }
       setState(() => _activeBlockIndex = i);
+      await RobotConnectionHelper.sendBlockIfConnected(block.type);
       await Future.delayed(const Duration(milliseconds: 800));
       if (!mounted) return;
       setState(() {
@@ -413,10 +419,12 @@ class _LevelOneScreenState extends State<LevelOneScreen>
   Future<void> _handleConnect() async {
     if (_connectionStatus != RobotConnectionStatus.disconnected) return;
     setState(() => _connectionStatus = RobotConnectionStatus.connecting);
-    await Future.delayed(const Duration(milliseconds: 900));
+    final ok = await RobotConnectionHelper.connect();
     if (!mounted) return;
-    setState(() => _connectionStatus = RobotConnectionStatus.connected);
-    // _showConnectedNotification();
+    RobotConnectionHelper.logConnectionResult(ok);
+    setState(() => _connectionStatus = ok
+        ? RobotConnectionStatus.connected
+        : RobotConnectionStatus.disconnected);
   }
 
   @override
