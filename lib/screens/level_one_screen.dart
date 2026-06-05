@@ -5,6 +5,7 @@ import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import '../widgets/code_blocks_drag.dart';
 import '../services/child_progress_service.dart';
 import '../services/robot_connection_helper.dart';
 import '../l10n/app_strings.dart';
@@ -1235,7 +1236,10 @@ class _CodeBlocksArea extends StatelessWidget {
           width: 1.5,
         ),
       ),
-      child: Column(
+      child: CodeBlocksDragHost(
+        enabled: !isExecuting,
+        child: Builder(
+          builder: (dragContext) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1332,28 +1336,13 @@ class _CodeBlocksArea extends StatelessWidget {
                 border: Border.all(color: Colors.grey.shade200),
               ),
               child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-                child: Column(
-                  children: List.generate(arrangedBlocks.length + 1, (index) {
-                    if (index == arrangedBlocks.length) {
-                      return _DropSlot(
-                        isExecuting: isExecuting,
-                        onAccept: (data) {
-                          if (data.fromIndex != null) {
-                            onMoveBlock(data.fromIndex!, index);
-                          } else if (data.type != null) {
-                            onInsertBlockAt(data.type!, index);
-                          }
-                        },
-                      );
-                    }
-
-                    final block = arrangedBlocks[index];
-                    final isActive = activeBlockIndex == index;
-                    return Column(
-                      children: [
-                        _DropSlot(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                  child: Column(
+                    children: List.generate(arrangedBlocks.length + 1, (index) {
+                      if (index == arrangedBlocks.length) {
+                        return CodeBlockDropSlot(
+                          slotId: codeBlockDropSlotId(index: index),
                           isExecuting: isExecuting,
                           onAccept: (data) {
                             if (data.fromIndex != null) {
@@ -1362,11 +1351,36 @@ class _CodeBlocksArea extends StatelessWidget {
                               onInsertBlockAt(data.type!, index);
                             }
                           },
-                        ),
-                        HandleOnlyDraggable<_DraggedBlockData>(
-                          data: _DraggedBlockData(fromIndex: index),
-                          enabled: !isExecuting,
-                          feedback: Material(
+                        );
+                      }
+
+                      final block = arrangedBlocks[index];
+                      final isActive = activeBlockIndex == index;
+                      final dragCallbacks = CodeBlocksDragCallbacks.forData(
+                        dragContext,
+                        DraggedBlockData(fromIndex: index),
+                      );
+                      return Column(
+                        children: [
+                          CodeBlockDropSlot(
+                            slotId: codeBlockDropSlotId(index: index),
+                            isExecuting: isExecuting,
+                            onAccept: (data) {
+                              if (data.fromIndex != null) {
+                                onMoveBlock(data.fromIndex!, index);
+                              } else if (data.type != null) {
+                                onInsertBlockAt(data.type!, index);
+                              }
+                            },
+                          ),
+                          HandleOnlyDraggable<DraggedBlockData>(
+                            data: DraggedBlockData(fromIndex: index),
+                            enabled: !isExecuting,
+                            onDragStarted: dragCallbacks.onDragStarted,
+                            onDragEnd: dragCallbacks.onDragEnd,
+                            onDragUpdate: dragCallbacks.onDragUpdate,
+                            onDraggableCanceled: dragCallbacks.onDraggableCanceled,
+                            feedback: Material(
                             color: Colors.transparent,
                             child: SizedBox(
                               width: MediaQuery.of(context).size.width - 72,
@@ -1390,12 +1404,12 @@ class _CodeBlocksArea extends StatelessWidget {
                               dragHandle: dragHandle,
                             ),
                           ),
-                        ),
-                      ],
-                    );
-                  }),
+                          ),
+                        ],
+                      );
+                    }),
+                  ),
                 ),
-              ),
             ),
           ),
 
@@ -1407,7 +1421,7 @@ class _CodeBlocksArea extends StatelessWidget {
                 const Icon(Icons.widgets_rounded, size: 13, color: AppTheme.tealPrimary),
                 const SizedBox(width: 5),
                 Text(
-                  AppStrings.of(context).availableBlocks,
+                  AppStrings.of(dragContext).availableBlocks,
                   style: GoogleFonts.nunito(
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
@@ -1424,8 +1438,8 @@ class _CodeBlocksArea extends StatelessWidget {
             children: availableBlocks.map((blockType) {
               final color = CodeBlock.typeColors[blockType]!;
               final chip = _PaletteChip(blockType: blockType, color: color);
-              return Draggable<_DraggedBlockData>(
-                data: _DraggedBlockData(type: blockType),
+              return CodeBlocksPaletteDraggable(
+                data: DraggedBlockData(type: blockType),
                 maxSimultaneousDrags: isExecuting ? 0 : 1,
                 feedback: Material(
                   color: Colors.transparent,
@@ -1448,6 +1462,8 @@ class _CodeBlocksArea extends StatelessWidget {
             }).toList(),
           ),
         ],
+          ),
+        ),
       ),
     );
   }
@@ -1514,61 +1530,6 @@ class _CodeBlockWidget extends StatelessWidget {
   }
 }
 
-class _DropSlot extends StatefulWidget {
-  final bool isExecuting;
-  final ValueChanged<_DraggedBlockData> onAccept;
-
-  const _DropSlot({required this.isExecuting, required this.onAccept});
-
-  @override
-  State<_DropSlot> createState() => _DropSlotState();
-}
-
-class _DropSlotState extends State<_DropSlot> {
-  bool _isHovering = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return DragTarget<_DraggedBlockData>(
-      onWillAcceptWithDetails: (_) {
-        if (widget.isExecuting) return false;
-        if (!mounted) return false;
-        setState(() => _isHovering = true);
-        return true;
-      },
-      onLeave: (_) {
-        if (mounted) {
-          setState(() => _isHovering = false);
-        }
-      },
-      onAcceptWithDetails: (details) {
-        if (mounted) {
-          setState(() => _isHovering = false);
-        }
-        widget.onAccept(details.data);
-      },
-      builder: (context, candidateData, rejectedData) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-          height: _isHovering ? 20 : 6,
-          decoration: BoxDecoration(
-            color: _isHovering
-                ? AppTheme.tealPrimary.withValues(alpha: 0.18)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: _isHovering
-                  ? AppTheme.tealPrimary
-                  : Colors.grey.withValues(alpha: 0.25),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
 class _PaletteChip extends StatelessWidget {
   final CodeBlockType blockType;
   final Color color;
@@ -1615,13 +1576,6 @@ class _PaletteChip extends StatelessWidget {
       ),
     );
   }
-}
-
-class _DraggedBlockData {
-  final int? fromIndex;
-  final CodeBlockType? type;
-
-  const _DraggedBlockData({this.fromIndex, this.type});
 }
 
 IconData _blockIcon(CodeBlockType type) {
