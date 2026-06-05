@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/challenge_model.dart';
 import '../services/language_notifier.dart';
 
 class AppStrings {
@@ -24,6 +25,194 @@ class AppStrings {
       isArabic ? 'Switch to English 🌐' : 'التبديل إلى العربية 🌐';
   String get languageLabel => isArabic ? 'اللغة' : 'Language';
   String get level => isArabic ? 'المستوى' : 'Level';
+  String levelBadge(int level) => isArabic ? 'المستوى $level' : 'Lv $level';
+  String levelProgress(int current, int total, int percent) => isArabic
+      ? '$current / $total مستويات • $percent%'
+      : '$current / $total levels • $percent%';
+  String days(int count) => isArabic ? '$count يوم' : '$count days';
+  String get edit => isArabic ? 'تعديل' : 'Edit';
+  String get dropBlockHere => isArabic ? 'أفلت البلوك هنا' : 'drop block here';
+  String get ifInsideAnotherIf =>
+      isArabic ? 'يمكن أن يكون IF داخل IF!' : 'IF can go INSIDE another IF!';
+  String get nestedExplanation =>
+      isArabic ? 'هذا ما يسمى بالتداخل! 🐾' : "That's called Nested! 🐾";
+  String get bigAnimalQuestion => isArabic ? 'حيوان كبير؟' : 'Big animal?';
+  String get checkAgainInside =>
+      isArabic ? '→ افحص مرة أخرى بالداخل!' : '→ check AGAIN inside!';
+  String get tallNoseQuestion => isArabic ? 'أنف طويل؟' : 'Tall nose?';
+  String get checkInsideLabel => isArabic ? 'افحص بالداخل:' : 'Check INSIDE:';
+  String get elephantLabel => isArabic ? 'فيل!' : 'elephant!';
+  String get lionLabel => isArabic ? 'أسد!' : 'lion!';
+  String get yes => isArabic ? 'نعم' : 'YES!';
+  String get no => isArabic ? 'لا' : 'NO';
+  String blockLabel(CodeBlockType type) {
+    switch (type) {
+      case CodeBlockType.start:
+        return 'START';
+      case CodeBlockType.moveForward:
+        return 'Move Forward';
+      case CodeBlockType.moveBackward:
+        return 'Move Backward';
+      case CodeBlockType.moveLeft:
+        return 'Move Left';
+      case CodeBlockType.moveRight:
+        return 'Move Right';
+      case CodeBlockType.turnLeft:
+        return 'Turn Left';
+      case CodeBlockType.turnRight:
+        return 'Turn Right';
+      case CodeBlockType.end:
+        return 'END';
+      case CodeBlockType.beep:
+        return 'beep 🔊';
+      case CodeBlockType.clap:
+        return 'clap 👏';
+      case CodeBlockType.happy:
+        return 'smile 😊';
+      case CodeBlockType.repeat:
+        return 'repeat';
+      case CodeBlockType.ifHappy:
+        return 'IF happy 😊';
+      case CodeBlockType.music:
+        return 'play music 🎵';
+      case CodeBlockType.ifSad:
+        return 'IF sad 😢';
+      case CodeBlockType.cry:
+        return 'sad tone';
+      case CodeBlockType.ifMoon:
+        return 'IF moon 🌙';
+      case CodeBlockType.thenNight:
+        return 'show night 🌃';
+      case CodeBlockType.elseIfSun:
+        return 'ELSE IF sun ☀️';
+      case CodeBlockType.thenMorning:
+        return 'show morning 🌅';
+      case CodeBlockType.ifStreak5:
+        return 'IF streak >= 5';
+      case CodeBlockType.cheering:
+        return 'cheer 🎉';
+      case CodeBlockType.elseIfStreak2:
+        return 'ELSE IF streak >= 2';
+      case CodeBlockType.elseBlock:
+        return 'ELSE';
+      case CodeBlockType.encourage:
+        return 'keep going! 💪';
+      case CodeBlockType.ifBig:
+        return 'IF big 🐾';
+      case CodeBlockType.ifHasTrunk:
+        return 'IF tall nose 🐽';
+      case CodeBlockType.elephantSound:
+        return 'elephant 🐘';
+      case CodeBlockType.lionSound:
+        return 'lion 🦁';
+      case CodeBlockType.ifFluffy:
+        return 'IF fluffy';
+      case CodeBlockType.catSound:
+        return 'cat 🐱';
+      case CodeBlockType.dogSound:
+        return 'dog 🐶';
+      case CodeBlockType.setRed:
+        return 'set RED 🔴';
+      case CodeBlockType.setGreen:
+        return 'set GREEN 🟢';
+      case CodeBlockType.setBlue:
+        return 'set BLUE 🔵';
+      case CodeBlockType.setYellow:
+        return 'set YELLOW 🟡';
+      case CodeBlockType.ledOff:
+        return 'LED off ⚫';
+      case CodeBlockType.waitShort:
+        return 'wait ⏱️';
+      case CodeBlockType.ledRepeat3:
+        return 'REPEAT 3×';
+      case CodeBlockType.ledRepeat2:
+        return 'REPEAT 2×';
+      case CodeBlockType.ledRepeat5:
+        return 'REPEAT 5×';
+      case CodeBlockType.varSetScore:
+        return 'score = 10';
+      case CodeBlockType.varSetZero:
+        return 'score = 0';
+      case CodeBlockType.varAdd5:
+        return 'score = score + 5';
+      case CodeBlockType.varShowScore:
+        return 'show score';
+      case CodeBlockType.varSetCount:
+        return 'count = 0';
+      case CodeBlockType.varRepeat3:
+        return 'REPEAT 3×';
+      case CodeBlockType.varAddOne:
+        return 'count + 1';
+      case CodeBlockType.varShowCount:
+        return 'show count';
+      case CodeBlockType.varSetTempHot:
+        return 'temp = 40';
+      case CodeBlockType.varIfHot:
+        return 'IF temp > 30';
+      case CodeBlockType.varShowSun:
+        return 'show ☀️';
+      case CodeBlockType.varElse:
+        return 'ELSE';
+      case CodeBlockType.varShowSnow:
+        return 'show ❄️';
+      case CodeBlockType.varSetA:
+        return 'speedA = 8';
+      case CodeBlockType.varSetB:
+        return 'speedB = 3';
+      case CodeBlockType.varShowFaster:
+        return 'show winner';
+      case CodeBlockType.varSetWater:
+        return 'water = 0';
+      case CodeBlockType.varWaterPlant:
+        return 'water = water + 1';
+      case CodeBlockType.varShowPlant:
+        return 'show plant';
+      case CodeBlockType.varSetCountdown:
+        return 'countdown = 3';
+      case CodeBlockType.varMinusOne:
+        return 'countdown = countdown - 1';
+      case CodeBlockType.varShowCountdown:
+        return 'show countdown';
+    }
+  }
+  String challengeTargetDisplay(int number, String fallback) {
+    if (!isArabic) return fallback;
+    return _ar[number]?['targetDisplay'] ?? fallback;
+  }
+  String get parentDashboard => isArabic ? 'لوحة الآباء' : 'Parent Dashboard';
+  String get parentDashboardSubtitle =>
+      isArabic ? 'تتبع تقدم أطفالك' : 'Track your children\'s progress';
+  String get totalLessons => isArabic ? 'إجمالي الدروس' : 'Total Lessons';
+  String get avgProgress => isArabic ? 'متوسط التقدّم' : 'Avg Progress';
+  String get totalStreak => isArabic ? 'إجمالي السلسلة' : 'Total Streak';
+  String yourChildren(int count) =>
+      isArabic ? 'أطفالك ($count)' : 'Your Children ($count)';
+  String get addChild => isArabic ? 'أضف طفلاً' : 'Add Child';
+  String get addNewChild => isArabic ? 'أضف طفلاً جديداً' : 'Add New Child';
+  String get childName => isArabic ? 'اسم الطفل' : 'Child Name';
+  String get ageLabel => isArabic ? 'العمر' : 'Age';
+  String get genderLabel => isArabic ? 'الجنس' : 'Gender';
+  String get girl => isArabic ? 'بنت' : 'Girl';
+  String get boy => isArabic ? 'ولد' : 'Boy';
+  String get save => isArabic ? 'حفظ' : 'Save';
+  String get remove => isArabic ? 'إزالة' : 'Remove';
+  String editChildTitle(String name) =>
+      isArabic ? 'تعديل $name' : 'Edit $name';
+  String removeChildTitle(String name) =>
+      isArabic ? 'إزالة $name؟' : 'Remove $name?';
+  String get removeChildBody => isArabic
+      ? 'هذا سوف يحذف كل تقدم هذا الطفل.'
+      : 'This will delete all progress for this child.';
+  String get recentSessions => isArabic ? 'الجلسات الأخيرة' : 'Recent Sessions';
+  String get noSessionsYet => isArabic ? 'لا توجد جلسات بعد.' : 'No sessions yet.';
+  String get noChildrenAddedYet =>
+      isArabic ? 'لم تتم إضافة أطفال بعد' : 'No children added yet';
+  String get tapAddChildHint => isArabic
+      ? 'اضغط "أضف طفلاً" لإنشاء ملف'
+      : 'Tap "Add Child" to create a profile';
+  String get passed => isArabic ? 'ناجح' : 'Passed';
+  String get failed => isArabic ? 'فشل' : 'Failed';
+  String get joined => isArabic ? 'انضم في' : 'Joined';
 
   String levelTitle(int n) {
     if (!isArabic) {
@@ -301,14 +490,17 @@ class AppStrings {
     9: {
       'title': 'السلاسل',
       'instruction': 'ساعد الروبوت على مكافأتك بناءً على سلسلتك.',
+      'targetDisplay': '🔥 سلسلة 5+  →  احتفل! 🎉\n📈 سلسلة 2+  →  صفّق! 👏\n💪 خلاف ذلك  →  استمر!',
     },
     10: {
       'title': 'النهار والليل',
       'instruction': 'ساعد الروبوت على الرد بناءً على وقت اليوم.',
+      'targetDisplay': '🌙  →  🌃 ليل\n☀️  →  🌅 صباح',
     },
     11: {
       'title': 'خمّن الحيوان',
       'instruction': 'ساعد الروبوت على تخمين الحيوان الذي يظهر.',
+      'targetDisplay': 'كبير + أنف طويل  →  🐘 فيل\nكبير، لا أنف  →  🦁 أسد\nصغير + فرو كثيف  →  🐱 قط\nصغير، غير فروي  →  🐶 كلب',
     },
     // Level 3 – LED
     12: {

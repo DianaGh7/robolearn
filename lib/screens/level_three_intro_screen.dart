@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_strings.dart';
 import 'level_three_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -14,10 +15,11 @@ import 'level_three_screen.dart';
 class _Frame {
   final int step;
   final String speech;
+  final String arabicSpeech;
   final bool resetLed;    // reset LED to off when entering this frame
   final bool triggerBlink; // start the 3× blink animation
   final bool celebrate;    // trigger the celebration state
-  const _Frame(this.step, this.speech,
+  const _Frame(this.step, this.speech, this.arabicSpeech,
       {this.resetLed = false, this.triggerBlink = false, this.celebrate = false});
 }
 
@@ -48,22 +50,20 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
   // Steps visible in progress dots: 1–4. Step 5 = celebrate (no dots).
   static const _frames = [
     // Step 1 – greeting / concept
-    _Frame(1, "Hi! I'm Robo! 🤖"),
-    _Frame(1, "Today you'll learn about\nLOOPS! 🔁"),
-    _Frame(1, "Loops help us repeat actions\nautomatically! ✨"),
+    _Frame(1, "Hi! I'm Robo! 🤖", 'مرحبًا! أنا روبو! 🤖'),
+    _Frame(1, "Today you'll learn about\nLOOPS! 🔁", 'اليوم ستتعلم عن\nالحلقات! 🔁'),
+    _Frame(1, "Loops help us repeat actions\nautomatically! ✨", 'الحلقات تساعدنا على تكرار الإجراءات\nتلقائيًا! ✨'),
     // Step 2 – problem without loops
-    _Frame(2, "Want to blink a light 3 times?\nWithout a loop... 😓"),
-    _Frame(2, "You'd write the SAME commands\nover and over! So boring! 😴"),
+    _Frame(2, "Want to blink a light 3 times?\nWithout a loop... 😓", 'هل تريد ومض الضوء 3 مرات؟\nبدون حلقة... 😓'),
+    _Frame(2, "You'd write the SAME commands\nover and over! So boring! 😴", 'سَتكتب نفس الأوامر مرارًا وتكرارًا! ممل جدًا! 😴'),
     // Step 3 – REPEAT block intro
-    _Frame(3, "A REPEAT block wraps your\ncommands and runs them for you! 🎉"),
-    _Frame(3, "Put commands INSIDE the block...\nand Robo loops them! ✅"),
+    _Frame(3, "A REPEAT block wraps your\ncommands and runs them for you! 🎉", 'بلوك REPEAT يلتف حول أوامرك\nويُنفذها من أجلك! 🎉'),
+    _Frame(3, "Put commands INSIDE the block...\nand Robo loops them! ✅", 'ضع الأوامر داخل البلوك...\nوروّبو يكررها! ✅'),
     // Step 4 – live blink demo
-    _Frame(4, "Example: Blink RED 3 times!\nREPEAT 3 does it automatically 🔴",
-        resetLed: true),
-    _Frame(4, "Watch the light blink! 👀", triggerBlink: true),
+    _Frame(4, "Example: Blink RED 3 times!\nREPEAT 3 does it automatically 🔴", 'مثال: ومض الأحمر 3 مرات!\nREPEAT 3 يفعل ذلك تلقائيًا 🔴', resetLed: true),
+    _Frame(4, "Watch the light blink! 👀", 'شاهد الضوء يومض! 👀', triggerBlink: true),
     // Step 5 – celebrate
-    _Frame(5, "Great! Now you can use loops\nto solve the challenges! 🌟",
-        celebrate: true),
+    _Frame(5, "Great! Now you can use loops\nto solve the challenges! 🌟", 'رائع! الآن يمكنك استخدام الحلقات\nلحل التحديات! 🌟', celebrate: true),
   ];
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -123,6 +123,10 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
     super.dispose();
   }
 
+  String _t(String english, String arabic) {
+    return AppStrings.of(context).isArabic ? arabic : english;
+  }
+
   // ── Navigation ────────────────────────────────────────────────────────────
 
   void _goToFrame(int index) {
@@ -130,10 +134,14 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
     final frame = _frames[index];
     _cancelBlink = true;
 
+    final localizedSpeech = AppStrings.of(context).isArabic
+        ? frame.arabicSpeech
+        : frame.speech;
+
     setState(() {
       _frameIndex = index;
       _step = frame.step;
-      _speech = frame.speech;
+      _speech = localizedSpeech;
       _showSpeech = true;
     });
 
@@ -347,7 +355,7 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
                 const Icon(Icons.star_rounded,
                     color: Color(0xFFFFB300), size: 15),
                 const SizedBox(width: 5),
-                Text('Level 2',
+                Text(AppStrings.of(context).levelBadge(2),
                     style: GoogleFonts.nunito(
                         color: const Color(0xFF4527A0),
                         fontSize: 15,
@@ -356,7 +364,7 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
             ),
           ),
           const Spacer(),
-          Text('Loops',
+          Text(AppStrings.of(context).levelTitle(2),
               style: GoogleFonts.nunito(
                   color: const Color(0xFF7E57C2),
                   fontSize: 15,
@@ -372,7 +380,7 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
                 border: Border.all(
                     color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
               ),
-              child: Text('Skip',
+              child: Text(_t('Skip', 'تخطي'),
                   style: GoogleFonts.nunito(
                       color: AppTheme.tealDark,
                       fontSize: 15,
@@ -405,13 +413,13 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('LOOPS! 🔁',
+          Text(_t('LOOPS! 🔁', 'الحلقات! 🔁'),
               style: GoogleFonts.nunito(
                   fontSize: 42,
                   fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark)),
           const SizedBox(height: 10),
-          Text('REPEAT  =  do it many times',
+          Text(_t('REPEAT  =  do it many times', 'REPEAT  =  نفّذها عدة مرات'),
               style: GoogleFonts.nunito(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
@@ -454,7 +462,7 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
-            child: Text('Without a loop... 😓',
+            child: Text(_t('Without a loop... 😓', 'بدون حلقة... 😓'),
                 style: GoogleFonts.nunito(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
@@ -482,7 +490,7 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
                 const Text('😴', style: TextStyle(fontSize: 26)),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text('So many blocks for the same thing!',
+                  child: Text(_t('So many blocks for the same thing!', 'الكثير من البلوكات لنفس الشيء!'),
                       style: GoogleFonts.nunito(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
@@ -506,7 +514,7 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
-            child: Text('With a loop! 🎉',
+            child: Text(_t('With a loop! 🎉', 'مع حلقة! 🎉'),
                 style: GoogleFonts.nunito(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
@@ -539,7 +547,7 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                      'REPEAT 3 runs everything inside 3 times!',
+                      _t('REPEAT 3 runs everything inside 3 times!', 'REPEAT 3 ينفّذ كل شيء داخله 3 مرات!'),
                       style: GoogleFonts.nunito(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
@@ -606,13 +614,13 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
               .animate(onPlay: (c) => c.repeat(reverse: true))
               .scaleXY(begin: 0.85, end: 1.1, duration: 700.ms),
           const SizedBox(height: 20),
-          Text('You know loops!',
+          Text(_t('You know loops!', 'أنت تعرف الحلقات!'),
               style: GoogleFonts.nunito(
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark)),
           const SizedBox(height: 8),
-          Text('Ready to solve the challenges!',
+          Text(_t('Ready to solve the challenges!', 'جاهز لحل التحديات!'),
               style: GoogleFonts.nunito(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -695,7 +703,7 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
               const Icon(Icons.play_circle_fill_rounded,
                   color: Colors.white, size: 30),
               const SizedBox(width: 12),
-              Text("Let's Play! 🎮",
+              Text(_t("Let's Play! 🎮", 'هيا بنا نلعب! 🎮'),
                   style: GoogleFonts.nunito(
                       color: Colors.white,
                       fontSize: 22,
