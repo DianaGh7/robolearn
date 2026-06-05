@@ -810,6 +810,156 @@ class _ConfettiDot {
   });
 }
 
+// ─── Block workspace controls (drag handle + delete) ─────────────────────────
+
+/// Shared shell for workspace block action buttons (drag handle, delete).
+class BlockControlShell extends StatelessWidget {
+  final Widget child;
+
+  const BlockControlShell({super.key, required this.child});
+
+  static const double minTapSize = 28;
+  static const EdgeInsetsDirectional margin = EdgeInsetsDirectional.only(start: 6);
+  static const EdgeInsets padding = EdgeInsets.symmetric(horizontal: 7, vertical: 6);
+
+  static BoxDecoration decoration() => BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(5),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: margin,
+      constraints: const BoxConstraints(
+        minWidth: minTapSize,
+        minHeight: minTapSize,
+      ),
+      padding: padding,
+      alignment: Alignment.center,
+      decoration: decoration(),
+      child: child,
+    );
+  }
+}
+
+/// Six-dot drag handle (2 columns × 3 rows). Dot grid is always LTR so spacing
+/// stays correct in Arabic/RTL layouts.
+class BlockDragHandle extends StatelessWidget {
+  final Color color;
+
+  const BlockDragHandle({super.key, this.color = Colors.white});
+
+  static const double _dotSize = 3.0;
+  static const double _gridWidth = 9.0;
+  static const double _gridHeight = 15.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlockControlShell(
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: SizedBox(
+          width: _gridWidth,
+          height: _gridHeight,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(3, (_) {
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _dot(color),
+                  _dot(color),
+                ],
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _dot(Color color) {
+    return SizedBox(
+      width: _dotSize,
+      height: _dotSize,
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+    );
+  }
+}
+
+class BlockDeleteButton extends StatelessWidget {
+  final VoidCallback? onTap;
+
+  const BlockDeleteButton({super.key, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: const BlockControlShell(
+        child: Icon(Icons.close_rounded, color: Colors.white, size: 14),
+      ),
+    );
+  }
+}
+
+/// Restricts drag initiation to [BlockDragHandle] so the rest of the block
+/// scrolls normally without accidental drags.
+class HandleOnlyDraggable<T extends Object> extends StatefulWidget {
+  final T data;
+  final bool enabled;
+  final Widget feedback;
+  final int maxSimultaneousDrags;
+  final Widget Function(bool isDragging, Widget? dragHandle) builder;
+
+  const HandleOnlyDraggable({
+    super.key,
+    required this.data,
+    required this.enabled,
+    required this.feedback,
+    required this.builder,
+    this.maxSimultaneousDrags = 1,
+  });
+
+  @override
+  State<HandleOnlyDraggable<T>> createState() => _HandleOnlyDraggableState<T>();
+}
+
+class _HandleOnlyDraggableState<T extends Object> extends State<HandleOnlyDraggable<T>> {
+  bool _dragging = false;
+
+  void _setDragging(bool value) {
+    if (_dragging != value && mounted) {
+      setState(() => _dragging = value);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget? dragHandle;
+    if (widget.enabled) {
+      dragHandle = Draggable<T>(
+        data: widget.data,
+        maxSimultaneousDrags: widget.maxSimultaneousDrags,
+        onDragStarted: () => _setDragging(true),
+        onDragEnd: (_) => _setDragging(false),
+        onDraggableCanceled: (_, dragPosition) => _setDragging(false),
+        feedback: widget.feedback,
+        childWhenDragging: SizedBox(
+          width: BlockControlShell.minTapSize,
+          height: BlockControlShell.minTapSize,
+        ),
+        child: const BlockDragHandle(),
+      );
+    }
+    return widget.builder(_dragging, dragHandle);
+  }
+}
+
 // ─── Primary button ───────────────────────────────────────────────────────────
 
 class PrimaryButton extends StatelessWidget {
