@@ -1362,6 +1362,7 @@ class _CodeBlocksArea extends StatelessWidget {
                                 block: block,
                                 isExecuting: true,
                                 isHighlighted: isActive,
+                                showDragHandle: true,
                               ),
                             ),
                           ),
@@ -1374,6 +1375,7 @@ class _CodeBlocksArea extends StatelessWidget {
                                   : () => onRemoveBlock(index),
                               isExecuting: isExecuting,
                               isHighlighted: isActive,
+                              showDragHandle: true,
                             ),
                           ),
                           child: _CodeBlockWidget(
@@ -1383,6 +1385,7 @@ class _CodeBlocksArea extends StatelessWidget {
                                 : () => onRemoveBlock(index),
                             isExecuting: isExecuting,
                             isHighlighted: isActive,
+                            showDragHandle: true,
                           ),
                         ),
                       ],
@@ -1458,12 +1461,14 @@ class _CodeBlockWidget extends StatelessWidget {
   final VoidCallback? onRemove;
   final bool isExecuting;
   final bool isHighlighted;
+  final bool showDragHandle;
 
   const _CodeBlockWidget({
     required this.block,
     this.onRemove,
     required this.isExecuting,
     this.isHighlighted = false,
+    this.showDragHandle = false,
   });
 
   @override
@@ -1503,6 +1508,20 @@ class _CodeBlockWidget extends StatelessWidget {
               ),
             ),
           ),
+          if (!isExecuting && showDragHandle)
+            Container(
+              margin: const EdgeInsets.only(left: 6),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: const Icon(
+                Icons.drag_handle_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
+            ),
           if (!isExecuting)
             GestureDetector(
               onTap: onRemove,

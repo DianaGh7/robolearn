@@ -1512,7 +1512,7 @@ class _CodeBlocksArea extends StatelessWidget {
           color: Colors.transparent,
           child: SizedBox(
             width: screenWidth - 72,
-            child: _BlockWidget(block: block, isExecuting: true, isHighlighted: isActive),
+            child: _BlockWidget(block: block, isExecuting: true, isHighlighted: isActive, showDragHandle: true),
           ),
         ),
         childWhenDragging: Opacity(
@@ -1522,6 +1522,7 @@ class _CodeBlocksArea extends StatelessWidget {
             onRemove: isExecuting ? null : () => onRemoveBlock(idx),
             isExecuting: isExecuting,
             isHighlighted: isActive,
+            showDragHandle: true,
           ),
         ),
         child: _BlockWidget(
@@ -1529,6 +1530,7 @@ class _CodeBlocksArea extends StatelessWidget {
           onRemove: isExecuting ? null : () => onRemoveBlock(idx),
           isExecuting: isExecuting,
           isHighlighted: isActive,
+          showDragHandle: true,
         ),
       );
     }
@@ -1611,7 +1613,7 @@ class _CodeBlocksArea extends StatelessWidget {
                 maxSimultaneousDrags: isExecuting ? 0 : 1,
                 feedback: Material(
                   color: Colors.transparent,
-                  child: SizedBox(width: screenWidth - 72, child: _BlockWidget(block: block, isExecuting: true, isHighlighted: isActive)),
+                  child: SizedBox(width: screenWidth - 72, child: _BlockWidget(block: block, isExecuting: true, isHighlighted: isActive, showDragHandle: true)),
                 ),
                 childWhenDragging: Opacity(opacity: 0.25, child: headerRow),
                 child: headerRow,
@@ -1649,12 +1651,14 @@ class _BlockWidget extends StatelessWidget {
   final VoidCallback? onRemove;
   final bool isExecuting;
   final bool isHighlighted;
+  final bool showDragHandle;
 
   const _BlockWidget({
     required this.block,
     this.onRemove,
     required this.isExecuting,
     this.isHighlighted = false,
+    this.showDragHandle = false,
   });
 
   @override
@@ -1688,6 +1692,20 @@ class _BlockWidget extends StatelessWidget {
               ),
             ),
           ),
+          if (!isExecuting && showDragHandle)
+            Container(
+              margin: const EdgeInsets.only(left: 6),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: const Icon(
+                Icons.drag_handle_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
+            ),
           if (!isExecuting)
             GestureDetector(
               onTap: onRemove,
