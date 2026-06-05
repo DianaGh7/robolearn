@@ -662,7 +662,10 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
                                 FractionallySizedBox(
                                   widthFactor: 0.96,
                                   child: _LedVisualizationCard(
-                                    targetDisplay: widget.challenge.targetDisplay ?? '',
+                                    targetDisplay: AppStrings.of(context)
+                                        .challengeTargetDisplay(
+                                            widget.challenge.number,
+                                            widget.challenge.targetDisplay ?? ''),
                                     highlightedLineIndex: _highlightedLineIndex,
                                     ledColor: _ledColor,
                                     glowAnim: _glowAnim,
@@ -1794,7 +1797,7 @@ class _PaletteChip extends StatelessWidget {
           Icon(_blockIcon(blockType), size: 13, color: color),
           const SizedBox(width: 4),
           Text(
-            CodeBlock.typeLabels[blockType]!,
+            AppStrings.of(context).blockLabel(blockType),
             style: GoogleFonts.nunito(
               fontSize: 12,
               fontWeight: FontWeight.w800,
@@ -1873,7 +1876,7 @@ class _BodyDropHintState extends State<_BodyDropHint> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'drop block here',
+                  AppStrings.of(context).dropBlockHere,
                   style: GoogleFonts.nunito(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,

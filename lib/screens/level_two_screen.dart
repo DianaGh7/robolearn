@@ -606,6 +606,9 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                         final isDay = DateTime.now().hour >= 6 &&
                             DateTime.now().hour < 18;
                         final streak = _progressChild.streak;
+                        final localizedTarget = AppStrings.of(context)
+                            .challengeTargetDisplay(widget.challenge.number,
+                                widget.challenge.targetDisplay ?? '');
                         final effectiveDisplay = widget.challenge.number == 9
                             ? (streak >= 5
                                 ? '🎉'
@@ -621,7 +624,7 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                                         'cat': '🐱',
                                         'dog': '🐶',
                                       }[_animalChallenge11]!
-                                    : (widget.challenge.targetDisplay ?? '');
+                                    : localizedTarget;
                         final lineCount = effectiveDisplay
                             .split('\n')
                             .where((l) => l.trim().isNotEmpty)
@@ -1826,7 +1829,7 @@ class _PaletteChip extends StatelessWidget {
           Icon(_blockIcon(blockType), size: 13, color: color),
           const SizedBox(width: 4),
           Text(
-            CodeBlock.typeLabels[blockType]!,
+            AppStrings.of(context).blockLabel(blockType),
             style: GoogleFonts.nunito(
               fontSize: 12,
               fontWeight: FontWeight.w800,
@@ -2059,7 +2062,7 @@ class _BodyDropHintState extends State<_BodyDropHint> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'drop block here',
+                  AppStrings.of(context).dropBlockHere,
                   style: GoogleFonts.nunito(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,

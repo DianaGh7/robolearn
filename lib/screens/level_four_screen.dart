@@ -1661,7 +1661,7 @@ class _BodyDropHintState extends State<_BodyDropHint> {
             children: [
               Icon(Icons.add_rounded, size: 14, color: widget.color.withValues(alpha: _isHovering ? 0.9 : 0.5)),
               const SizedBox(width: 4),
-              Text('drop block here',
+              Text(AppStrings.of(context).dropBlockHere,
                   style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w700,
                       color: widget.color.withValues(alpha: _isHovering ? 0.9 : 0.5))),
             ],
@@ -1681,7 +1681,7 @@ class _PaletteChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = CodeBlock.typeLabels[blockType] ?? blockType.name;
+    final label = AppStrings.of(context).blockLabel(blockType);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(

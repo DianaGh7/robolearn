@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_strings.dart';
 import 'level_four_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -117,6 +118,10 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
     _glowCtrl.dispose();
     _celebCtrl.dispose();
     super.dispose();
+  }
+
+  String _t(String english, String arabic) {
+    return AppStrings.of(context).isArabic ? arabic : english;
   }
 
   void _goToFrame(int index) {
@@ -370,7 +375,7 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
                 border: Border.all(
                     color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
               ),
-              child: Text('Skip',
+              child: Text(_t('Skip', 'تخطي'),
                   style: GoogleFonts.nunito(
                       color: AppTheme.tealDark,
                       fontSize: 15,
@@ -462,7 +467,8 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                      'The value inside can change anytime!',
+                      _t('The value inside can change anytime!',
+                          'القيمة بداخله يمكن أن تتغير في أي وقت!'),
                       style: GoogleFonts.nunito(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
@@ -486,7 +492,7 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
-            child: Text('3 simple steps! 💡',
+            child: Text(_t('3 simple steps! 💡', '3 خطوات بسيطة! 💡'),
                 style: GoogleFonts.nunito(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
@@ -528,7 +534,7 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
-            child: Text('Watch it happen! 👀',
+            child: Text(_t('Watch it happen! 👀', 'شاهد ما يحدث! 👀'),
                 style: GoogleFonts.nunito(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
@@ -567,13 +573,13 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
               .animate(onPlay: (c) => c.repeat(reverse: true))
               .scaleXY(begin: 0.85, end: 1.1, duration: 700.ms),
           const SizedBox(height: 20),
-          Text('You know variables!',
+          Text(_t('You know variables!', 'أنت تعرف متغيرات!'),
               style: GoogleFonts.nunito(
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark)),
           const SizedBox(height: 8),
-          Text('Ready to solve the challenges!',
+          Text(_t('Ready to solve the challenges!', 'جاهز لحل التحديات!'),
               style: GoogleFonts.nunito(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -660,7 +666,7 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
               const Icon(Icons.play_circle_fill_rounded,
                   color: Colors.white, size: 30),
               const SizedBox(width: 12),
-              Text("Let's Play! 🎮",
+              Text(_t("Let's Play! 🎮", 'هيا بنا نلعب! 🎮'),
                   style: GoogleFonts.nunito(
                       color: Colors.white,
                       fontSize: 22,

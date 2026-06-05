@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_strings.dart';
 import 'level_two_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -124,6 +125,51 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
 
   // ── Navigation ────────────────────────────────────────────────────────────
 
+  String _t(String english, String arabic) {
+    return AppStrings.of(context).isArabic ? arabic : english;
+  }
+
+  String _localizedFrameSpeech(_Frame frame) {
+    final s = AppStrings.of(context);
+    if (!s.isArabic) return frame.speech;
+    switch (frame.speech) {
+      case "Hi! I'm Robo! 🤖":
+        return 'مرحبًا! أنا روبو! 🤖';
+      case 'I look at things around me...':
+        return 'أنظر إلى الأشياء من حولي...';
+      case '...and decide what to do!\nIF tells me how! 🤔':
+        return 'وأقرر ما يجب فعله!\nIF يخبرني كيف! 🤔';
+      case 'The screen shows me a face 📺':
+        return 'تُظهر الشاشة وجهاً لي 📺';
+      case 'It could be 😊 happy\nOR 😢 sad':
+        return 'قد تكون 😊 سعيدة\nأو 😢 حزينة';
+      case 'I look at it... then I decide!':
+        return 'أنظر إليها... ثم أقرر!';
+      case 'IF I see 😊 happy face...':
+        return 'إذا رأيت وجهاً سعيداً 😊...';
+      case '...I play music! 🎵\nIF = do this when TRUE ✅':
+        return '...أشغل الموسيقى! 🎵\nIF = افعل هذا عندما يكون صحيحًا ✅';
+      case 'But if I do NOT see 😊...':
+        return 'لكن إذا لم أرَ 😊...';
+      case 'ELSE → I cry! 😢\nELSE = do this when FALSE ❌':
+        return 'ELSE → أبكي! 😢\nELSE = افعل هذا عندما يكون خاطئًا ❌';
+      case 'I can check MORE than one thing!\nThat\'s ELSE IF!':
+        return 'يمكنني التحقق من أكثر من شيء!\nهذا هو ELSE IF!';
+      case '🌙 Moon? → night! 🌃':
+        return '🌙 قمر؟ → ليل! 🌃';
+      case '☀️ Sun? → morning! 🌅\nOtherwise → something else!':
+        return '☀️ شمس؟ → صباح! 🌅\nوإلا → شيء آخر!';
+      case 'IF can go INSIDE another IF!\nThat\'s called Nested! 🐾':
+        return 'يمكن أن يكون IF داخل IF!\nهذا ما يسمى بالتداخل! 🐾';
+      case 'Big animal?\n→ check AGAIN inside!\nTall nose? → 🐘   No tall nose? → 🦁':
+        return 'حيوان كبير؟\n→ افحص مرة أخرى بالداخل!\nأنف طويل؟ → 🐘   لا أنف طويل؟ → 🦁';
+      case 'Amazing! You learned it all! 🌟\nNow it\'s YOUR turn!':
+        return 'رائع! لقد تعلّمت كل شيء! 🌟\nالآن دورك!';
+      default:
+        return frame.speech;
+    }
+  }
+
   void _goToFrame(int index) {
     if (!mounted || index < 0 || index >= _frames.length) return;
     final frame = _frames[index];
@@ -141,7 +187,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
     setState(() {
       _frameIndex = index;
       _step = frame.step;
-      _speech = frame.speech;
+      _speech = _localizedFrameSpeech(frame);
       _showSpeech = true;
       _showResult = frame.showResult;
     });
@@ -349,7 +395,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
                 border: Border.all(
                     color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
               ),
-              child: Text('Skip',
+              child: Text(AppStrings.of(context).isArabic ? 'تخطي' : 'Skip',
                   style: GoogleFonts.nunito(
                       color: AppTheme.tealDark,
                       fontSize: 15,
@@ -384,13 +430,13 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Robo thinks!',
+          Text(_t('Robo thinks!', 'روبو يفكر!'),
               style: GoogleFonts.nunito(
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark)),
           const SizedBox(height: 10),
-          Text('IF  =  if something is true',
+          Text(_t('IF  =  if something is true', 'IF  =  إذا كان شيء ما صحيحًا'),
               style: GoogleFonts.nunito(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
@@ -425,7 +471,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
             ),
             child: Column(
               children: [
-                Text('📺  The screen shows:',
+                Text(_t('📺  The screen shows:', '📺  الشاشة تُظهر:'),
                     style: GoogleFonts.nunito(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
@@ -439,7 +485,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
           const SizedBox(height: 24),
           const Text('👀', style: TextStyle(fontSize: 52)),
           const SizedBox(height: 8),
-          Text('Robo looks... and decides!',
+          Text(_t('Robo looks... and decides!', 'روبو ينظر... ثم يقرر!'),
               style: GoogleFonts.nunito(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -458,7 +504,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _ScreenCard(emoji: '😊', label: 'Screen shows:'),
+          _ScreenCard(emoji: '😊', label: _t('Screen shows:', 'الشاشة تُظهر:')),
           const SizedBox(height: 16),
           _BigBlock(
             topTag: 'IF',
@@ -498,7 +544,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _ScreenCard(emoji: '😢', label: 'Screen shows:'),
+          _ScreenCard(emoji: '😢', label: _t('Screen shows:', 'الشاشة تُظهر:')),
           const SizedBox(height: 16),
           _BigBlock(
             topTag: 'IF',
@@ -547,7 +593,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
-            child: Text('ELSE IF  =  check again!',
+            child: Text(_t('ELSE IF  =  check again!', 'ELSE IF  =  افحص مرة أخرى!'),
                 style: GoogleFonts.nunito(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
@@ -556,7 +602,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
           const SizedBox(height: 20),
           _SimpleRow(
             condEmoji: '🌙',
-            condText: 'IF  moon 🌙',
+            condText: _t('IF  moon 🌙', 'IF  القمر 🌙'),
             condColor: const Color(0xFF5C6BC0),
             actEmoji: '🌃',
             actText: 'night!',
@@ -567,7 +613,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
           const SizedBox(height: 6),
           _SimpleRow(
             condEmoji: '☀️',
-            condText: 'ELSE IF  sun ☀️',
+            condText: _t('ELSE IF  sun ☀️', 'ELSE IF  الشمس ☀️'),
             condColor: const Color(0xFFF29E4C),
             actEmoji: '🌅',
             actText: 'morning!',
@@ -587,7 +633,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
               children: [
                 const Text('↩️', style: TextStyle(fontSize: 28)),
                 const SizedBox(width: 12),
-                Text('ELSE  →  anything else!',
+                Text(_t('ELSE  →  anything else!', 'ELSE  →  أي شيء آخر!'),
                     style: GoogleFonts.nunito(
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
@@ -610,7 +656,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
-            child: Text('IF  inside  IF',
+            child: Text(AppStrings.of(context).ifInsideAnotherIf,
                 style: GoogleFonts.nunito(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
@@ -618,7 +664,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
           ),
           const SizedBox(height: 4),
           Center(
-            child: Text('Nested = checking again inside!',
+            child: Text(AppStrings.of(context).nestedExplanation,
                 style: GoogleFonts.nunito(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -627,12 +673,12 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
           const SizedBox(height: 16),
           _BigBlock(
             topTag: 'IF',
-            body: '🐾  Big animal?',
+            body: '🐾  ${AppStrings.of(context).bigAnimalQuestion}',
             color: AppTheme.tealPrimary,
             glowValue: g,
           ),
           const SizedBox(height: 8),
-          _YesNoArrow(label: '✅  YES!', color: const Color(0xFF4CAF50)),
+          _YesNoArrow(label: '✅  ${AppStrings.of(context).yes}', color: const Color(0xFF4CAF50)),
           const SizedBox(height: 8),
           Container(
             margin: const EdgeInsets.only(left: 20),
@@ -647,7 +693,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Check INSIDE:',
+                Text(AppStrings.of(context).checkInsideLabel,
                     style: GoogleFonts.nunito(
                         fontSize: 13,
                         fontWeight: FontWeight.w900,
@@ -655,7 +701,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
                 const SizedBox(height: 8),
                 _BigBlock(
                   topTag: 'IF',
-                  body: '🐽  Tall nose?',
+                  body: '🐽  ${AppStrings.of(context).tallNoseQuestion}',
                   color: const Color(0xFFF29E4C),
                   glowValue: 0,
                 ),
@@ -666,13 +712,13 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
                       child: Column(
                         children: [
                           _YesNoArrow(
-                              label: '✅ YES',
+                              label: '✅ ${AppStrings.of(context).yes}',
                               color: const Color(0xFF4CAF50)),
                           const SizedBox(height: 4),
-                          const _ResultBox(
+                          _ResultBox(
                               emoji: '🐘',
-                              label: 'elephant!',
-                              color: Color(0xFF4CAF50)),
+                              label: AppStrings.of(context).elephantLabel,
+                              color: const Color(0xFF4CAF50)),
                         ],
                       ),
                     ),
@@ -681,12 +727,12 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
                       child: Column(
                         children: [
                           _YesNoArrow(
-                              label: '❌ NO',
+                              label: '❌ ${AppStrings.of(context).no}',
                               color: const Color(0xFFE57373)),
                           const SizedBox(height: 4),
-                          const _ResultBox(
+                          _ResultBox(
                               emoji: '🦁',
-                              label: 'lion!',
+                              label: AppStrings.of(context).lionLabel,
                               color: Color(0xFF7E8DF1)),
                         ],
                       ),
@@ -713,7 +759,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
               .animate(onPlay: (c) => c.repeat(reverse: true))
               .scaleXY(begin: 0.85, end: 1.1, duration: 700.ms),
           const SizedBox(height: 20),
-          Text('Amazing! Ready to play!',
+          Text(_t('Amazing! Ready to play!', 'رائع! جاهز للعب!'),
               style: GoogleFonts.nunito(
                   fontSize: 26,
                   fontWeight: FontWeight.w900,

@@ -1616,7 +1616,7 @@ class _PaletteChip extends StatelessWidget {
           Icon(_blockIcon(blockType), size: 13, color: color),
           const SizedBox(width: 4),
           Text(
-            CodeBlock.typeLabels[blockType]!,
+            AppStrings.of(context).blockLabel(blockType),
             style: GoogleFonts.nunito(
               fontSize: 12,
               fontWeight: FontWeight.w800,

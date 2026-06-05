@@ -76,7 +76,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
               ListTile(
                 leading: const Icon(Icons.logout_rounded, color: Color(0xFFD84E4E)),
                 title: Text(
-                  'Sign Out',
+                  AppStrings.of(context).logout,
                   style: GoogleFonts.nunito(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
@@ -145,7 +145,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
         return AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Text('Add New Child',
+          title: Text(AppStrings.of(context).addNewChild,
               style: GoogleFonts.nunito(
                   fontWeight: FontWeight.w800, color: AppTheme.tealDark)),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -153,7 +153,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
               controller: nameCtrl,
               style: GoogleFonts.nunito(),
               decoration: InputDecoration(
-                labelText: 'Child Name',
+                labelText: AppStrings.of(context).childName,
                 labelStyle: GoogleFonts.nunito(color: AppTheme.tealMid),
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
@@ -166,9 +166,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
             ),
             const SizedBox(height: 16),
             Row(children: [
-              Text('Age:',
-                  style:
-                      GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+              Text('${AppStrings.of(context).ageLabel}:',
+                  style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
               const SizedBox(width: 12),
               DropdownButton<int>(
                 value: age,
@@ -186,11 +185,11 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
             ]),
             const SizedBox(height: 12),
             Row(children: [
-              Text('Gender:',
+              Text('${AppStrings.of(context).genderLabel}:',
                   style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
               const SizedBox(width: 8),
               _GenderChip(
-                label: 'Girl',
+                label: AppStrings.of(context).girl,
                 icon: Icons.face_3_rounded,
                 selected: gender == 'girl',
                 color: AppTheme.pink,
@@ -198,7 +197,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
               ),
               const SizedBox(width: 8),
               _GenderChip(
-                label: 'Boy',
+                label: AppStrings.of(context).boy,
                 icon: Icons.face_rounded,
                 selected: gender == 'boy',
                 color: AppTheme.skyBlue,
@@ -209,8 +208,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child:
-                  Text('Cancel', style: GoogleFonts.nunito(color: Colors.grey)),
+              child: Text(AppStrings.of(context).cancel,
+                  style: GoogleFonts.nunito(color: Colors.grey)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -256,7 +255,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                   _showError('Could not add child: $e');
                 }
               },
-              child: Text('Add Child',
+              child: Text(AppStrings.of(context).addChild,
                   style:
                       GoogleFonts.nunito(fontWeight: FontWeight.w700)),
             ),
@@ -281,7 +280,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
         return AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Text('Edit ${child.name}',
+          title: Text(AppStrings.of(context).editChildTitle(child.name),
               style: GoogleFonts.nunito(
                   fontWeight: FontWeight.w800, color: AppTheme.tealDark)),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -289,7 +288,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
               controller: nameCtrl,
               style: GoogleFonts.nunito(),
               decoration: InputDecoration(
-                labelText: 'Child Name',
+                labelText: AppStrings.of(context).childName,
                 labelStyle: GoogleFonts.nunito(color: AppTheme.tealMid),
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
@@ -302,7 +301,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
             ),
             const SizedBox(height: 16),
             Row(children: [
-              Text('Age:',
+              Text('${AppStrings.of(context).ageLabel}:',
                   style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
               const SizedBox(width: 12),
               DropdownButton<int>(
@@ -321,11 +320,11 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
             ]),
             const SizedBox(height: 12),
             Row(children: [
-              Text('Gender:',
+              Text('${AppStrings.of(context).genderLabel}:',
                   style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
               const SizedBox(width: 8),
               _GenderChip(
-                label: 'Girl',
+                label: AppStrings.of(context).girl,
                 icon: Icons.face_3_rounded,
                 selected: gender == 'girl',
                 color: AppTheme.pink,
@@ -333,7 +332,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
               ),
               const SizedBox(width: 8),
               _GenderChip(
-                label: 'Boy',
+                label: AppStrings.of(context).boy,
                 icon: Icons.face_rounded,
                 selected: gender == 'boy',
                 color: AppTheme.skyBlue,
@@ -344,8 +343,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child:
-                  Text('Cancel', style: GoogleFonts.nunito(color: Colors.grey)),
+              child: Text(AppStrings.of(context).cancel,
+                  style: GoogleFonts.nunito(color: Colors.grey)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -379,7 +378,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
 
                 setState(() => _children[index] = updated);
               },
-              child: Text('Save',
+              child: Text(AppStrings.of(context).save,
                   style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
             ),
           ],
@@ -398,15 +397,15 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
       builder: (_) => AlertDialog(
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Remove ${child.name}?',
+        title: Text(AppStrings.of(context).removeChildTitle(child.name),
             style: GoogleFonts.nunito(fontWeight: FontWeight.w800)),
-        content: Text('This will delete all progress for this child.',
+        content: Text(AppStrings.of(context).removeChildBody,
             style: GoogleFonts.nunito()),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child:
-                Text('Cancel', style: GoogleFonts.nunito(color: Colors.grey)),
+            child: Text(AppStrings.of(context).cancel,
+                style: GoogleFonts.nunito(color: Colors.grey)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -436,7 +435,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                 if (_expandedIndex == index) _expandedIndex = null;
               });
             },
-            child: Text('Remove',
+            child: Text(AppStrings.of(context).remove,
                 style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
           ),
         ],
@@ -475,6 +474,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
             _children.length;
     final totalStreak = _children.fold<int>(0, (s, c) => s + c.streak);
     final isArabic = AppStrings.of(context).isArabic;
+    final s = AppStrings.of(context);
 
     return Scaffold(
       body: AppBackground(
@@ -512,12 +512,12 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                       ),
                       const SizedBox(width: 10),
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Parent Dashboard',
+                        Text(s.parentDashboard,
                             style: GoogleFonts.nunito(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w900,
                                 color: AppTheme.tealDark)),
-                        Text('Track your children\'s progress',
+                        Text(s.parentDashboardSubtitle,
                             style: GoogleFonts.nunito(
                                 fontSize: 11, color: AppTheme.tealMid)),
                       ]),
@@ -551,7 +551,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                             Expanded(
                               child: _SummaryCard(
                                 icon: Icons.menu_book_rounded,
-                                label: 'Total Lessons',
+                                label: s.totalLessons,
                                 value: '$totalLessons',
                                 color: AppTheme.tealPrimary,
                               ),
@@ -560,7 +560,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                             Expanded(
                               child: _SummaryCard(
                                 icon: Icons.trending_up_rounded,
-                                label: 'Avg Progress',
+                                label: s.avgProgress,
                                 value: '${(avgProgress * 100).toInt()}%',
                                 color: AppTheme.skyBlue,
                               ),
@@ -569,8 +569,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                             Expanded(
                               child: _SummaryCard(
                                 icon: Icons.local_fire_department_rounded,
-                                label: 'Total Streak',
-                                value: '$totalStreak days',
+                                label: s.totalStreak,
+                                value: s.days(totalStreak),
                                 color: AppTheme.orange,
                               ),
                             ),
@@ -581,7 +581,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                           // ── Children header + Add button ───────────────────
                           Row(children: [
                             Text(
-                              'Your Children (${_children.length})',
+                              s.yourChildren(_children.length),
                               style: GoogleFonts.nunito(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,
@@ -615,7 +615,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                                           color: Colors.white,
                                           size: 18),
                                       const SizedBox(width: 6),
-                                      Text('Add Child',
+                                      Text(s.addChild,
                                           style: GoogleFonts.nunito(
                                               fontSize: 13,
                                               fontWeight: FontWeight.w700,
@@ -723,6 +723,7 @@ class _ChildProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       margin: const EdgeInsets.only(bottom: 14),
@@ -784,14 +785,14 @@ class _ChildProgressCard extends StatelessWidget {
                             color: AppTheme.tealPrimary.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text('Lv ${_effectiveLevel(child)}',
+                          child: Text(s.levelBadge(_effectiveLevel(child)),
                               style: GoogleFonts.nunito(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   color: AppTheme.tealDark)),
                         ),
                         const SizedBox(width: 6),
-                        Text('Age ${child.age}',
+                        Text(s.ageYears(child.age),
                             style: GoogleFonts.nunito(
                                 fontSize: 11, color: Colors.grey.shade500)),
                       ]),
@@ -808,7 +809,10 @@ class _ChildProgressCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${_effectiveLevel(child) - 1} / ${child.totalLevels} levels  •  ${(_effectiveProgress(child) * 100).toInt()}%',
+                        s.levelProgress(
+                            _effectiveLevel(child) - 1,
+                            child.totalLevels,
+                            (_effectiveProgress(child) * 100).toInt()),
                         style: GoogleFonts.nunito(
                             fontSize: 11, color: Colors.grey.shade500),
                       ),
@@ -834,22 +838,22 @@ class _ChildProgressCard extends StatelessWidget {
               Row(children: [
                 _MiniStat(
                     icon: Icons.check_circle_outline_rounded,
-                    label: 'Passed',
+                    label: s.passed,
                     value: '${child.completedChallengeIds.length}',
                     color: AppTheme.tealPrimary),
                 _MiniStat(
                     icon: Icons.refresh_rounded,
-                    label: 'Attempts',
+                    label: s.attemptsLabel,
                     value: '${child.attempts}',
                     color: AppTheme.skyBlue),
                 _MiniStat(
                     icon: Icons.local_fire_department_rounded,
-                    label: 'Streak',
+                    label: s.streakLabel,
                     value: '${child.streak}d',
                     color: AppTheme.orange),
                 _MiniStat(
                     icon: Icons.calendar_today_rounded,
-                    label: 'Joined',
+                    label: s.joined,
                     value: child.joinDate,
                     color: AppTheme.pink,
                     small: true),
@@ -857,7 +861,7 @@ class _ChildProgressCard extends StatelessWidget {
               const SizedBox(height: 14),
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Recent Sessions',
+                child: Text(s.recentSessions,
                     style: GoogleFonts.nunito(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
@@ -865,7 +869,7 @@ class _ChildProgressCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               if (child.recentSessions.isEmpty)
-                Text('No sessions yet.',
+                Text(s.noSessionsYet,
                     style: GoogleFonts.nunito(
                         color: Colors.grey, fontSize: 13))
               else
@@ -883,7 +887,7 @@ class _ChildProgressCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(14)),
                     ),
                     icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: Text('Edit',
+                    label: Text(s.edit,
                         style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
                     onPressed: onEdit,   // ← calls real edit dialog
                   ),
@@ -899,7 +903,7 @@ class _ChildProgressCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(14)),
                     ),
                     icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                    label: Text('Remove',
+                    label: Text(s.remove,
                         style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
                     onPressed: onDelete,
                   ),
@@ -1002,7 +1006,7 @@ class _SessionRow extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
-            session.passed ? 'Passed' : 'Failed',
+            session.passed ? AppStrings.of(context).passed : AppStrings.of(context).failed,
             style: GoogleFonts.nunito(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -1027,13 +1031,13 @@ class _EmptyState extends StatelessWidget {
         const Icon(Icons.child_care_rounded,
             color: AppTheme.tealPrimary, size: 60),
         const SizedBox(height: 14),
-        Text('No children added yet',
+        Text(AppStrings.of(context).noChildrenAddedYet,
             style: GoogleFonts.nunito(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: AppTheme.tealDark)),
         const SizedBox(height: 6),
-        Text('Tap "Add Child" to create a profile',
+        Text(AppStrings.of(context).tapAddChildHint,
             style: GoogleFonts.nunito(
                 fontSize: 13, color: Colors.grey.shade500)),
       ]),
