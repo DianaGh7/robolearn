@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>RoboLearn uses Bluetooth to send programs to your robot screen.</string>
 </dict>
 </plist>
