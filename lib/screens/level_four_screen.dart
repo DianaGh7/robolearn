@@ -24,18 +24,13 @@ class LevelFourScreen extends StatefulWidget {
   final ChildModel child;
   final VarChallenge challenge;
 
-  const LevelFourScreen({
-    super.key,
-    required this.child,
-    required this.challenge,
-  });
+  const LevelFourScreen({super.key, required this.child, required this.challenge});
 
   @override
   State<LevelFourScreen> createState() => _LevelFourScreenState();
 }
 
-class _LevelFourScreenState extends State<LevelFourScreen>
-    with TickerProviderStateMixin {
+class _LevelFourScreenState extends State<LevelFourScreen> with TickerProviderStateMixin {
   late List<CodeBlock> arrangedBlocks;
   late ChildModel _progressChild;
   late AnimationController _glowController;
@@ -54,39 +49,32 @@ class _LevelFourScreenState extends State<LevelFourScreen>
   bool _showCelebrationOverlay = false;
   bool _showFailToast = false;
   bool _showConnectedToast = false;
+  bool _suppressFailToast = false;
   bool _challengeSuccessfullyCompleted = false;
   bool _streakRenewed = false;
   int? _activeBlockIndex;
   late List<CodeBlockType> _availableBlocks;
-  _RobotConnectionStatus _connectionStatus =
-      _RobotConnectionStatus.disconnected;
+  _RobotConnectionStatus _connectionStatus = _RobotConnectionStatus.disconnected;
 
   @override
   void initState() {
     super.initState();
     arrangedBlocks = [];
     _progressChild = widget.child;
-    _challengeSuccessfullyCompleted =
-        widget.child.completedChallengeIds.contains(widget.challenge.number);
-    _availableBlocks = {
-      ...widget.challenge.availableBlocks,
-      CodeBlockType.start,
-      CodeBlockType.end,
-    }.toList()
+    _challengeSuccessfullyCompleted = widget.child.completedChallengeIds.contains(widget.challenge.number);
+    _availableBlocks = {...widget.challenge.availableBlocks, CodeBlockType.start, CodeBlockType.end}.toList()
       ..shuffle();
 
-    _glowController = AnimationController(
-      duration: const Duration(milliseconds: 900),
-      vsync: this,
-    )..repeat(reverse: true);
-    _glowAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
-    );
+    _glowController = AnimationController(duration: const Duration(milliseconds: 900), vsync: this)
+      ..repeat(reverse: true);
+    _glowAnim = Tween<double>(
+      begin: 0.6,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _glowController, curve: Curves.easeInOut));
 
     final bool isFirstLevel4Visit =
         widget.challenge.number == VarChallenge.varChallenges.first.number &&
-            !VarChallenge.varChallenges.any(
-                (c) => widget.child.completedChallengeIds.contains(c.number));
+        !VarChallenge.varChallenges.any((c) => widget.child.completedChallengeIds.contains(c.number));
 
     if (isFirstLevel4Visit) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -114,8 +102,7 @@ class _LevelFourScreenState extends State<LevelFourScreen>
     final block = arrangedBlocks[index];
     if (_isContainerBlock(block.type)) {
       int end = index + 1;
-      while (end < arrangedBlocks.length &&
-          arrangedBlocks[end].nesting > block.nesting) {
+      while (end < arrangedBlocks.length && arrangedBlocks[end].nesting > block.nesting) {
         end++;
       }
       setState(() => arrangedBlocks.removeRange(index, end));
@@ -127,10 +114,7 @@ class _LevelFourScreenState extends State<LevelFourScreen>
   void _insertBlockAt(CodeBlockType type, int index, [int nesting = 0]) {
     if (_isExecuting) return;
     setState(() {
-      arrangedBlocks.insert(
-        index.clamp(0, arrangedBlocks.length),
-        CodeBlock.fromType(type, nesting: nesting),
-      );
+      arrangedBlocks.insert(index.clamp(0, arrangedBlocks.length), CodeBlock.fromType(type, nesting: nesting));
     });
   }
 
@@ -147,12 +131,7 @@ class _LevelFourScreenState extends State<LevelFourScreen>
       final block = arrangedBlocks.removeAt(fromIndex);
       final adjusted = fromIndex < toIndex ? toIndex - 1 : toIndex;
       final updated = block.nesting != newNesting
-          ? CodeBlock(
-              id: block.id,
-              type: block.type,
-              label: block.label,
-              color: block.color,
-              nesting: newNesting)
+          ? CodeBlock(id: block.id, type: block.type, label: block.label, color: block.color, nesting: newNesting)
           : block;
       arrangedBlocks.insert(adjusted, updated);
     });
@@ -160,19 +139,14 @@ class _LevelFourScreenState extends State<LevelFourScreen>
 
   bool get _hasValidStartEndOrder {
     if (arrangedBlocks.length < 2) return false;
-    return arrangedBlocks.first.type == CodeBlockType.start &&
-        arrangedBlocks.last.type == CodeBlockType.end;
+    return arrangedBlocks.first.type == CodeBlockType.start && arrangedBlocks.last.type == CodeBlockType.end;
   }
 
   bool _isContainerBlock(CodeBlockType type) =>
-      type == CodeBlockType.varRepeat3 ||
-      type == CodeBlockType.varIfHot ||
-      type == CodeBlockType.varElse;
+      type == CodeBlockType.varRepeat3 || type == CodeBlockType.varIfHot || type == CodeBlockType.varElse;
 
   bool _nestingMatches(List<int> correctNesting) {
-    final filtered = arrangedBlocks
-        .where((b) => b.type != CodeBlockType.start && b.type != CodeBlockType.end)
-        .toList();
+    final filtered = arrangedBlocks.where((b) => b.type != CodeBlockType.start && b.type != CodeBlockType.end).toList();
     if (filtered.length != correctNesting.length) return false;
     for (int i = 0; i < filtered.length; i++) {
       if (filtered[i].nesting != correctNesting[i]) return false;
@@ -191,26 +165,39 @@ class _LevelFourScreenState extends State<LevelFourScreen>
   }
 
   void _showFailNotification() {
-    if (!mounted) return;
-    setState(() => _showFailToast = true);
+    if (!mounted || _suppressFailToast) return;
+    setState(() {
+      _showFailToast = true;
+      _showConnectedToast = false;
+    });
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _showFailToast = false);
+      if (mounted) {
+        setState(() => _showFailToast = false);
+      }
     });
   }
 
   void _showConnectedNotification() {
     if (!mounted) return;
-    setState(() => _showConnectedToast = true);
+    setState(() {
+      _suppressFailToast = true;
+      _showConnectedToast = true;
+      _showFailToast = false;
+    });
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _showConnectedToast = false);
+      if (mounted) {
+        setState(() {
+          _showConnectedToast = false;
+          _suppressFailToast = false;
+        });
+      }
     });
   }
 
   // ── Progress tracking ──────────────────────────────────────────────────────
 
   ChildModel _markChallengeCompleted() {
-    final completedSet = <int>{..._progressChild.completedChallengeIds}
-      ..add(widget.challenge.number);
+    final completedSet = <int>{..._progressChild.completedChallengeIds}..add(widget.challenge.number);
     final challenges = VarChallenge.varChallenges;
     int reachedIndex = 0;
     for (int i = 0; i < challenges.length; i++) {
@@ -219,8 +206,7 @@ class _LevelFourScreenState extends State<LevelFourScreen>
         break;
       }
     }
-    final progressMap =
-        Map<int, int>.from(_progressChild.subLevelProgressByLevel);
+    final progressMap = Map<int, int>.from(_progressChild.subLevelProgressByLevel);
     final oldProgress = progressMap[4] ?? 0;
     final steppedProgress = (oldProgress + 1).clamp(0, challenges.length);
     progressMap[4] = math.max(steppedProgress, reachedIndex);
@@ -276,7 +262,10 @@ class _LevelFourScreenState extends State<LevelFourScreen>
         _variables['score'] = (_variables['score'] ?? 0) + 5;
         setState(() => _addSideLog('+5  →  score = ${_variables['score']}'));
       case CodeBlockType.varShowScore:
-        setState(() { _screenOutput = '${_variables['score'] ?? 0}'; _screenActive = true; });
+        setState(() {
+          _screenOutput = '${_variables['score'] ?? 0}';
+          _screenActive = true;
+        });
       case CodeBlockType.varSetCount:
         _variables['count'] = 0;
         setState(() => _addSideLog('count = 0'));
@@ -284,7 +273,10 @@ class _LevelFourScreenState extends State<LevelFourScreen>
         _variables['count'] = (_variables['count'] ?? 0) + 1;
         setState(() => _addSideLog('+1  →  count = ${_variables['count']}'));
       case CodeBlockType.varShowCount:
-        setState(() { _screenOutput = '${_variables['count'] ?? 0}'; _screenActive = true; });
+        setState(() {
+          _screenOutput = '${_variables['count'] ?? 0}';
+          _screenActive = true;
+        });
       case CodeBlockType.varSetTempHot:
         _variables['temp'] = 40;
         setState(() => _addSideLog('temp = 40'));
@@ -292,11 +284,17 @@ class _LevelFourScreenState extends State<LevelFourScreen>
         _conditionMet = (_variables['temp'] ?? 0) > 30;
         setState(() => _addSideLog('temp > 30  →  ${_conditionMet ? "✓ hot" : "✗ cold"}'));
       case CodeBlockType.varShowSun:
-        setState(() { _screenOutput = '☀️'; _screenActive = true; });
+        setState(() {
+          _screenOutput = '☀️';
+          _screenActive = true;
+        });
       case CodeBlockType.varElse:
         setState(() => _addSideLog(_conditionMet ? 'skip ELSE' : 'run ELSE'));
       case CodeBlockType.varShowSnow:
-        setState(() { _screenOutput = '❄️'; _screenActive = true; });
+        setState(() {
+          _screenOutput = '❄️';
+          _screenActive = true;
+        });
       case CodeBlockType.varSetA:
         _variables['speedA'] = 8;
         setState(() => _addSideLog('speedA = 8'));
@@ -331,7 +329,11 @@ class _LevelFourScreenState extends State<LevelFourScreen>
         setState(() => _addSideLog('💧  water = ${_variables['water']}'));
       case CodeBlockType.varShowPlant:
         final w = _variables['water'] ?? 0;
-        final plantStage = w >= 3 ? '🌻' : w == 2 ? '🌿' : '🌱';
+        final plantStage = w >= 3
+            ? '🌻'
+            : w == 2
+            ? '🌿'
+            : '🌱';
         setState(() {
           _screenOutput = plantStage;
           _screenActive = true;
@@ -347,11 +349,15 @@ class _LevelFourScreenState extends State<LevelFourScreen>
   Future<void> _executeVarSequence() async {
     if (_isExecuting) return;
     if (!_hasValidStartEndOrder) {
-      setState(() { _progressChild = _progressChild.copyWith(attempts: _progressChild.attempts + 1); });
+      setState(() {
+        _progressChild = _progressChild.copyWith(attempts: _progressChild.attempts + 1);
+      });
       _showFailNotification();
       final childId = _progressChild.childId;
       if (childId != null) {
-        _progressService.registerChallengeFail(childId: childId, child: _progressChild).catchError((_) => _progressChild);
+        _progressService
+            .registerChallengeFail(childId: childId, child: _progressChild)
+            .catchError((_) => _progressChild);
       }
       return;
     }
@@ -384,7 +390,10 @@ class _LevelFourScreenState extends State<LevelFourScreen>
         final (idx, block) = pairs[i];
 
         // Skip nested blocks — handled inside their container's loop
-        if (block.nesting > 0) { i++; continue; }
+        if (block.nesting > 0) {
+          i++;
+          continue;
+        }
 
         if (block.type == CodeBlockType.varRepeat3) {
           setState(() => _activeBlockIndex = idx);
@@ -408,7 +417,6 @@ class _LevelFourScreenState extends State<LevelFourScreen>
             }
           }
           i = j;
-
         } else if (block.type == CodeBlockType.varIfHot) {
           setState(() => _activeBlockIndex = idx);
           await Future.delayed(const Duration(milliseconds: 450));
@@ -434,7 +442,6 @@ class _LevelFourScreenState extends State<LevelFourScreen>
             }
           }
           i = j;
-
         } else if (block.type == CodeBlockType.varElse) {
           setState(() => _activeBlockIndex = idx);
           _applyVarAction(block.type);
@@ -458,7 +465,6 @@ class _LevelFourScreenState extends State<LevelFourScreen>
             }
           }
           i = j;
-
         } else {
           setState(() => _activeBlockIndex = idx);
           await Future.delayed(const Duration(milliseconds: 450));
@@ -479,10 +485,8 @@ class _LevelFourScreenState extends State<LevelFourScreen>
 
       final isCorrect =
           sequence.length == widget.challenge.correctSequence.length &&
-              sequence.asMap().entries.every(
-                  (e) => e.value == widget.challenge.correctSequence[e.key]) &&
-              (widget.challenge.correctNesting == null ||
-                  _nestingMatches(widget.challenge.correctNesting!));
+          sequence.asMap().entries.every((e) => e.value == widget.challenge.correctSequence[e.key]) &&
+          (widget.challenge.correctNesting == null || _nestingMatches(widget.challenge.correctNesting!));
 
       if (isCorrect) {
         success = true;
@@ -523,16 +527,25 @@ class _LevelFourScreenState extends State<LevelFourScreen>
         _showFailNotification();
         await Future.delayed(const Duration(milliseconds: 1500));
         if (!mounted) return;
-        setState(() { _screenOutput = ''; _screenActive = false; _isExecuting = false; });
+        setState(() {
+          _screenOutput = '';
+          _screenActive = false;
+          _isExecuting = false;
+        });
         final childId = _progressChild.childId;
         if (childId != null) {
-          _progressService.registerChallengeFail(childId: childId, child: _progressChild)
+          _progressService
+              .registerChallengeFail(childId: childId, child: _progressChild)
               .catchError((_) => _progressChild);
         }
       }
     } catch (e) {
       // Safety net: always reset execution state
-      if (mounted) setState(() { _isExecuting = false; _activeBlockIndex = null; });
+      if (mounted)
+        setState(() {
+          _isExecuting = false;
+          _activeBlockIndex = null;
+        });
     } finally {
       // Guarantee: if success path didn't reset _isExecuting, do it now
       if (mounted && !success && _isExecuting) {
@@ -546,13 +559,9 @@ class _LevelFourScreenState extends State<LevelFourScreen>
   void _showTutorial() {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (ctx2, anim, _) => LevelFourIntroScreen(
-          child: _progressChild,
-          challenge: widget.challenge,
-          isReplay: true,
-        ),
-        transitionsBuilder: (ctx2, anim, _, child) =>
-            FadeTransition(opacity: anim, child: child),
+        pageBuilder: (ctx2, anim, _) =>
+            LevelFourIntroScreen(child: _progressChild, challenge: widget.challenge, isReplay: true),
+        transitionsBuilder: (ctx2, anim, _, child) => FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 400),
       ),
     );
@@ -573,16 +582,12 @@ class _LevelFourScreenState extends State<LevelFourScreen>
 
   Future<void> _goToPreviousChallenge() async {
     final challenges = VarChallenge.varChallenges;
-    final prev = challenges.firstWhere(
-      (c) => c.number == widget.challenge.number - 1,
-      orElse: () => challenges.first,
-    );
+    final prev = challenges.firstWhere((c) => c.number == widget.challenge.number - 1, orElse: () => challenges.first);
     if (prev.number == widget.challenge.number) return;
     final updated = await Navigator.push<ChildModel>(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            LevelFourScreen(child: _progressChild, challenge: prev),
+        builder: (_) => LevelFourScreen(child: _progressChild, challenge: prev),
       ),
     );
     if (mounted) Navigator.pop(context, updated ?? _progressChild);
@@ -590,10 +595,7 @@ class _LevelFourScreenState extends State<LevelFourScreen>
 
   Future<void> _goToNextChallenge() async {
     final challenges = VarChallenge.varChallenges;
-    final next = challenges.firstWhere(
-      (c) => c.number == widget.challenge.number + 1,
-      orElse: () => challenges.last,
-    );
+    final next = challenges.firstWhere((c) => c.number == widget.challenge.number + 1, orElse: () => challenges.last);
     if (next.number == widget.challenge.number) {
       Navigator.pop(context, _progressChild);
       return;
@@ -601,8 +603,7 @@ class _LevelFourScreenState extends State<LevelFourScreen>
     final updated = await Navigator.push<ChildModel>(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            LevelFourScreen(child: _progressChild, challenge: next),
+        builder: (_) => LevelFourScreen(child: _progressChild, challenge: next),
       ),
     );
     if (mounted) Navigator.pop(context, updated ?? _progressChild);
@@ -619,193 +620,213 @@ class _LevelFourScreenState extends State<LevelFourScreen>
         Navigator.pop(context, _progressChild);
       },
       child: Scaffold(
-      body: Stack(
-        children: [
-          // Same gradient as Level 3
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFFD4F5EE), Color(0xFFB0ECD9), Color(0xFFCAF0FC)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+        body: Stack(
+          children: [
+            // Same gradient as Level 3
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFD4F5EE), Color(0xFFB0ECD9), Color(0xFFCAF0FC)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
             ),
-          ),
-          SafeArea(
-            child: Column(
-              children: [
-                _HeaderBar(
-                  child: _progressChild,
-                  challenge: widget.challenge,
-                  connectionStatus: _connectionStatus,
-                  onConnectPressed: _handleConnect,
-                  onBackPressed: () => Navigator.pop(context, _progressChild),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final totalHeight = constraints.maxHeight;
-                        final codeAreaHeight =
-                            (totalHeight * 0.65).clamp(360.0, 560.0);
-                        return SingleChildScrollView(
-                          padding: const EdgeInsets.only(bottom: 84),
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(minHeight: totalHeight),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _InstructionCard(
-                                  instruction: AppStrings.of(context).challengeInstruction(
-                                    widget.challenge.number,
-                                    widget.challenge.instruction,
+            SafeArea(
+              child: Column(
+                children: [
+                  _HeaderBar(
+                    child: _progressChild,
+                    challenge: widget.challenge,
+                    connectionStatus: _connectionStatus,
+                    onConnectPressed: _handleConnect,
+                    onBackPressed: () => Navigator.pop(context, _progressChild),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final totalHeight = constraints.maxHeight;
+                          final codeAreaHeight = (totalHeight * 0.65).clamp(360.0, 560.0);
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.only(bottom: 84),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(minHeight: totalHeight),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _InstructionCard(
+                                    instruction: AppStrings.of(
+                                      context,
+                                    ).challengeInstruction(widget.challenge.number, widget.challenge.instruction),
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                _VarVisualizationCard(
-                                  screenOutput: _screenOutput,
-                                  screenActive: _screenActive,
-                                  glowAnim: _glowAnim,
-                                  sideLog: _sideLog,
-                                ),
-                                const SizedBox(height: 4),
-                                SizedBox(
-                                  height: codeAreaHeight,
-                                  child: _CodeBlocksArea(
-                                    arrangedBlocks: arrangedBlocks,
-                                    onRemoveBlock: _removeBlock,
-                                    onMoveBlock: _moveBlock,
-                                    onInsertBlockAt: _insertBlockAt,
-                                    availableBlocks: _availableBlocks,
-                                    onAddBlock: _addBlock,
-                                    isExecuting: _isExecuting,
-                                    activeBlockIndex: _activeBlockIndex,
-                                    onRun: _executeVarSequence,
-                                    onShowTutorial: _showTutorial,
+                                  const SizedBox(height: 4),
+                                  _VarVisualizationCard(
+                                    screenOutput: _screenOutput,
+                                    screenActive: _screenActive,
+                                    glowAnim: _glowAnim,
+                                    sideLog: _sideLog,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 4),
+                                  SizedBox(
+                                    height: codeAreaHeight,
+                                    child: _CodeBlocksArea(
+                                      arrangedBlocks: arrangedBlocks,
+                                      onRemoveBlock: _removeBlock,
+                                      onMoveBlock: _moveBlock,
+                                      onInsertBlockAt: _insertBlockAt,
+                                      availableBlocks: _availableBlocks,
+                                      onAddBlock: _addBlock,
+                                      isExecuting: _isExecuting,
+                                      activeBlockIndex: _activeBlockIndex,
+                                      onRun: _executeVarSequence,
+                                      onShowTutorial: _showTutorial,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Toast banners
-          Positioned(
-            top: 16, left: 16, right: 16,
-            child: IgnorePointer(
-              ignoring: !_showFailToast && !_showConnectedToast,
-              child: AnimatedSlide(
-                offset: (_showFailToast || _showConnectedToast) ? Offset.zero : const Offset(0, -1),
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeOut,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 220),
-                  opacity: (_showFailToast || _showConnectedToast) ? 1 : 0,
-                  child: SafeArea(
-                    bottom: false,
-                    child: _showConnectedToast ? const _ConnectedBanner() : const _FailBanner(),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Prev / Next bar
-          Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
-                border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: widget.challenge.displayNumber > 1 ? _goToPreviousChallenge : null,
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: widget.challenge.displayNumber > 1 ? const Color(0xFF9E9E9E) : Colors.grey.shade300,
-                            width: 1.5,
-                          ),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.arrow_back_rounded,
-                                color: widget.challenge.displayNumber > 1 ? const Color(0xFF616161) : Colors.grey.shade400,
-                                size: 18),
-                            const SizedBox(width: 6),
-                            Text(AppStrings.of(context).previous,
-                                style: GoogleFonts.nunito(
-                                  fontSize: 14, fontWeight: FontWeight.w800,
-                                  color: widget.challenge.displayNumber > 1 ? const Color(0xFF616161) : Colors.grey.shade400,
-                                )),
-                          ],
-                        ),
+                          );
+                        },
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _challengeSuccessfullyCompleted ? _goToNextChallenge : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _challengeSuccessfullyCompleted ? const Color(0xFF4CAF50) : Colors.grey.shade300,
-                          disabledBackgroundColor: Colors.grey.shade300,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(AppStrings.of(context).next,
+                  ),
+                ],
+              ),
+            ),
+
+            // Toast banners
+            Positioned(
+              top: 16,
+              left: 16,
+              right: 16,
+              child: IgnorePointer(
+                ignoring: !_showFailToast && !_showConnectedToast,
+                child: AnimatedSlide(
+                  offset: (_showFailToast || _showConnectedToast) ? Offset.zero : const Offset(0, -1),
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOut,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    opacity: (_showFailToast || _showConnectedToast) ? 1 : 0,
+                    child: SafeArea(
+                      bottom: false,
+                      child: _showConnectedToast ? const _ConnectedBanner() : const _FailBanner(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Prev / Next bar
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.95),
+                  border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: widget.challenge.displayNumber > 1 ? _goToPreviousChallenge : null,
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: widget.challenge.displayNumber > 1
+                                  ? const Color(0xFF9E9E9E)
+                                  : Colors.grey.shade300,
+                              width: 1.5,
+                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.arrow_back_rounded,
+                                color: widget.challenge.displayNumber > 1
+                                    ? const Color(0xFF616161)
+                                    : Colors.grey.shade400,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                AppStrings.of(context).previous,
                                 style: GoogleFonts.nunito(
-                                  fontSize: 14, fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: widget.challenge.displayNumber > 1
+                                      ? const Color(0xFF616161)
+                                      : Colors.grey.shade400,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _challengeSuccessfullyCompleted ? _goToNextChallenge : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _challengeSuccessfullyCompleted
+                                ? const Color(0xFF4CAF50)
+                                : Colors.grey.shade300,
+                            disabledBackgroundColor: Colors.grey.shade300,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                AppStrings.of(context).next,
+                                style: GoogleFonts.nunito(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
                                   color: _challengeSuccessfullyCompleted ? Colors.white : Colors.grey.shade600,
-                                )),
-                            const SizedBox(width: 6),
-                            Icon(Icons.arrow_forward_rounded,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(
+                                Icons.arrow_forward_rounded,
                                 color: _challengeSuccessfullyCompleted ? Colors.white : Colors.grey.shade600,
-                                size: 18),
-                          ],
+                                size: 18,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // Celebration
-          if (_showCelebrationOverlay)
-            CelebrationOverlay(
-              streak: _progressChild.streak,
-              streakRenewed: _streakRenewed,
-              onDismiss: () => setState(() => _showCelebrationOverlay = false),
-              onContinue: () {
-                setState(() => _showCelebrationOverlay = false);
-                _goToNextChallenge();
-              },
-            ),
-        ],
-      ),
-    ), // Scaffold
+            // Celebration
+            if (_showCelebrationOverlay)
+              CelebrationOverlay(
+                streak: _progressChild.streak,
+                streakRenewed: _streakRenewed,
+                onDismiss: () => setState(() => _showCelebrationOverlay = false),
+                onContinue: () {
+                  setState(() => _showCelebrationOverlay = false);
+                  _goToNextChallenge();
+                },
+              ),
+          ],
+        ),
+      ), // Scaffold
     ); // PopScope
   }
 }
@@ -854,8 +875,10 @@ class _HeaderBar extends StatelessWidget {
           Expanded(
             child: Row(
               children: [
-                Text('${challenge.displayNumber})',
-                    style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.tealMid)),
+                Text(
+                  '${challenge.displayNumber})',
+                  style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.tealMid),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -892,12 +915,14 @@ class _HeaderBar extends StatelessWidget {
                       connectionStatus == _RobotConnectionStatus.disconnected
                           ? Icons.bluetooth_searching_rounded
                           : Icons.hourglass_top_rounded,
-                      color: Colors.white, size: 13,
+                      color: Colors.white,
+                      size: 13,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       connectionStatus == _RobotConnectionStatus.disconnected
-                          ? AppStrings.of(context).connectBtn : '...',
+                          ? AppStrings.of(context).connectBtn
+                          : '...',
                       style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
                     ),
                   ],
@@ -909,7 +934,8 @@ class _HeaderBar extends StatelessWidget {
           GestureDetector(
             onTap: () => showChildProfileDialog(context, child),
             child: Container(
-              width: 34, height: 34,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: const LinearGradient(
@@ -918,10 +944,18 @@ class _HeaderBar extends StatelessWidget {
                   end: Alignment.bottomRight,
                 ),
                 border: Border.all(color: Colors.white, width: 1.8),
-                boxShadow: [BoxShadow(color: AppTheme.tealPrimary.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 2))],
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               padding: const EdgeInsets.all(2.5),
-              child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender)),
+              child: ClipOval(
+                child: AvatarFace(seed: child.avatarSeed, gender: child.gender),
+              ),
             ),
           ),
         ],
@@ -958,7 +992,10 @@ class _RobotStatusBadge extends StatelessWidget {
           Icon(d.$2, size: compact ? 11 : 13, color: d.$1),
           if (!compact) ...[
             const SizedBox(width: 5),
-            Text(d.$3, style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w800, color: d.$1)),
+            Text(
+              d.$3,
+              style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w800, color: d.$1),
+            ),
           ],
         ],
       ),
@@ -969,9 +1006,17 @@ class _RobotStatusBadge extends StatelessWidget {
     final str = AppStrings.of(context);
     return switch (s) {
       _RobotConnectionStatus.disconnected => (const Color(0xFFD84343), Icons.bluetooth_disabled_rounded, str.offline),
-      _RobotConnectionStatus.connecting   => (const Color(0xFFE7A63D), Icons.bluetooth_searching_rounded, str.connectingStatus),
-      _RobotConnectionStatus.connected    => (const Color(0xFF2A9D7D), Icons.bluetooth_connected_rounded, str.connectedStatus),
-      _RobotConnectionStatus.executing    => (const Color(0xFF4D8ED8), Icons.smart_toy_rounded, str.executingStatus),
+      _RobotConnectionStatus.connecting => (
+        const Color(0xFFE7A63D),
+        Icons.bluetooth_searching_rounded,
+        str.connectingStatus,
+      ),
+      _RobotConnectionStatus.connected => (
+        const Color(0xFF2A9D7D),
+        Icons.bluetooth_connected_rounded,
+        str.connectedStatus,
+      ),
+      _RobotConnectionStatus.executing => (const Color(0xFF4D8ED8), Icons.smart_toy_rounded, str.executingStatus),
     };
   }
 }
@@ -1006,8 +1051,10 @@ class _InstructionCard extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(instruction,
-                style: GoogleFonts.nunito(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.black87, height: 1.45)),
+            child: Text(
+              instruction,
+              style: GoogleFonts.nunito(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.black87, height: 1.45),
+            ),
           ),
         ],
       ),
@@ -1063,33 +1110,42 @@ class _VarVisualizationCard extends StatelessWidget {
                     children: [
                       Icon(Icons.memory_rounded, size: 11, color: AppTheme.tealPrimary.withValues(alpha: 0.7)),
                       const SizedBox(width: 4),
-                      Text('vars',
-                          style: GoogleFonts.sourceCodePro(
-                              fontSize: 10, fontWeight: FontWeight.w700,
-                              color: AppTheme.tealPrimary.withValues(alpha: 0.7))),
+                      Text(
+                        'vars',
+                        style: GoogleFonts.sourceCodePro(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.tealPrimary.withValues(alpha: 0.7),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxHeight: 140),
                     child: sideLog.isEmpty
-                        ? Text('—',
-                            style: GoogleFonts.sourceCodePro(
-                                fontSize: 11, color: Colors.grey.shade400))
+                        ? Text('—', style: GoogleFonts.sourceCodePro(fontSize: 11, color: Colors.grey.shade400))
                         : SingleChildScrollView(
                             physics: const BouncingScrollPhysics(),
                             reverse: true,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
-                              children: sideLog.map((entry) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 2),
-                                    child: Text(entry,
+                              children: sideLog
+                                  .map(
+                                    (entry) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 2),
+                                      child: Text(
+                                        entry,
                                         style: GoogleFonts.sourceCodePro(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppTheme.tealDark)),
-                                  )).toList(),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.tealDark,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
                             ),
                           ),
                   ),
@@ -1118,10 +1174,13 @@ class _VarVisualizationCard extends StatelessWidget {
                     width: screenActive ? 1.8 : 1.2,
                   ),
                   boxShadow: screenActive
-                      ? [BoxShadow(
-                          color: AppTheme.tealPrimary.withValues(alpha: glowAnim.value * 0.35),
-                          blurRadius: 14 * glowAnim.value,
-                          spreadRadius: 1)]
+                      ? [
+                          BoxShadow(
+                            color: AppTheme.tealPrimary.withValues(alpha: glowAnim.value * 0.35),
+                            blurRadius: 14 * glowAnim.value,
+                            spreadRadius: 1,
+                          ),
+                        ]
                       : [],
                 ),
                 child: Center(
@@ -1180,9 +1239,7 @@ class _CodeBlocksArea extends StatelessWidget {
   });
 
   bool _isContainerBlock(CodeBlockType t) =>
-      t == CodeBlockType.varRepeat3 ||
-      t == CodeBlockType.varIfHot ||
-      t == CodeBlockType.varElse;
+      t == CodeBlockType.varRepeat3 || t == CodeBlockType.varIfHot || t == CodeBlockType.varElse;
 
   IconData _containerIcon(CodeBlockType t) {
     if (t == CodeBlockType.varRepeat3) return Icons.repeat_rounded;
@@ -1207,8 +1264,10 @@ class _CodeBlocksArea extends StatelessWidget {
             children: [
               const Icon(Icons.code_rounded, size: 14, color: AppTheme.tealPrimary),
               const SizedBox(width: 6),
-              Text(AppStrings.of(context).yourCode,
-                  style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.tealDark)),
+              Text(
+                AppStrings.of(context).yourCode,
+                style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.tealDark),
+              ),
               const Spacer(),
               GestureDetector(
                 onTap: onShowTutorial,
@@ -1231,12 +1290,24 @@ class _CodeBlocksArea extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isExecuting ? const Color(0xFF9CCFC5) : AppTheme.tealPrimary,
                     borderRadius: BorderRadius.circular(20),
-                    boxShadow: isExecuting ? null : [BoxShadow(color: AppTheme.tealPrimary.withValues(alpha: 0.35), blurRadius: 6, offset: const Offset(0, 2))],
+                    boxShadow: isExecuting
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: AppTheme.tealPrimary.withValues(alpha: 0.35),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(isExecuting ? Icons.hourglass_top_rounded : Icons.play_arrow_rounded, color: Colors.white, size: 15),
+                      Icon(
+                        isExecuting ? Icons.hourglass_top_rounded : Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 15,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         isExecuting ? AppStrings.of(context).running : AppStrings.of(context).run,
@@ -1275,8 +1346,10 @@ class _CodeBlocksArea extends StatelessWidget {
               children: [
                 const Icon(Icons.widgets_rounded, size: 13, color: AppTheme.tealPrimary),
                 const SizedBox(width: 5),
-                Text(AppStrings.of(context).availableBlocks,
-                    style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.tealDark)),
+                Text(
+                  AppStrings.of(context).availableBlocks,
+                  style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.tealDark),
+                ),
               ],
             ),
           ),
@@ -1302,7 +1375,11 @@ class _CodeBlocksArea extends StatelessWidget {
                     childWhenDragging: Opacity(opacity: 0.3, child: chip),
                     child: GestureDetector(
                       onTap: isExecuting ? null : () => onAddBlock(blockType),
-                      child: AnimatedOpacity(opacity: isExecuting ? 0.45 : 1, duration: const Duration(milliseconds: 200), child: chip),
+                      child: AnimatedOpacity(
+                        opacity: isExecuting ? 0.45 : 1,
+                        duration: const Duration(milliseconds: 200),
+                        child: chip,
+                      ),
                     ),
                   );
                 }).toList(),
@@ -1327,7 +1404,7 @@ class _CodeBlocksArea extends StatelessWidget {
               onInsertBlockAt(data.type!, 0, 0);
             }
           },
-        )
+        ),
       ];
     }
     return _buildBlocksInRange(context, screenWidth, 0, arrangedBlocks.length, 0);
@@ -1342,15 +1419,15 @@ class _CodeBlocksArea extends StatelessWidget {
     Color? parentColor,
   }) {
     _DropSlot makeDropSlot(int idx) => _DropSlot(
-          isExecuting: isExecuting,
-          onAccept: (data) {
-            if (data.fromIndex != null) {
-              onMoveBlock(data.fromIndex!, idx, nestingLevel);
-            } else if (data.type != null) {
-              onInsertBlockAt(data.type!, idx, nestingLevel);
-            }
-          },
-        );
+      isExecuting: isExecuting,
+      onAccept: (data) {
+        if (data.fromIndex != null) {
+          onMoveBlock(data.fromIndex!, idx, nestingLevel);
+        } else if (data.type != null) {
+          onInsertBlockAt(data.type!, idx, nestingLevel);
+        }
+      },
+    );
 
     Widget makeDraggable(int idx) {
       final block = arrangedBlocks[idx];
@@ -1362,18 +1439,25 @@ class _CodeBlocksArea extends StatelessWidget {
           color: Colors.transparent,
           child: SizedBox(
             width: screenWidth - 72,
-            child: _BlockWidget(block: block, isExecuting: true, isHighlighted: isActive),
+            child: _BlockWidget(block: block, isExecuting: true, isHighlighted: isActive, showDragHandle: true),
           ),
         ),
         childWhenDragging: Opacity(
           opacity: 0.25,
-          child: _BlockWidget(block: block, onRemove: isExecuting ? null : () => onRemoveBlock(idx), isExecuting: isExecuting, isHighlighted: isActive),
+          child: _BlockWidget(
+            block: block,
+            onRemove: isExecuting ? null : () => onRemoveBlock(idx),
+            isExecuting: isExecuting,
+            isHighlighted: isActive,
+            showDragHandle: true,
+          ),
         ),
         child: _BlockWidget(
           block: block,
           onRemove: isExecuting ? null : () => onRemoveBlock(idx),
           isExecuting: isExecuting,
           isHighlighted: isActive,
+          showDragHandle: true,
         ),
       );
     }
@@ -1412,69 +1496,94 @@ class _CodeBlocksArea extends StatelessWidget {
                   onInsertBlockAt(data.type!, bodyStart, nestingLevel + 1);
                 }
               },
-            )
+            ),
           ];
         } else {
           bodyChildren = _buildBlocksInRange(
-            context, screenWidth, bodyStart, bodyEnd, nestingLevel + 1,
+            context,
+            screenWidth,
+            bodyStart,
+            bodyEnd,
+            nestingLevel + 1,
             parentColor: block.color,
           );
         }
 
         final headerRow = Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          child: Row(children: [
-            Icon(_containerIcon(block.type), color: Colors.white.withValues(alpha: 0.9), size: 14),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(block.label,
-                  style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
-            ),
-            if (!isExecuting)
-              GestureDetector(
-                onTap: () => onRemoveBlock(headerIndex),
-                child: Container(
-                  margin: const EdgeInsets.only(left: 6),
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(5)),
-                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
-                ),
-              ),
-          ]),
-        );
-
-        widgets.add(Container(
-          margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: block.color,
-            borderRadius: BorderRadius.circular(10),
-            border: isActive ? Border.all(color: Colors.white, width: 2.4) : null,
-            boxShadow: [BoxShadow(color: block.color.withValues(alpha: 0.3), blurRadius: isActive ? 10 : 6, offset: const Offset(0, 2))],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Row(
             children: [
-              Draggable<_DragData>(
-                data: _DragData(fromIndex: i),
-                maxSimultaneousDrags: isExecuting ? 0 : 1,
-                feedback: Material(
-                  color: Colors.transparent,
-                  child: SizedBox(width: screenWidth - 72, child: _BlockWidget(block: block, isExecuting: true, isHighlighted: isActive)),
+              Icon(_containerIcon(block.type), color: Colors.white.withValues(alpha: 0.9), size: 14),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  block.label,
+                  style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white),
                 ),
-                childWhenDragging: Opacity(opacity: 0.25, child: headerRow),
-                child: headerRow,
               ),
-              Container(
-                margin: const EdgeInsets.only(left: 22, right: 4, bottom: 8),
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                decoration: BoxDecoration(color: const Color(0xFFF5FAF9), borderRadius: BorderRadius.circular(8)),
-                child: Column(children: bodyChildren),
-              ),
+              if (!isExecuting)
+                GestureDetector(
+                  onTap: () => onRemoveBlock(headerIndex),
+                  child: Container(
+                    margin: const EdgeInsets.only(left: 6),
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
+                  ),
+                ),
             ],
           ),
-        ));
+        );
+
+        widgets.add(
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: block.color,
+              borderRadius: BorderRadius.circular(10),
+              border: isActive ? Border.all(color: Colors.white, width: 2.4) : null,
+              boxShadow: [
+                BoxShadow(
+                  color: block.color.withValues(alpha: 0.3),
+                  blurRadius: isActive ? 10 : 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Draggable<_DragData>(
+                  data: _DragData(fromIndex: i),
+                  maxSimultaneousDrags: isExecuting ? 0 : 1,
+                  feedback: Material(
+                    color: Colors.transparent,
+                    child: SizedBox(
+                      width: screenWidth - 72,
+                      child: _BlockWidget(
+                        block: block,
+                        isExecuting: true,
+                        isHighlighted: isActive,
+                        showDragHandle: true,
+                      ),
+                    ),
+                  ),
+                  childWhenDragging: Opacity(opacity: 0.25, child: headerRow),
+                  child: headerRow,
+                ),
+                Container(
+                  margin: const EdgeInsets.only(left: 22, right: 4, bottom: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                  decoration: BoxDecoration(color: const Color(0xFFF5FAF9), borderRadius: BorderRadius.circular(8)),
+                  child: Column(children: bodyChildren),
+                ),
+              ],
+            ),
+          ),
+        );
 
         i = bodyEnd;
         needLeadingDropSlot = true;
@@ -1509,12 +1618,14 @@ class _BlockWidget extends StatelessWidget {
   final VoidCallback? onRemove;
   final bool isExecuting;
   final bool isHighlighted;
+  final bool showDragHandle;
 
   const _BlockWidget({
     required this.block,
     this.onRemove,
     required this.isExecuting,
     this.isHighlighted = false,
+    this.showDragHandle = false,
   });
 
   @override
@@ -1526,16 +1637,34 @@ class _BlockWidget extends StatelessWidget {
         color: block.color,
         borderRadius: BorderRadius.circular(10),
         border: isHighlighted ? Border.all(color: Colors.white, width: 2.4) : null,
-        boxShadow: [BoxShadow(color: block.color.withValues(alpha: 0.3), blurRadius: isHighlighted ? 10 : 6, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: block.color.withValues(alpha: 0.3),
+            blurRadius: isHighlighted ? 10 : 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Icon(Icons.circle, color: Colors.white.withValues(alpha: 0.7), size: 8),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(block.label,
-                style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+            child: Text(
+              block.label,
+              style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white),
+            ),
           ),
+          if (!isExecuting && showDragHandle)
+            Container(
+              margin: const EdgeInsets.only(left: 6),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: const Icon(Icons.drag_handle_rounded, color: Colors.white, size: 16),
+            ),
           if (!isExecuting)
             GestureDetector(
               onTap: onRemove,
@@ -1543,8 +1672,9 @@ class _BlockWidget extends StatelessWidget {
                 margin: const EdgeInsets.only(left: 6),
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(5)),
+                  color: Colors.white.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(5),
+                ),
                 child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
               ),
             ),
@@ -1574,7 +1704,9 @@ class _DropSlotState extends State<_DropSlot> {
         setState(() => _hovering = true);
         return true;
       },
-      onLeave: (_) { if (mounted) setState(() => _hovering = false); },
+      onLeave: (_) {
+        if (mounted) setState(() => _hovering = false);
+      },
       onAcceptWithDetails: (details) {
         if (mounted) setState(() => _hovering = false);
         widget.onAccept(details.data);
@@ -1623,7 +1755,9 @@ class _BodyDropHintState extends State<_BodyDropHint> {
         setState(() => _isHovering = true);
         return true;
       },
-      onLeave: (_) { if (mounted) setState(() => _isHovering = false); },
+      onLeave: (_) {
+        if (mounted) setState(() => _isHovering = false);
+      },
       onAcceptWithDetails: (details) {
         if (mounted) setState(() => _isHovering = false);
         widget.onInsert(details.data);
@@ -1646,9 +1780,14 @@ class _BodyDropHintState extends State<_BodyDropHint> {
             children: [
               Icon(Icons.add_rounded, size: 14, color: widget.color.withValues(alpha: _isHovering ? 0.9 : 0.5)),
               const SizedBox(width: 4),
-              Text('drop block here',
-                  style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w700,
-                      color: widget.color.withValues(alpha: _isHovering ? 0.9 : 0.5))),
+              Text(
+                AppStrings.of(context).dropBlockHere,
+                style: GoogleFonts.nunito(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: widget.color.withValues(alpha: _isHovering ? 0.9 : 0.5),
+                ),
+              ),
             ],
           ),
         ),
@@ -1666,7 +1805,7 @@ class _PaletteChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = CodeBlock.typeLabels[blockType] ?? blockType.name;
+    final label = AppStrings.of(context).blockLabel(blockType);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -1686,7 +1825,10 @@ class _PaletteChip extends StatelessWidget {
             color: color,
           ),
           const SizedBox(width: 5),
-          Text(label, style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w800, color: color)),
+          Text(
+            label,
+            style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w800, color: color),
+          ),
         ],
       ),
     );
@@ -1719,12 +1861,20 @@ class _FailBanner extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(str.tryAgain,
-                  style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w900, color: const Color(0xFFD84343))),
-              Text(str.checkSequenceMsg,
-                  style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.red.shade800)),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  str.tryAgain,
+                  style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w900, color: const Color(0xFFD84343)),
+                ),
+                Text(
+                  str.checkSequenceMsg,
+                  style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.red.shade800),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1754,12 +1904,20 @@ class _ConnectedBanner extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(str.robotConnectedTitle,
-                  style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w900, color: const Color(0xFF2E7D32))),
-              Text(str.robotConnectedSub,
-                  style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.green.shade800)),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  str.robotConnectedTitle,
+                  style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w900, color: const Color(0xFF2E7D32)),
+                ),
+                Text(
+                  str.robotConnectedSub,
+                  style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.green.shade800),
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -34,6 +34,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
   bool _showCelebrationOverlay = false;
   bool _showFailToast = false;
   bool _showConnectedToast = false;
+  bool _suppressFailToast = false;
   bool _challengeSuccessfullyCompleted = false;
   bool _streakRenewed = false;
   int? _activeBlockIndex;
@@ -204,9 +205,10 @@ class _LevelOneScreenState extends State<LevelOneScreen>
   }
 
   void _showFailNotification() {
-    if (!mounted) return;
+    if (!mounted || _suppressFailToast) return;
     setState(() {
       _showFailToast = true;
+      _showConnectedToast = false;
     });
     Future.delayed(const Duration(seconds: 3), () {
       if (!mounted) return;
@@ -216,9 +218,17 @@ class _LevelOneScreenState extends State<LevelOneScreen>
 
   void _showConnectedNotification() {
     if (!mounted) return;
-    setState(() => _showConnectedToast = true);
+    setState(() {
+      _suppressFailToast = true;
+      _showConnectedToast = true;
+      _showFailToast = false;
+    });
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _showConnectedToast = false);
+      if (!mounted) return;
+      setState(() {
+        _showConnectedToast = false;
+        _suppressFailToast = false;
+      });
     });
   }
 
@@ -1352,6 +1362,7 @@ class _CodeBlocksArea extends StatelessWidget {
                                 block: block,
                                 isExecuting: true,
                                 isHighlighted: isActive,
+                                showDragHandle: true,
                               ),
                             ),
                           ),
@@ -1364,6 +1375,7 @@ class _CodeBlocksArea extends StatelessWidget {
                                   : () => onRemoveBlock(index),
                               isExecuting: isExecuting,
                               isHighlighted: isActive,
+                              showDragHandle: true,
                             ),
                           ),
                           child: _CodeBlockWidget(
@@ -1373,6 +1385,7 @@ class _CodeBlocksArea extends StatelessWidget {
                                 : () => onRemoveBlock(index),
                             isExecuting: isExecuting,
                             isHighlighted: isActive,
+                            showDragHandle: true,
                           ),
                         ),
                       ],
@@ -1448,12 +1461,14 @@ class _CodeBlockWidget extends StatelessWidget {
   final VoidCallback? onRemove;
   final bool isExecuting;
   final bool isHighlighted;
+  final bool showDragHandle;
 
   const _CodeBlockWidget({
     required this.block,
     this.onRemove,
     required this.isExecuting,
     this.isHighlighted = false,
+    this.showDragHandle = false,
   });
 
   @override
@@ -1493,6 +1508,20 @@ class _CodeBlockWidget extends StatelessWidget {
               ),
             ),
           ),
+          if (!isExecuting && showDragHandle)
+            Container(
+              margin: const EdgeInsets.only(left: 6),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: const Icon(
+                Icons.drag_handle_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
+            ),
           if (!isExecuting)
             GestureDetector(
               onTap: onRemove,
@@ -1606,7 +1635,7 @@ class _PaletteChip extends StatelessWidget {
           Icon(_blockIcon(blockType), size: 13, color: color),
           const SizedBox(width: 4),
           Text(
-            CodeBlock.typeLabels[blockType]!,
+            AppStrings.of(context).blockLabel(blockType),
             style: GoogleFonts.nunito(
               fontSize: 12,
               fontWeight: FontWeight.w800,
