@@ -179,7 +179,7 @@ class AdventureMapScreen extends StatelessWidget {
                                 ),
                                 border: Border.all(color: Colors.white, width: 2),
                               ),
-                              child: AvatarFace(seed: child.avatarSeed),
+                              child: AvatarFace(seed: child.avatarSeed, gender: child.gender),
                             ),
                           ),
                         ),

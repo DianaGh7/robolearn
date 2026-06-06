@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../l10n/app_strings.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
@@ -130,6 +131,9 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
 
   // ── Sequence helpers ───────────────────────────────────────────────────────
 
+  String _t(String en, String ar) =>
+      AppStrings.of(context).isArabic ? ar : en;
+
   Future<void> _delay(int ms) => Future.delayed(Duration(milliseconds: ms));
 
   void _setSpeech(String text) {
@@ -181,10 +185,11 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
     // ── Phase 1: Greeting ──────────────────────────────────────────────────
     if (!mounted) return;
     setState(() => _phase = 1);
-    _setSpeech("Hi! I'm Robo! 🤖");
+    _setSpeech(_t("Hi! I'm Robo! 🤖", 'مرحبًا! أنا روبو! 🤖'));
     await _delay(2400);
     if (!mounted) return;
-    _setSpeech("Watch me teach you\nhow to code! 🎯");
+    _setSpeech(_t("Watch me teach you\nhow to code! 🎯",
+        'شاهدني وأنا أعلّمك\nكيف تبرمج! 🎯'));
     await _delay(2900);
     _hideSpeech();
     await _delay(450);
@@ -193,7 +198,8 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
     if (!mounted) return;
     setState(() => _phase = 2);
     await _delay(250);
-    _setSpeech("The robot must reach\nits goal! ⬆️");
+    _setSpeech(_t("The robot must reach\nits goal! ⬆️",
+        'يجب على الروبوت\nالوصول إلى هدفه! ⬆️'));
     await _delay(3000);
     _hideSpeech();
     await _delay(450);
@@ -205,7 +211,8 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
       _commandVisible[0] = true; // START
       _commandVisible[2] = true; // END
     });
-    _setSpeech("Step 1: Drag 'Move Forward'\nto your code! 📦");
+    _setSpeech(_t("Step 1: Drag 'Move Forward'\nto your code! 📦",
+        "الخطوة 1: اسحب 'Move Forward'\nإلى كودك! 📦"));
     await _delay(1000);
 
     // Hand appears at the Move Forward palette chip, then drags it up
@@ -222,7 +229,8 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
     // ── Phase 5: Step 2 – press Run ───────────────────────────────────────
     if (!mounted) return;
     setState(() => _phase = 5);
-    _setSpeech("Step 2: Press Run ▶️\nWatch what happens!");
+    _setSpeech(_t("Step 2: Press Run ▶️\nWatch what happens!",
+        'الخطوة 2: اضغط تشغيل ▶️\nشاهد ما يحدث!'));
     await _delay(1000);
 
     // Hand moves from code area to Run button, then taps
@@ -256,7 +264,8 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
     if (!mounted) return;
     _bounceController.stop();
     setState(() { _phase = 7; _celebrating = true; });
-    _setSpeech("Goal reached! 🎉\nOrder matters!");
+    _setSpeech(_t("Goal reached! 🎉\nOrder matters!",
+        'وصلنا إلى الهدف! 🎉\nالترتيب مهم!'));
     _celebrateController.forward();
     await _delay(4000);
 
@@ -339,6 +348,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
   // ── Header ─────────────────────────────────────────────────────────────────
 
   Widget _buildHeader() {
+    final s = AppStrings.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: IntroTutorialHeaderRow(
@@ -354,7 +364,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
             children: [
               const Icon(Icons.star_rounded, color: Color(0xFFFFB300), size: 15),
               const SizedBox(width: 5),
-              Text('Level 1',
+              Text(s.levelBadge(1),
                   style: GoogleFonts.nunito(
                       color: AppTheme.tealDark,
                       fontSize: 15,
@@ -362,7 +372,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
             ],
           ),
         ),
-        title: 'Sequential Logic',
+        title: s.sequentialLogic,
         titleStyle: GoogleFonts.nunito(
             color: AppTheme.tealMid,
             fontSize: 15,
@@ -376,7 +386,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
             ),
-            child: Text('Skip',
+            child: Text(s.skip,
                 style: GoogleFonts.nunito(
                     color: AppTheme.tealDark,
                     fontSize: 15,
@@ -424,7 +434,8 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                 const SizedBox(width: 7),
                 Expanded(
                   child: Text(
-                    'The robot should reach its goal',
+                    _t('The robot should reach its goal',
+                        'يجب أن يصل الروبوت إلى هدفه'),
                     style: GoogleFonts.nunito(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
@@ -443,12 +454,12 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                     _LegendRow(
                         color: AppTheme.tealPrimary,
                         icon: Icons.android_rounded,
-                        label: 'Robot'),
+                        label: AppStrings.of(context).robot),
                     const SizedBox(height: 8),
                     _LegendRow(
                         color: Colors.amber.shade600,
                         icon: Icons.flag_rounded,
-                        label: 'Target'),
+                        label: AppStrings.of(context).target),
                     const SizedBox(height: 14),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -632,7 +643,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                               color: AppTheme.tealPrimary, size: 14),
                         ),
                         const SizedBox(width: 8),
-                        Text('Your Code',
+                        Text(AppStrings.of(context).yourCode,
                             style: GoogleFonts.nunito(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w900,
@@ -684,7 +695,9 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      isExecuting ? 'Running...' : 'Run',
+                                      isExecuting
+                                          ? AppStrings.of(context).running
+                                          : AppStrings.of(context).run,
                                       style: GoogleFonts.nunito(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w900,
@@ -734,7 +747,9 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
-                                  child: Text('Press the Run button above! ▶️',
+                                  child: Text(
+                                      _t('Press the Run button above! ▶️',
+                                          'اضغط زر التشغيل أعلاه! ▶️'),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       style: GoogleFonts.nunito(
@@ -812,7 +827,9 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                                 ),
                                 const SizedBox(width: 7),
                                 Expanded(
-                                  child: Text('Drag blocks to build your code',
+                                  child: Text(
+                                      _t('Drag blocks to build your code',
+                                          'اسحب البلوكات لبناء كودك'),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       style: GoogleFonts.nunito(
@@ -1093,7 +1110,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
               Flexible(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text("Let's Play! 🎮",
+                  child: Text(AppStrings.of(context).letsPlayEmoji,
                       style: GoogleFonts.nunito(
                           color: Colors.white,
                           fontSize: 20,

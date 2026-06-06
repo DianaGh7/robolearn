@@ -16,10 +16,11 @@ import 'level_four_screen.dart';
 class _Frame {
   final int step;
   final String speech;
+  final String arabicSpeech;
   final bool resetScreen;
   final bool triggerDemo;
   final bool celebrate;
-  const _Frame(this.step, this.speech,
+  const _Frame(this.step, this.speech, this.arabicSpeech,
       {this.resetScreen = false,
       this.triggerDemo = false,
       this.celebrate = false});
@@ -50,21 +51,30 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
 
   static const _frames = [
     // Step 1 – greeting / concept
-    _Frame(1, "Hi! I'm Robo! 🤖"),
-    _Frame(1, "Today you'll learn about\nVARIABLES! 📦"),
-    _Frame(1, "A variable is like a box\nthat stores a value! ✨"),
+    _Frame(1, "Hi! I'm Robo! 🤖", 'مرحبًا! أنا روبو! 🤖'),
+    _Frame(1, "Today you'll learn about\nVARIABLES! 📦",
+        'اليوم ستتعلم عن\nالمتغيرات! 📦'),
+    _Frame(1, "A variable is like a box\nthat stores a value! ✨",
+        'المتغير يشبه الصندوق\nالذي يخزّن قيمة! ✨'),
     // Step 2 – what variables do
-    _Frame(2, "You can name the box...\nand put any number inside! 🔢"),
-    _Frame(2, "And the value inside\ncan change anytime! 🔄"),
+    _Frame(2, "You can name the box...\nand put any number inside! 🔢",
+        'يمكنك تسمية الصندوق...\nووضع أي رقم بداخله! 🔢'),
+    _Frame(2, "And the value inside\ncan change anytime! 🔄",
+        'والقيمة بداخله\nيمكن أن تتغير في أي وقت! 🔄'),
     // Step 3 – using variables
-    _Frame(3, "You can SHOW the value\non the robot screen! 📊"),
-    _Frame(3, "Set it, change it, show it —\nthat's programming! 💡"),
+    _Frame(3, "You can SHOW the value\non the robot screen! 📊",
+        'يمكنك عرض القيمة\nعلى شاشة الروبوت! 📊'),
+    _Frame(3, "Set it, change it, show it —\nthat's programming! 💡",
+        'اضبطها، غيّرها، اعرضها —\nهذه هي البرمجة! 💡'),
     // Step 4 – live demo
     _Frame(4, "Example: set score = 10\nthen show it on screen! 📌",
+        'مثال: اضبط score = 10\nثم اعرضه على الشاشة! 📌',
         resetScreen: true),
-    _Frame(4, "Watch the screen update! 👀", triggerDemo: true),
+    _Frame(4, "Watch the screen update! 👀", 'شاهد الشاشة تتحدّث! 👀',
+        triggerDemo: true),
     // Step 5 – celebrate
     _Frame(5, "Amazing! Now use variables\nto solve the challenges! 🌟",
+        'رائع! استخدم المتغيرات\nلحل التحديات! 🌟',
         celebrate: true),
   ];
 
@@ -130,10 +140,13 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
     final frame = _frames[index];
     _cancelDemo = true;
 
+    final localizedSpeech = AppStrings.of(context).isArabic
+        ? frame.arabicSpeech
+        : frame.speech;
     setState(() {
       _frameIndex = index;
       _step = frame.step;
-      _speech = frame.speech;
+      _speech = localizedSpeech;
       _showSpeech = true;
     });
 
@@ -349,7 +362,7 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
               const Icon(Icons.star_rounded,
                   color: Color(0xFFFFB300), size: 15),
               const SizedBox(width: 5),
-              Text('Level 4',
+              Text(AppStrings.of(context).levelBadge(4),
                   style: GoogleFonts.nunito(
                       color: AppTheme.tealDark,
                       fontSize: 15,
@@ -357,7 +370,7 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
             ],
           ),
         ),
-        title: 'Variables',
+        title: AppStrings.of(context).variables,
         titleStyle: GoogleFonts.nunito(
             color: AppTheme.tealPrimary,
             fontSize: 15,
@@ -404,13 +417,13 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('VARIABLES! 📦',
+          Text(_t('VARIABLES! 📦', 'المتغيرات! 📦'),
               style: GoogleFonts.nunito(
                   fontSize: 38,
                   fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark)),
           const SizedBox(height: 10),
-          Text('variable  =  a box for values',
+          Text(_t('variable  =  a box for values', 'المتغير  =  صندوق للقيم'),
               style: GoogleFonts.nunito(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -431,7 +444,8 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
-            child: Text('A box that stores a value! 📦',
+            child: Text(_t('A box that stores a value! 📦',
+                'صندوق يخزّن قيمة! 📦'),
                 style: GoogleFonts.nunito(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
@@ -510,22 +524,22 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
           const SizedBox(height: 14),
           _StepCard(
               number: '1',
-              label: 'SET it',
+              label: _t('SET it', 'اضبطه'),
               desc: 'score = 10',
               color: const Color(0xFFE91E63),
               glowValue: g),
           const SizedBox(height: 8),
           _StepCard(
               number: '2',
-              label: 'CHANGE it',
-              desc: 'add 5 → score = 15',
+              label: _t('CHANGE it', 'غيّره'),
+              desc: _t('add 5 → score = 15', 'أضف 5 → score = 15'),
               color: const Color(0xFF4CAF50),
               glowValue: g),
           const SizedBox(height: 8),
           _StepCard(
               number: '3',
-              label: 'SHOW it',
-              desc: 'screen: score = 15',
+              label: _t('SHOW it', 'اعرضه'),
+              desc: _t('screen: score = 15', 'الشاشة: score = 15'),
               color: const Color(0xFF1565C0),
               glowValue: g),
         ],

@@ -999,7 +999,9 @@ class _RepeatBlockWidget extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'REPEAT $repeatCount times',
+                    AppStrings.of(context).isArabic
+                        ? 'REPEAT $repeatCount مرات'
+                        : 'REPEAT $repeatCount times',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.nunito(

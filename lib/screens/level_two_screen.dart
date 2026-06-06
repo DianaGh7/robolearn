@@ -621,18 +621,18 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                                 widget.challenge.targetDisplay ?? '');
                         final effectiveDisplay = widget.challenge.number == 9
                             ? (streak >= 5
-                                ? '??'
+                                ? '🎉'
                                 : streak >= 2
-                                    ? '??'
-                                    : '??')
+                                    ? '👏'
+                                    : '💪')
                             : widget.challenge.number == 10
-                                ? (isDay ? '??' : '??')
+                                ? (isDay ? '☀️' : '🌙')
                                 : widget.challenge.number == 11
                                     ? const {
-                                        'elephant': '??',
-                                        'lion': '??',
-                                        'cat': '??',
-                                        'dog': '??',
+                                        'elephant': '🐘',
+                                        'lion': '🦁',
+                                        'cat': '🐱',
+                                        'dog': '🐶',
                                       }[_animalChallenge11]!
                                     : localizedTarget;
                         final lineCount = effectiveDisplay
