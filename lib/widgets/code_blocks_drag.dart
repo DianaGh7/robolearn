@@ -87,8 +87,9 @@ class CodeBlocksDragController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Snaps to the nearest insertion slot while dragging.
-  void updatePointer(Offset globalPosition) {
+  /// Snaps to the nearest insertion slot while dragging, but only within
+  /// [activationRadius] pixels. Outside that radius no slot is highlighted.
+  void updatePointer(Offset globalPosition, {double activationRadius = 80.0}) {
     if (!_isDragging || _targets.isEmpty) return;
 
     String? closestId;
@@ -102,7 +103,7 @@ class CodeBlocksDragController extends ChangeNotifier {
       }
     }
 
-    setActiveSlot(closestId);
+    setActiveSlot(closestDistance <= activationRadius ? closestId : null);
   }
 
   /// Inserts at the active slot when the drag ends without a direct hit.
@@ -299,6 +300,10 @@ class _CodeBlockDropSlotState extends State<CodeBlockDropSlot> {
     final scope = CodeBlocksDragScope.maybeOf(context);
     if (scope == null) return;
 
+    // Don't update position while this slot is active and expanded — the
+    // expansion shifts the widget's centerY and would cause proximity jitter.
+    if (scope.isDragging && scope.activeSlotId == widget.slotId) return;
+
     final box = _key.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return;
 
@@ -319,7 +324,6 @@ class _CodeBlockDropSlotState extends State<CodeBlockDropSlot> {
     });
 
     final gapHeight = scope?.gapHeight ?? 44;
-    final idleHitHeight = scope?.idleHitHeight ?? 28;
 
     return DragTarget<DraggedBlockData>(
       onWillAcceptWithDetails: (_) {
@@ -343,20 +347,13 @@ class _CodeBlockDropSlotState extends State<CodeBlockDropSlot> {
         widget.onAccept(details.data);
       },
       builder: (context, candidateData, rejectedData) {
-        final height = !isDragging
-            ? 0.0
-            : isActive
-                ? gapHeight
-                : idleHitHeight;
+        final height = (isDragging && isActive) ? gapHeight : 0.0;
 
         return AnimatedContainer(
           key: _key,
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
-          margin: EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: isDragging ? 2 : 0,
-          ),
+          margin: const EdgeInsets.symmetric(horizontal: 8),
           height: height,
           decoration: isActive
               ? BoxDecoration(

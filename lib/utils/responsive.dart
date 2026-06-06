@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_strings.dart';
 
 /// Shared helpers for adapting layouts to different screen sizes.
 class Responsive {
@@ -26,19 +27,16 @@ class Responsive {
 class SpeechBubbleHintRow extends StatelessWidget {
   final bool showBackHint;
   final VoidCallback? onBack;
-  final String backLabel;
-  final String continueLabel;
 
   const SpeechBubbleHintRow({
     super.key,
     required this.showBackHint,
     this.onBack,
-    this.backLabel = '◀ tap to go back',
-    this.continueLabel = 'tap to continue ▶',
   });
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     final hintStyle = GoogleFonts.nunito(
       fontSize: Responsive.fontSize(context, 12),
       fontWeight: FontWeight.w700,
@@ -53,9 +51,9 @@ class SpeechBubbleHintRow extends StatelessWidget {
         if (showBackHint)
           GestureDetector(
             onTap: onBack,
-            child: Text(backLabel, style: hintStyle),
+            child: Text(s.tapToGoBack, style: hintStyle),
           ),
-        Text(continueLabel, style: hintStyle),
+        Text(s.tapToContinue, style: hintStyle),
       ],
     );
   }
