@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/child_model.dart';
+import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import '../l10n/app_strings.dart';
+import '../services/language_notifier.dart';
 import 'adventure_map_screen.dart';
 import 'parent_dashboard_screen.dart';
+import 'login_screen.dart';
+import '../services/child_firestore_service.dart';
 
 class ChooseChildScreen extends StatefulWidget {
   const ChooseChildScreen({super.key});
@@ -17,6 +23,9 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     with SingleTickerProviderStateMixin {
   int? _selectedIndex;
   late final AnimationController _ctrl;
+  final ChildFirestoreService _childService = ChildFirestoreService();
+  List<ChildModel> _children = [];
+  bool _loadingChildren = true;
 
   @override
   void initState() {
@@ -24,6 +33,46 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     _ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
     _ctrl.forward();
+    _loadChildren();
+  }
+
+  Future<void> _loadChildren() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        if (!mounted) return;
+        setState(() {
+          _children = [];
+          _loadingChildren = false;
+        });
+        return;
+      }
+
+      final kids = await _childService.listChildren(uid: uid);
+      if (!mounted) return;
+      setState(() {
+        _children = kids;
+        _loadingChildren = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _children = [];
+        _loadingChildren = false;
+      });
+      final s = AppStrings(LanguageNotifier.instance.isArabic);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${s.couldNotLoadChildren}: $e',
+            style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
   }
 
   @override
@@ -38,9 +87,9 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
 
   void _onLetsPlay() {
     if (_selectedIndex == null) {
+      final s = AppStrings(LanguageNotifier.instance.isArabic);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Please choose a child first!',
-            style: GoogleFonts.nunito()),
+        content: Text(s.pleaseChooseChild, style: GoogleFonts.nunito()),
         backgroundColor: AppTheme.tealDark,
         behavior: SnackBarBehavior.floating,
         shape:
@@ -49,16 +98,187 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
       return;
     }
     Navigator.of(context).push(PageRouteBuilder(
-      pageBuilder: (_, __, ___) => AdventureMapScreen(
-          child: ChildModel.demoChildren[_selectedIndex!]),
-      transitionsBuilder: (_, anim, __, child) =>
+      pageBuilder: (_, _, _) => AdventureMapScreen(
+          child: _children[_selectedIndex!]),
+      transitionsBuilder: (_, anim, _, child) =>
           FadeTransition(opacity: anim, child: child),
       transitionDuration: const Duration(milliseconds: 500),
-    ));
+    )).then((_) async {
+      if (!mounted) return;
+      await _loadChildren();
+    });
+  }
+
+  Future<bool> _showParentPasswordDialog() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final isGoogleUser =
+        user?.providerData.any((p) => p.providerId == 'google.com') ?? false;
+    if (isGoogleUser) return true;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _PasswordDialog(),
+    );
+    return result ?? false;
+  }
+
+  Future<void> _showSettingsMenu() async {
+    final lang = LangScope.of(context);
+    final s = AppStrings(lang.isArabic);
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
+                child: Container(
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(ctx, 'ar'),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: lang.isArabic
+                                  ? AppTheme.tealPrimary
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: lang.isArabic
+                                  ? [
+                                      BoxShadow(
+                                        color: AppTheme.tealPrimary
+                                            .withValues(alpha: 0.35),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      )
+                                    ]
+                                  : [],
+                            ),
+                            child: Center(
+                              child: Text(
+                                '🇸🇦  العربية',
+                                style: GoogleFonts.nunito(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: lang.isArabic
+                                      ? Colors.white
+                                      : Colors.grey[500],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(ctx, 'en'),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: !lang.isArabic
+                                  ? AppTheme.tealPrimary
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: !lang.isArabic
+                                  ? [
+                                      BoxShadow(
+                                        color: AppTheme.tealPrimary
+                                            .withValues(alpha: 0.35),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      )
+                                    ]
+                                  : [],
+                            ),
+                            child: Center(
+                              child: Text(
+                                '🇬🇧  English',
+                                style: GoogleFonts.nunito(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: !lang.isArabic
+                                      ? Colors.white
+                                      : Colors.grey[500],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Divider(height: 1, indent: 16, endIndent: 16),
+              ListTile(
+                leading: const Icon(Icons.logout_rounded,
+                    color: Color(0xFFD84E4E)),
+                title: Text(
+                  s.logout,
+                  style: GoogleFonts.nunito(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFFD84E4E),
+                  ),
+                ),
+                onTap: () => Navigator.pop(ctx, 'logout'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted) return;
+    if (selected == 'ar') {
+      await lang.setLanguage(true);
+    } else if (selected == 'en') {
+      await lang.setLanguage(false);
+    } else if (selected == 'logout') {
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        PageRouteBuilder(
+          pageBuilder: (_, _, _) => const LoginScreen(),
+          transitionsBuilder: (_, anim, _, child) =>
+              FadeTransition(opacity: anim, child: child),
+          transitionDuration: const Duration(milliseconds: 350),
+        ),
+        (route) => false,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    final isArabic = s.isArabic;
     return Scaffold(
       body: Stack(children: [
         Container(decoration: AppTheme.backgroundDecoration),
@@ -73,96 +293,228 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
         SafeArea(
           child: FadeTransition(
             opacity: _ctrl,
-            child: Column(children: [
-              const SizedBox(height: 36),
+            child: Column(
+              children: [
+                // ── Scrollable content area ───────────────────────────────
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 36),
 
-              // ── Title ────────────────────────────────────────────────────
-              Text('Who is playing today? 🎮',
-                  style: GoogleFonts.nunito(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.tealDark)),
+                        // ── Title ─────────────────────────────────────────
+                        Text(
+                          s.whoIsPlayingToday,
+                          style: GoogleFonts.nunito(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.tealDark,
+                          ),
+                        ),
 
-              const SizedBox(height: 8),
+                        const SizedBox(height: 8),
 
-              Text('Tap a card to select, then press Let\'s Play!',
-                  style: GoogleFonts.nunito(
-                      fontSize: 13, color: AppTheme.tealMid)),
+                        Text(
+                          s.tapToSelectPrompt,
+                          style: GoogleFonts.nunito(
+                            fontSize: 13,
+                            color: AppTheme.tealMid,
+                          ),
+                        ),
 
-              const SizedBox(height: 32),
+                        const SizedBox(height: 32),
 
-              // ── Child cards row ───────────────────────────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  ChildModel.demoChildren.length,
-                      (i) => _ChildCard(
-                    data: ChildModel.demoChildren[i],
-                    isSelected: _selectedIndex == i,
-                    onTap: () => _onChildTap(i),
+                        // ── Child cards (wrap to new rows automatically) ───
+                        if (_loadingChildren)
+                          const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: CircularProgressIndicator(),
+                          )
+                        else if (_children.isEmpty)
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 28),
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        Colors.white.withValues(alpha: 0.78),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: Colors.white
+                                          .withValues(alpha: 0.9),
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black
+                                            .withValues(alpha: 0.06),
+                                        blurRadius: 14,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        s.noChildProfiles,
+                                        style: GoogleFonts.nunito(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w900,
+                                          color: AppTheme.tealDark,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        s.openParentsAreaHint,
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.nunito(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppTheme.tealMid,
+                                          height: 1.35,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16),
+                            child: Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 0,
+                              runSpacing: 16,
+                              children: List.generate(
+                                _children.length,
+                                (i) => _ChildCard(
+                                  data: _children[i],
+                                  isSelected: _selectedIndex == i,
+                                  onTap: () => _onChildTap(i),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 40),
-
-              // ── Let's Play button ─────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 48),
-                child: _LetsPlayButton(
-                  enabled: _selectedIndex != null,
-                  onPressed: _onLetsPlay,
+                // ── Let's Play button (always visible at bottom) ──────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(48, 8, 48, 0),
+                  child: _LetsPlayButton(
+                    enabled: _selectedIndex != null,
+                    onPressed: _onLetsPlay,
+                  ),
                 ),
-              ),
 
-              const Spacer(),
-
-              // ── Parents Area ──────────────────────────────────────────────
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 20, bottom: 16),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () => Navigator.of(context).push(
-                        PageRouteBuilder(
-                          pageBuilder: (_, __, ___) =>
-                          const ParentDashboardScreen(),
-                          transitionsBuilder: (_, anim, __, child) =>
-                              FadeTransition(opacity: anim, child: child),
-                          transitionDuration:
-                          const Duration(milliseconds: 500),
-                        ),
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.75),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.teal.withOpacity(0.1),
-                                blurRadius: 8)
-                          ],
-                        ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.lock_outline_rounded,
-                              size: 16, color: AppTheme.tealMid),
-                          const SizedBox(width: 6),
-                          Text('Parents Area',
-                              style: GoogleFonts.nunito(
+                // ── Parents Area ──────────────────────────────────────────
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 20, top: 8, bottom: 16),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () async {
+                          final navigator = Navigator.of(context);
+                          final verified =
+                              await _showParentPasswordDialog();
+                          if (!verified) return;
+                          if (!mounted) return;
+                          await navigator.push(
+                            PageRouteBuilder(
+                              pageBuilder: (_, _, _) =>
+                                  const ParentDashboardScreen(),
+                              transitionsBuilder: (_, anim, _, child) =>
+                                  FadeTransition(opacity: anim, child: child),
+                              transitionDuration:
+                                  const Duration(milliseconds: 500),
+                            ),
+                          );
+                          if (!mounted) return;
+                          await _loadChildren();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.75),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.teal.withValues(alpha: 0.1),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.lock_outline_rounded,
+                                  size: 16, color: AppTheme.tealMid),
+                              const SizedBox(width: 6),
+                              Text(
+                                s.parentsArea,
+                                style: GoogleFonts.nunito(
                                   fontSize: 13,
                                   color: AppTheme.tealMid,
-                                  fontWeight: FontWeight.w700)),
-                        ]),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
+              ],
+            ),
+          ),
+        ),
+        // Settings button rendered last so it sits above scroll content
+        SafeArea(
+          child: Align(
+            alignment: isArabic ? Alignment.topLeft : Alignment.topRight,
+            child: Padding(
+              padding: EdgeInsets.only(
+                top: 8,
+                left: isArabic ? 16 : 0,
+                right: isArabic ? 0 : 16,
               ),
-            ]),
+              child: GestureDetector(
+                onTap: _showSettingsMenu,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.82),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.teal.withValues(alpha: 0.12),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.settings_outlined,
+                    color: AppTheme.tealMid,
+                    size: 21,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ]),
@@ -190,8 +542,6 @@ class _ChildCardState extends State<_ChildCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _scale;
-  bool _hovering = false;
-
   @override
   void initState() {
     super.initState();
@@ -207,24 +557,33 @@ class _ChildCardState extends State<_ChildCard>
     super.dispose();
   }
 
+  int _currentLevel(ChildModel child) {
+    final ids = child.completedChallengeIds;
+    final groups = [
+      Challenge.demoChallenge.where((c) => c.levelNumber == 1).map((c) => c.number).toList(),
+      SoundChallenge.soundChallenges.map((c) => c.number).toList(),
+      LedChallenge.ledChallenges.map((c) => c.number).toList(),
+    ];
+    int level = 1;
+    for (final group in groups) {
+      if (group.isEmpty || !group.every(ids.contains)) break;
+      level++;
+    }
+    return level;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = widget.data.palette;
     final selected = widget.isSelected;
+    final s = AppStrings.of(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: MouseRegion(
-        // ← hand cursor on hover
         cursor: SystemMouseCursors.click,
-        onEnter: (_) {
-          setState(() => _hovering = true);
-          _ctrl.forward();
-        },
-        onExit: (_) {
-          setState(() => _hovering = false);
-          _ctrl.reverse();
-        },
+        onEnter: (_) => _ctrl.forward(),
+        onExit: (_) => _ctrl.reverse(),
         child: GestureDetector(
           onTap: widget.onTap,
           child: ScaleTransition(
@@ -242,13 +601,13 @@ class _ChildCardState extends State<_ChildCard>
                   end: Alignment.bottomRight,
                 ),
                 border: Border.all(
-                  color: selected ? Colors.white : Colors.white.withOpacity(0.6),
+                  color: selected ? Colors.white : Colors.white.withValues(alpha: 0.6),
                   width: selected ? 3 : 2,
                 ),
                 boxShadow: [
                   BoxShadow(
                     color: (selected ? AppTheme.tealPrimary : colors[0])
-                        .withOpacity(selected ? 0.55 : 0.35),
+                        .withValues(alpha: selected ? 0.55 : 0.35),
                     blurRadius: selected ? 20 : 12,
                     spreadRadius: selected ? 2 : 0,
                     offset: const Offset(0, 4),
@@ -262,16 +621,46 @@ class _ChildCardState extends State<_ChildCard>
                   Container(
                     height: 90,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.25),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withValues(alpha: 0.28),
+                          Colors.white.withValues(alpha: 0.15),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       borderRadius: const BorderRadius.only(
                         topLeft:  Radius.circular(18),
                         topRight: Radius.circular(18),
                       ),
                     ),
                     child: Center(
-                      child: SizedBox(
-                        width: 72, height: 72,
-                        child: AvatarFace(seed: widget.data.avatarSeed),
+                      child: Container(
+                        width: 74,
+                        height: 74,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFFFFFF), Color(0xFFF6FFFD)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.95),
+                            width: 2.4,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.10),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(5),
+                        child: ClipOval(
+                          child: AvatarFace(seed: widget.data.avatarSeed, gender: widget.data.gender),
+                        ),
                       ),
                     ),
                   ),
@@ -292,10 +681,10 @@ class _ChildCardState extends State<_ChildCard>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text('Lv ${widget.data.level}',
+                        child: Text('${s.lvPrefix} ${_currentLevel(widget.data)}',
                             style: GoogleFonts.nunito(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -337,6 +726,7 @@ class _LetsPlayButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       height: 54,
@@ -351,7 +741,7 @@ class _LetsPlayButton extends StatelessWidget {
         boxShadow: enabled
             ? [
           BoxShadow(
-              color: AppTheme.tealPrimary.withOpacity(0.45),
+              color: AppTheme.tealPrimary.withValues(alpha: 0.45),
               blurRadius: 16,
               offset: const Offset(0, 6))
         ]
@@ -365,7 +755,7 @@ class _LetsPlayButton extends StatelessWidget {
             const Icon(Icons.videogame_asset_rounded,
                 color: Colors.white, size: 22),
             const SizedBox(width: 10),
-            Text("Let's Play!",
+            Text(s.letsPlay,
                 style: GoogleFonts.nunito(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
@@ -373,6 +763,115 @@ class _LetsPlayButton extends StatelessWidget {
           ]),
         ),
       ),
+    );
+  }
+}
+
+// ─── Password dialog (owns its own TextEditingController) ─────────────────────
+// Using a proper StatefulWidget ensures the controller is disposed only after
+// the dialog widget is fully removed from the tree (post-animation), not
+// immediately when showDialog's future completes. Premature disposal while the
+// TextField is still mounted breaks InheritedWidget dependency cleanup and
+// triggers the '_dependents.isEmpty' assertion on physical Android devices.
+
+class _PasswordDialog extends StatefulWidget {
+  const _PasswordDialog();
+
+  @override
+  State<_PasswordDialog> createState() => _PasswordDialogState();
+}
+
+class _PasswordDialogState extends State<_PasswordDialog> {
+  final _passwordCtrl = TextEditingController();
+  bool _obscure = true;
+  String? _errorText;
+
+  @override
+  void dispose() {
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email == null) {
+      if (mounted) Navigator.of(context).pop(false);
+      return;
+    }
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: _passwordCtrl.text,
+      );
+      await user.reauthenticateWithCredential(credential);
+      if (mounted) Navigator.of(context).pop(true);
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorText =
+            AppStrings(LanguageNotifier.instance.isArabic).authError(e.code);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings(LanguageNotifier.instance.isArabic);
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          const Icon(Icons.lock_rounded, color: AppTheme.tealMid),
+          const SizedBox(width: 8),
+          Text(s.parentsArea,
+              style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            s.enterPasswordToContinue,
+            style: GoogleFonts.nunito(fontSize: 14, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _passwordCtrl,
+            obscureText: _obscure,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: s.password,
+              errorText: _errorText,
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              suffixIcon: IconButton(
+                icon:
+                    Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+                onPressed: () => setState(() => _obscure = !_obscure),
+              ),
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(s.cancel,
+              style: GoogleFonts.nunito(color: Colors.grey[600])),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.tealMid,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+          ),
+          child:
+              Text(s.confirm, style: GoogleFonts.nunito(color: Colors.white)),
+        ),
+      ],
     );
   }
 }

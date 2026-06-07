@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import '../l10n/app_strings.dart';
+import '../services/language_notifier.dart';
 import 'login_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -34,148 +36,335 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   void _goToLogin() {
     Navigator.of(context).push(PageRouteBuilder(
-      pageBuilder: (_, __, ___) => const LoginScreen(),
-      transitionsBuilder: (_, anim, __, child) =>
+      pageBuilder: (_, _, _) => const LoginScreen(),
+      transitionsBuilder: (_, anim, _, child) =>
           FadeTransition(opacity: anim, child: child),
       transitionDuration: const Duration(milliseconds: 500),
     ));
   }
 
+  Future<void> _showLangMenu() async {
+    final lang = LangScope.of(context);
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
+          child: Container(
+            height: 46,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx, 'ar'),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: lang.isArabic
+                            ? AppTheme.tealPrimary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: lang.isArabic
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.tealPrimary
+                                      .withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : [],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '🇸🇦  العربية',
+                          style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: lang.isArabic
+                                ? Colors.white
+                                : Colors.grey[500],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx, 'en'),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: !lang.isArabic
+                            ? AppTheme.tealPrimary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: !lang.isArabic
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.tealPrimary
+                                      .withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : [],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '🇬🇧  English',
+                          style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: !lang.isArabic
+                                ? Colors.white
+                                : Colors.grey[500],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (selected == 'ar') {
+      await lang.setLanguage(true);
+    } else if (selected == 'en') {
+      await lang.setLanguage(false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    final isArabic = s.isArabic;
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: SlideTransition(
-            position: _slide,
-            child: FadeTransition(
-              opacity: _ctrl,
-              child: SingleChildScrollView(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Column(children: [
-                  // Header
-                  Row(children: [
-                    Container(
-                      width: 56, height: 56,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.teal.withOpacity(0.2),
-                              blurRadius: 10)
-                        ],
-                      ),
-                      child: const RobotLogoIcon(),
-                    ),
-                    const SizedBox(width: 14),
-                    Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Welcome to',
-                              style: GoogleFonts.nunito(
-                                  fontSize: 14,
-                                  color: AppTheme.tealMid,
-                                  fontWeight: FontWeight.w600)),
-                          Text('RoboLearn',
-                              style: GoogleFonts.nunito(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppTheme.tealDark)),
-                          Text('Learn coding in a fun and smart way!',
-                              style: GoogleFonts.nunito(
-                                  fontSize: 12, color: AppTheme.tealMid)),
-                        ]),
-                  ]),
-                  const SizedBox(height: 22),
-                  InfoCard(
-                    title: 'What is RoboLearn?',
-                    icon: Icons.info_outline_rounded,
-                    color: AppTheme.tealPrimary,
-                    child: Text(
-                      'RoboLearn is an educational system designed for children '
-                          'to learn programming basics by playing, building, and '
-                          'controlling a friendly robot. Kids arrange code blocks, '
-                          'send them to the robot via Bluetooth, and instantly see '
-                          'the result in real life!',
-                      style: GoogleFonts.nunito(
-                          fontSize: 14,
-                          color: const Color(0xFF2A5A58),
-                          height: 1.5),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  InfoCard(
-                    title: 'How It Works',
-                    icon: Icons.settings_outlined,
-                    color: AppTheme.skyBlue,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: const [
-                        _Step(
-                            icon: Icons.send_rounded,
-                            label: 'Send',
-                            desc: 'Arrange code blocks & send to robot',
-                            color: AppTheme.tealPrimary),
-                        _Step(
-                            icon: Icons.play_circle_fill_rounded,
-                            label: 'Execute',
-                            desc: 'Robot performs the action in real time',
-                            color: AppTheme.skyBlue),
-                        _Step(
-                            icon: Icons.school_rounded,
-                            label: 'Learn',
-                            desc: 'Kids learn from mistakes step by step',
-                            color: AppTheme.orange),
+          child: Stack(
+            children: [
+              // ── Scrollable content ────────────────────────────
+              SlideTransition(
+                position: _slide,
+                child: FadeTransition(
+                  opacity: _ctrl,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 58, 20, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // ── Header: logo + title ──────────────────
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                      color: Colors.teal.withValues(alpha: 0.2),
+                                      blurRadius: 10)
+                                ],
+                              ),
+                              child: const RobotLogoIcon(),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    s.welcomeTo,
+                                    style: GoogleFonts.nunito(
+                                        fontSize: 14,
+                                        color: AppTheme.tealMid,
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                  Text(
+                                    'RoboLearn',
+                                    style: GoogleFonts.nunito(
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.w900,
+                                        color: AppTheme.tealDark),
+                                  ),
+                                  Text(
+                                    s.tagline,
+                                    style: GoogleFonts.nunito(
+                                        fontSize: 12,
+                                        height: 1.4,
+                                        color: AppTheme.tealMid),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 22),
+
+                        // ── What is RoboLearn ─────────────────────
+                        InfoCard(
+                          title: s.whatIsRoboLearn,
+                          icon: Icons.info_outline_rounded,
+                          color: AppTheme.tealPrimary,
+                          child: Text(
+                            s.roboLearnDesc,
+                            style: GoogleFonts.nunito(
+                                fontSize: 15,
+                                color: const Color(0xFF2A5A58),
+                                height: 1.6),
+                          ),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // ── How It Works ──────────────────────────
+                        InfoCard(
+                          title: s.howItWorks,
+                          icon: Icons.settings_outlined,
+                          color: AppTheme.skyBlue,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final steps = [
+                                _Step(
+                                    icon: Icons.send_rounded,
+                                    label: s.stepSendLabel,
+                                    desc: s.stepSendDesc,
+                                    color: AppTheme.tealPrimary),
+                                _Step(
+                                    icon: Icons.play_circle_fill_rounded,
+                                    label: s.stepExecuteLabel,
+                                    desc: s.stepExecuteDesc,
+                                    color: AppTheme.skyBlue),
+                                _Step(
+                                    icon: Icons.school_rounded,
+                                    label: s.stepLearnLabel,
+                                    desc: s.stepLearnDesc,
+                                    color: AppTheme.orange),
+                              ];
+                              if (constraints.maxWidth < 300) {
+                                return Column(
+                                  children: [
+                                    for (int i = 0; i < steps.length; i++) ...[
+                                      if (i > 0) const SizedBox(height: 12),
+                                      steps[i],
+                                    ],
+                                  ],
+                                );
+                              }
+                              return Row(
+                                children: [
+                                  for (int i = 0; i < steps.length; i++) ...[
+                                    if (i > 0) const SizedBox(width: 8),
+                                    Expanded(child: steps[i]),
+                                  ],
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // ── Why families ──────────────────────────
+                        InfoCard(
+                          title: s.whyFamilies,
+                          icon: Icons.people_outline_rounded,
+                          color: AppTheme.orange,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _FeatureLine(
+                                  text: s.featureChildren,
+                                  color: AppTheme.tealPrimary),
+                              const SizedBox(height: 8),
+                              _FeatureLine(
+                                  text: s.featureParents,
+                                  color: AppTheme.orange),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // ── CTA ───────────────────────────────────
+                        Text(
+                          s.readyToStart,
+                          style: GoogleFonts.nunito(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.tealDark),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 14),
+                        PrimaryButton(
+                            label: s.getStarted, onPressed: _goToLogin),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  InfoCard(
-                    title: 'Who is RoboLearn For?',
-                    icon: Icons.people_outline_rounded,
-                    color: AppTheme.orange,
-                    child: Row(children: [
-                      Expanded(
-                        child: _AudienceBox(
-                          icon: Icons.child_care_rounded,
-                          title: 'For Children',
-                          points: const [
-                            '• Learn coding by playing',
-                            '• No complicated code',
-                            '• Fun challenges & levels',
-                          ],
-                          color: AppTheme.tealPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _AudienceBox(
-                          icon: Icons.supervisor_account_rounded,
-                          title: 'For Parents',
-                          points: const [
-                            '• Track child progress',
-                            '• Manage accounts safely',
-                            '• Encourage learning at home',
-                          ],
-                          color: AppTheme.orange,
-                        ),
-                      ),
-                    ]),
-                  ),
-                  const SizedBox(height: 28),
-                  Text('Ready to start the fun? 🚀',
-                      style: GoogleFonts.nunito(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.tealDark)),
-                  const SizedBox(height: 14),
-                  PrimaryButton(label: 'Get Started', onPressed: _goToLogin),
-                  const SizedBox(height: 20),
-                ]),
+                ),
               ),
-            ),
+
+              // ── Settings icon (fixed) ─────────────────────────
+              Positioned(
+                top: 8,
+                left: isArabic ? 16 : null,
+                right: isArabic ? null : 16,
+                child: GestureDetector(
+                  onTap: _showLangMenu,
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.82),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.teal.withValues(alpha: 0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.settings_outlined,
+                      color: AppTheme.tealMid,
+                      size: 21,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -196,15 +385,14 @@ class _Step extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 88,
-      child: Column(children: [
+    return Column(children: [
         Container(
-          width: 48, height: 48,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(14)),
-          child: Icon(icon, color: color, size: 26),
+          child: Icon(icon, color: color, size: 24),
         ),
         const SizedBox(height: 6),
         Text(label,
@@ -212,57 +400,41 @@ class _Step extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
                 color: AppTheme.tealDark)),
-        const SizedBox(height: 4),
+        const SizedBox(height: 3),
         Text(desc,
             style: GoogleFonts.nunito(
-                fontSize: 10, color: const Color(0xFF5A9A95)),
+                fontSize: 11,
+                height: 1.3,
+                color: const Color(0xFF5A9A95)),
             textAlign: TextAlign.center),
-      ]),
-    );
+      ]);
   }
 }
 
-class _AudienceBox extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final List<String> points;
+class _FeatureLine extends StatelessWidget {
+  final String text;
   final Color color;
-  const _AudienceBox({
-    required this.icon,
-    required this.title,
-    required this.points,
-    required this.color,
-  });
+  const _FeatureLine({required this.text, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(title,
-                style: GoogleFonts.nunito(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.tealDark)),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.check_circle_rounded, color: color, size: 18),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              height: 1.4,
+              color: const Color(0xFF4A7A75),
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ]),
-        const SizedBox(height: 8),
-        ...points.map((p) => Padding(
-          padding: const EdgeInsets.only(bottom: 3),
-          child: Text(p,
-              style: GoogleFonts.nunito(
-                  fontSize: 11, color: const Color(0xFF4A7A75))),
-        )),
-      ]),
+        ),
+      ],
     );
   }
 }
