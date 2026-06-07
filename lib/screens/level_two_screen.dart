@@ -1,4 +1,5 @@
-﻿import 'dart:math' as math;
+﻿import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,6 +9,8 @@ import 'package:robolearn/models/challenge_model.dart';
 import 'package:robolearn/models/child_model.dart';
 import 'package:robolearn/widgets/shared_widgets.dart';
 import 'package:robolearn/services/child_progress_service.dart';
+import 'package:robolearn/services/robolearn_ble_service.dart';
+import 'package:robolearn/services/connection_state.dart' as robot_conn;
 import 'package:robolearn/l10n/app_strings.dart';
 import 'level_two_intro_screen.dart';
 
@@ -30,10 +33,13 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
   late AnimationController _pulseController;
   late AnimationController _waveController;
   final ChildProgressService _progressService = ChildProgressService();
+  final RoboLearnBleService _ble = RoboLearnBleService();
+  StreamSubscription<void>? _disconnectSub;
   bool _isExecuting = false;
   bool _showCelebrationOverlay = false;
   bool _showFailToast = false;
   bool _showConnectedToast = false;
+  bool _showDisconnectedToast = false;
   bool _suppressFailToast = false;
   bool _challengeSuccessfullyCompleted = false;
   bool _streakRenewed = false;
@@ -50,6 +56,20 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
     super.initState();
     arrangedBlocks = [];
     _progressChild = widget.child;
+    if (_ble.isConnected) {
+      _connectionStatus = RobotConnectionStatus.connected;
+    }
+    _disconnectSub = _ble.onDisconnected.listen((_) {
+      if (!mounted) return;
+      setState(() {
+        _connectionStatus = RobotConnectionStatus.disconnected;
+        _showDisconnectedToast = true;
+        _showConnectedToast = false;
+      });
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _showDisconnectedToast = false);
+      });
+    });
     _challengeSuccessfullyCompleted =
         widget.child.completedChallengeIds.contains(widget.challenge.number);
     _availableBlocks = {
@@ -118,6 +138,7 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
 
   @override
   void dispose() {
+    _disconnectSub?.cancel();
     _soundService.dispose();
     _pulseController.dispose();
     _waveController.dispose();
@@ -458,10 +479,39 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
         );
   }
 
+  String? _soundBleCommand(CodeBlockType type) {
+    switch (type) {
+      case CodeBlockType.beep:
+      case CodeBlockType.happy:
+      case CodeBlockType.music:
+      case CodeBlockType.thenMorning:
+        return 'PL1';
+      case CodeBlockType.cry:
+      case CodeBlockType.thenNight:
+        return 'PL2';
+      case CodeBlockType.clap:
+      case CodeBlockType.catSound:
+        return 'PL3';
+      case CodeBlockType.encourage:
+      case CodeBlockType.dogSound:
+        return 'PL4';
+      case CodeBlockType.cheering:
+      case CodeBlockType.elephantSound:
+      case CodeBlockType.lionSound:
+        return 'PL5';
+      default:
+        return null;
+    }
+  }
+
   Future<void> _executeSound(CodeBlockType type, {bool playSound = false}) async {
     // Fire sound concurrently with animation; only plays if solution is correct.
     if (playSound) {
       _soundService.playForBlock(type.name, isArabic: _isArabic);
+      if (_ble.isConnected) {
+        final cmd = _soundBleCommand(type);
+        if (cmd != null) await _ble.sendCommand(cmd);
+      }
     }
 
     switch (type) {
@@ -553,10 +603,25 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
   Future<void> _handleConnect() async {
     if (_connectionStatus != RobotConnectionStatus.disconnected) return;
     setState(() => _connectionStatus = RobotConnectionStatus.connecting);
-    await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    setState(() => _connectionStatus = RobotConnectionStatus.connected);
-    _showConnectedNotification();
+    try {
+      await _ble.connect();
+      robot_conn.ConnectionState().markConnected();
+      if (!mounted) return;
+      setState(() => _connectionStatus = RobotConnectionStatus.connected);
+      _showConnectedNotification();
+    } catch (e) {
+      debugPrint('[BLE] connect failed: $e');
+      if (!mounted) return;
+      setState(() => _connectionStatus = RobotConnectionStatus.disconnected);
+      robot_conn.ConnectionState().markDisconnected();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Could not connect to RoboLearn'),
+          duration: const Duration(seconds: 5),
+          backgroundColor: const Color(0xFFB71C1C),
+        ),
+      );
+    }
   }
 
   @override
@@ -703,21 +768,23 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
             left: 16,
             right: 16,
             child: IgnorePointer(
-              ignoring: !_showFailToast && !_showConnectedToast,
+              ignoring: !_showFailToast && !_showConnectedToast && !_showDisconnectedToast,
               child: AnimatedSlide(
-                offset: (_showFailToast || _showConnectedToast)
+                offset: (_showFailToast || _showConnectedToast || _showDisconnectedToast)
                     ? Offset.zero
                     : const Offset(0, -1),
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOut,
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 220),
-                  opacity: (_showFailToast || _showConnectedToast) ? 1 : 0,
+                  opacity: (_showFailToast || _showConnectedToast || _showDisconnectedToast) ? 1 : 0,
                   child: SafeArea(
                     bottom: false,
                     child: _showConnectedToast
                         ? const _ConnectedBanner()
-                        : const _FailBanner(),
+                        : _showDisconnectedToast
+                            ? const DisconnectedBanner()
+                            : const _FailBanner(),
                   ),
                 ),
               ),

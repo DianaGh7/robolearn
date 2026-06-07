@@ -218,16 +218,16 @@ class AppStrings {
     if (!isArabic) {
       return switch (n) {
         1 => 'Move Your Robot',
-        2 => 'Make Some Noise',
-        3 => 'Play with Colors',
+        2 => 'Play with Colors',
+        3 => 'Make Some Noise',
         4 => 'Magic Screen',
         _ => 'Level $n',
       };
     }
     return switch (n) {
       1 => 'حرّك روبوتك',
-      2 => 'أصدر بعض الأصوات',
-      3 => 'العب بالألوان',
+      2 => 'العب بالألوان',
+      3 => 'أصدر بعض الأصوات',
       4 => 'الشاشة السحرية',
       _ => 'المستوى $n',
     };
@@ -292,6 +292,10 @@ class AppStrings {
       isArabic ? 'الروبوت متصل!' : 'Robot connected!';
   String get robotConnectedSub =>
       isArabic ? 'تم الاتصال بالروبوت بنجاح.' : 'Robot connected successfully.';
+  String get robotDisconnectedTitle =>
+      isArabic ? 'انقطع الاتصال بالروبوت!' : 'Robot disconnected!';
+  String get robotDisconnectedSub =>
+      isArabic ? 'تحقق من أن الروبوت مشغّل.' : 'Check if the robot is powered on.';
 
   // ── Welcome screen ────────────────────────────────────────
   String get welcomeTo => isArabic ? 'مرحبًا بك في' : 'Welcome to';

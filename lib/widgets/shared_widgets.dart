@@ -1016,3 +1016,72 @@ class _ProfileStat extends StatelessWidget {
     );
   }
 }
+
+// ─── Disconnect Banner ───────────────────────────────────────────────────────
+
+class DisconnectedBanner extends StatelessWidget {
+  const DisconnectedBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final str = AppStrings.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2)],
+        ),
+        border: Border.all(color: const Color(0xFFF57C00), width: 2),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFF57C00).withValues(alpha: 0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF57C00),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.bluetooth_disabled_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  str.robotDisconnectedTitle,
+                  style: GoogleFonts.nunito(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFFE65100),
+                  ),
+                ),
+                Text(
+                  str.robotDisconnectedSub,
+                  style: GoogleFonts.nunito(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFBF360C),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -326,7 +326,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
 
   // ── Progress dots ─────────────────────────────────────────────────────────
 
-                                fontSize: 19.0,
+  Widget _progressDots() {
     const totalSteps = 6;
     final current = _step.clamp(1, 6);
     return Row(

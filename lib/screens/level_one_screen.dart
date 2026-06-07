@@ -1,11 +1,15 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
 import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../services/child_progress_service.dart';
+import '../services/robolearn_ble_service.dart';
+import '../services/connection_state.dart' as robot_conn;
 import '../l10n/app_strings.dart';
 import 'level_one_intro_screen.dart';
 
@@ -34,6 +38,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
   bool _showCelebrationOverlay = false;
   bool _showFailToast = false;
   bool _showConnectedToast = false;
+  bool _showDisconnectedToast = false;
   bool _suppressFailToast = false;
   bool _challengeSuccessfullyCompleted = false;
   bool _streakRenewed = false;
@@ -44,6 +49,8 @@ class _LevelOneScreenState extends State<LevelOneScreen>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
   final ChildProgressService _progressService = ChildProgressService();
+  final RoboLearnBleService _ble = RoboLearnBleService();
+  StreamSubscription<void>? _disconnectSub;
 
   @override
   void initState() {
@@ -82,6 +89,21 @@ class _LevelOneScreenState extends State<LevelOneScreen>
         _showTutorial();
       });
     }
+
+    if (_ble.isConnected) {
+      _connectionStatus = RobotConnectionStatus.connected;
+    }
+    _disconnectSub = _ble.onDisconnected.listen((_) {
+      if (!mounted) return;
+      setState(() {
+        _connectionStatus = RobotConnectionStatus.disconnected;
+        _showDisconnectedToast = true;
+        _showConnectedToast = false;
+      });
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _showDisconnectedToast = false);
+      });
+    });
   }
 
   ChildModel _markChallengeCompleted() {
@@ -152,6 +174,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
 
   @override
   void dispose() {
+    _disconnectSub?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -413,10 +436,24 @@ class _LevelOneScreenState extends State<LevelOneScreen>
   Future<void> _handleConnect() async {
     if (_connectionStatus != RobotConnectionStatus.disconnected) return;
     setState(() => _connectionStatus = RobotConnectionStatus.connecting);
-    await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    setState(() => _connectionStatus = RobotConnectionStatus.connected);
-    _showConnectedNotification();
+    try {
+      await _ble.connect();
+      robot_conn.ConnectionState().markConnected();
+      if (!mounted) return;
+      setState(() => _connectionStatus = RobotConnectionStatus.connected);
+      _showConnectedNotification();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _connectionStatus = RobotConnectionStatus.disconnected);
+      robot_conn.ConnectionState().markDisconnected();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not connect to RoboLearn'),
+          duration: Duration(seconds: 5),
+          backgroundColor: Color(0xFFB71C1C),
+        ),
+      );
+    }
   }
 
   @override
@@ -539,21 +576,23 @@ class _LevelOneScreenState extends State<LevelOneScreen>
             left: 16,
             right: 16,
             child: IgnorePointer(
-              ignoring: !_showFailToast && !_showConnectedToast,
+              ignoring: !_showFailToast && !_showConnectedToast && !_showDisconnectedToast,
               child: AnimatedSlide(
-                offset: (_showFailToast || _showConnectedToast)
+                offset: (_showFailToast || _showConnectedToast || _showDisconnectedToast)
                     ? Offset.zero
                     : const Offset(0, -1),
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOut,
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 220),
-                  opacity: (_showFailToast || _showConnectedToast) ? 1 : 0,
+                  opacity: (_showFailToast || _showConnectedToast || _showDisconnectedToast) ? 1 : 0,
                   child: SafeArea(
                     bottom: false,
                     child: _showConnectedToast
                         ? const _ConnectedBanner()
-                        : const _FailBanner(),
+                        : _showDisconnectedToast
+                            ? const DisconnectedBanner()
+                            : const _FailBanner(),
                   ),
                 ),
               ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -38,15 +39,14 @@ class LevelFourScreen extends StatefulWidget {
   State<LevelFourScreen> createState() => _LevelFourScreenState();
 }
 
-class _LevelFourScreenState extends State<LevelFourScreen>
-    with TickerProviderStateMixin {
+class _LevelFourScreenState extends State<LevelFourScreen> {
   late List<CodeBlock> arrangedBlocks;
   late ChildModel _progressChild;
-  late AnimationController _glowController;
-  late Animation<double> _glowAnim;
 
   final ChildProgressService _progressService = ChildProgressService();
   final RoboLearnBleService _ble = RoboLearnBleService();
+  final ScrollController _scrollController = ScrollController();
+  StreamSubscription<void>? _disconnectSub;
 
   // Variable execution state
   String _screenOutput = '';
@@ -59,6 +59,7 @@ class _LevelFourScreenState extends State<LevelFourScreen>
   bool _showCelebrationOverlay = false;
   bool _showFailToast = false;
   bool _showConnectedToast = false;
+  bool _showDisconnectedToast = false;
   bool _suppressFailToast = false;
   bool _challengeSuccessfullyCompleted = false;
   bool _streakRenewed = false;
@@ -81,17 +82,20 @@ class _LevelFourScreenState extends State<LevelFourScreen>
     }.toList()
       ..shuffle();
 
-    _glowController = AnimationController(
-      duration: const Duration(milliseconds: 900),
-      vsync: this,
-    )..repeat(reverse: true);
-    _glowAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
-    );
-
-    if (robot_conn.ConnectionState().isConnected || _ble.isConnected) {
+    if (_ble.isConnected) {
       _connectionStatus = _RobotConnectionStatus.connected;
     }
+    _disconnectSub = _ble.onDisconnected.listen((_) {
+      if (!mounted) return;
+      setState(() {
+        _connectionStatus = _RobotConnectionStatus.disconnected;
+        _showDisconnectedToast = true;
+        _showConnectedToast = false;
+      });
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _showDisconnectedToast = false);
+      });
+    });
 
     final bool isFirstLevel4Visit =
         widget.challenge.number == VarChallenge.varChallenges.first.number &&
@@ -108,7 +112,8 @@ class _LevelFourScreenState extends State<LevelFourScreen>
 
   @override
   void dispose() {
-    _glowController.dispose();
+    _disconnectSub?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -331,9 +336,9 @@ class _LevelFourScreenState extends State<LevelFourScreen>
         final a = _variables['speedA'] ?? 0;
         final b = _variables['speedB'] ?? 0;
         setState(() {
-          _addSideLog('A=$a  B=$b');
           _screenOutput = a >= b ? 'A wins!' : 'B wins!';
           _screenActive = true;
+          _addSideLog('A=$a  B=$b');
         });
       case CodeBlockType.varSetCountdown:
         _variables['countdown'] = 3;
@@ -370,7 +375,9 @@ class _LevelFourScreenState extends State<LevelFourScreen>
     _applyVarAction(type);
     final cmd = Level4BleCommands.commandForBlock(type, _variables);
     if (cmd != null && _ble.isConnected) {
-      await _ble.sendCommand(cmd);
+      try {
+        await _ble.sendCommand(cmd);
+      } catch (_) {}
     }
   }
 
@@ -393,6 +400,14 @@ class _LevelFourScreenState extends State<LevelFourScreen>
       return;
     }
 
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+
     setState(() {
       _isExecuting = true;
       _activeBlockIndex = null;
@@ -400,7 +415,9 @@ class _LevelFourScreenState extends State<LevelFourScreen>
       _screenActive = false;
       _variables = {};
       _conditionMet = false;
-      _sideLog = [];
+      _sideLog = !_ble.isConnected && !_ble.isDeveloperMode
+          ? <String>['⚡ connect robot first']
+          : <String>[];
       if (_connectionStatus == _RobotConnectionStatus.connected) {
         _connectionStatus = _RobotConnectionStatus.executing;
       }
@@ -644,17 +661,19 @@ class _LevelFourScreenState extends State<LevelFourScreen>
       if (!mounted) return;
       _setConnectionStatus(_RobotConnectionStatus.disconnected);
       robot_conn.ConnectionState().markDisconnected();
-      if (kDebugMode) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Could not connect to RoboLearn'),
-            action: SnackBarAction(
-              label: 'Test mode',
-              onPressed: _enterDeveloperMode,
-            ),
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Could not connect to RoboLearn'),
+          action: kDebugMode
+              ? SnackBarAction(
+                  label: 'Test mode',
+                  onPressed: _enterDeveloperMode,
+                )
+              : null,
+          duration: const Duration(seconds: 5),
+          backgroundColor: const Color(0xFFB71C1C),
+        ),
+      );
     }
   }
 
@@ -760,6 +779,7 @@ class _LevelFourScreenState extends State<LevelFourScreen>
                         final codeAreaHeight =
                             (totalHeight * 0.65).clamp(360.0, 560.0);
                         return SingleChildScrollView(
+                          controller: _scrollController,
                           padding: const EdgeInsets.only(bottom: 84),
                           child: ConstrainedBox(
                             constraints: BoxConstraints(minHeight: totalHeight),
@@ -776,7 +796,6 @@ class _LevelFourScreenState extends State<LevelFourScreen>
                                 _VarVisualizationCard(
                                   screenOutput: _screenOutput,
                                   screenActive: _screenActive,
-                                  glowAnim: _glowAnim,
                                   sideLog: _sideLog,
                                 ),
                                 const SizedBox(height: 4),
@@ -811,17 +830,21 @@ class _LevelFourScreenState extends State<LevelFourScreen>
           Positioned(
             top: 16, left: 16, right: 16,
             child: IgnorePointer(
-              ignoring: !_showFailToast && !_showConnectedToast,
+              ignoring: !_showFailToast && !_showConnectedToast && !_showDisconnectedToast,
               child: AnimatedSlide(
-                offset: (_showFailToast || _showConnectedToast) ? Offset.zero : const Offset(0, -1),
+                offset: (_showFailToast || _showConnectedToast || _showDisconnectedToast) ? Offset.zero : const Offset(0, -1),
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOut,
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 220),
-                  opacity: (_showFailToast || _showConnectedToast) ? 1 : 0,
+                  opacity: (_showFailToast || _showConnectedToast || _showDisconnectedToast) ? 1 : 0,
                   child: SafeArea(
                     bottom: false,
-                    child: _showConnectedToast ? const _ConnectedBanner() : const _FailBanner(),
+                    child: _showConnectedToast
+                        ? const _ConnectedBanner()
+                        : _showDisconnectedToast
+                            ? const DisconnectedBanner()
+                            : const _FailBanner(),
                   ),
                 ),
               ),
@@ -983,36 +1006,28 @@ class _HeaderBar extends StatelessWidget {
           const SizedBox(width: 8),
           if (connectionStatus != _RobotConnectionStatus.disconnected)
             _RobotStatusBadge(status: connectionStatus, compact: true),
-          if (connectionStatus == _RobotConnectionStatus.disconnected ||
-              connectionStatus == _RobotConnectionStatus.connecting) ...[
+          if (connectionStatus == _RobotConnectionStatus.disconnected) ...[
             const SizedBox(width: 4),
             GestureDetector(
-              onTap: connectionStatus == _RobotConnectionStatus.disconnected ? onConnectPressed : null,
-              onLongPress: connectionStatus == _RobotConnectionStatus.disconnected
-                  ? onConnectLongPress
-                  : null,
+              onTap: onConnectPressed,
+              onLongPress: onConnectLongPress,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                 decoration: BoxDecoration(
-                  color: connectionStatus == _RobotConnectionStatus.disconnected
-                      ? const Color(0xFF5EA1D8)
-                      : const Color(0xFF9CCFC5),
+                  color: const Color(0xFF5EA1D8),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      connectionStatus == _RobotConnectionStatus.disconnected
-                          ? Icons.bluetooth_searching_rounded
-                          : Icons.hourglass_top_rounded,
+                    const Icon(
+                      Icons.bluetooth_rounded,
                       color: Colors.white, size: 13,
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      connectionStatus == _RobotConnectionStatus.disconnected
-                          ? AppStrings.of(context).connectBtn : '...',
+                      AppStrings.of(context).connectBtn,
                       style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
                     ),
                   ],
@@ -1137,13 +1152,11 @@ class _InstructionCard extends StatelessWidget {
 class _VarVisualizationCard extends StatelessWidget {
   final String screenOutput;
   final bool screenActive;
-  final Animation<double> glowAnim;
   final List<String> sideLog;
 
   const _VarVisualizationCard({
     required this.screenOutput,
     required this.screenActive,
-    required this.glowAnim,
     required this.sideLog,
   });
 
@@ -1218,44 +1231,36 @@ class _VarVisualizationCard extends StatelessWidget {
           // ── Main robot screen — fixed height, aligns to top ─────────────
           Expanded(
             flex: 5,
-            child: AnimatedBuilder(
-              animation: glowAnim,
-              builder: (_, child) => AnimatedContainer(
-                duration: const Duration(milliseconds: 350),
-                height: 88,
-                decoration: BoxDecoration(
-                  color: screenActive ? const Color(0xFF111827) : const Color(0xFF1F2937),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: screenActive
-                        ? AppTheme.tealPrimary.withValues(alpha: 0.5 + glowAnim.value * 0.45)
-                        : Colors.grey.shade700,
-                    width: screenActive ? 1.8 : 1.2,
-                  ),
-                  boxShadow: screenActive
-                      ? [BoxShadow(
-                          color: AppTheme.tealPrimary.withValues(alpha: glowAnim.value * 0.35),
-                          blurRadius: 14 * glowAnim.value,
-                          spreadRadius: 1)]
-                      : [],
+            child: Container(
+              height: 88,
+              decoration: BoxDecoration(
+                color: screenActive ? const Color(0xFF111827) : const Color(0xFF1F2937),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: screenActive
+                      ? AppTheme.tealPrimary.withValues(alpha: 0.95)
+                      : Colors.grey.shade700,
+                  width: screenActive ? 1.8 : 1.2,
                 ),
-                child: Center(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 280),
-                    child: screenOutput.isEmpty
-                        ? const SizedBox.shrink(key: ValueKey('empty'))
-                        : Text(
-                            screenOutput,
-                            key: ValueKey(screenOutput),
-                            style: GoogleFonts.sourceCodePro(
-                              fontSize: screenOutput.length <= 6 ? 28 : 16,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF6EE7B7),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                  ),
-                ),
+                boxShadow: screenActive
+                    ? [BoxShadow(
+                        color: AppTheme.tealPrimary.withValues(alpha: 0.22),
+                        blurRadius: 10,
+                        spreadRadius: 1)]
+                    : [],
+              ),
+              child: Center(
+                child: screenOutput.isEmpty
+                    ? null
+                    : Text(
+                        screenOutput,
+                        style: GoogleFonts.sourceCodePro(
+                          fontSize: screenOutput.length <= 6 ? 28 : 16,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF6EE7B7),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
               ),
             ),
           ),

@@ -25,8 +25,14 @@ class RoboLearnBleService {
   bool _isConnected = false;
   bool _isDeveloperMode = false;
 
+  StreamSubscription<BluetoothConnectionState>? _connectionStateSub;
+  final _disconnectController = StreamController<void>.broadcast();
+
   bool get isConnected => _isConnected || _isDeveloperMode;
   bool get isDeveloperMode => _isDeveloperMode;
+
+  /// Fires whenever the robot disconnects unexpectedly (power loss, out of range).
+  Stream<void> get onDisconnected => _disconnectController.stream;
 
   /// Scan for RoboLearn and complete the GATT connection flow.
   Future<void> connect() async {
@@ -44,6 +50,16 @@ class RoboLearnBleService {
         .timeout(const Duration(seconds: 15));
 
     debugPrint('[BLE] GATT link up');
+
+    await _connectionStateSub?.cancel();
+    _connectionStateSub = device.connectionState.listen((state) {
+      if (state == BluetoothConnectionState.disconnected && _isConnected) {
+        debugPrint('[BLE] unexpected disconnect');
+        _isConnected = false;
+        _commandChar = null;
+        _disconnectController.add(null);
+      }
+    });
 
     if (Platform.isAndroid) {
       try {
@@ -110,6 +126,8 @@ class RoboLearnBleService {
     _commandChar = null;
     _isConnected = false;
     _isDeveloperMode = false;
+    await _connectionStateSub?.cancel();
+    _connectionStateSub = null;
     final device = _device;
     _device = null;
     if (device != null) {
@@ -205,7 +223,10 @@ class RoboLearnBleService {
     });
 
     try {
-      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+      // Start scan without blocking — completer resolves as soon as device is
+      // found, which can be well under 15s. Awaiting startScan() would block
+      // for the full timeout before we could ever return the found device.
+      unawaited(FlutterBluePlus.startScan(timeout: const Duration(seconds: 15)));
       return await completer.future.timeout(
         const Duration(seconds: 15),
         onTimeout: () {

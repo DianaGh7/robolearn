@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,8 @@ import 'package:robolearn/models/challenge_model.dart';
 import 'package:robolearn/models/child_model.dart';
 import 'package:robolearn/widgets/shared_widgets.dart';
 import 'package:robolearn/services/child_progress_service.dart';
+import 'package:robolearn/services/robolearn_ble_service.dart';
+import 'package:robolearn/services/connection_state.dart' as robot_conn;
 import 'package:robolearn/l10n/app_strings.dart';
 import 'level_three_intro_screen.dart';
 
@@ -41,11 +44,14 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
   late Animation<double> _glowAnim;
 
   final ChildProgressService _progressService = ChildProgressService();
+  final RoboLearnBleService _ble = RoboLearnBleService();
+  StreamSubscription<void>? _disconnectSub;
   Color _ledColor = _kOff;
   bool _isExecuting = false;
   bool _showCelebrationOverlay = false;
   bool _showFailToast = false;
   bool _showConnectedToast = false;
+  bool _showDisconnectedToast = false;
   bool _suppressFailToast = false;
   bool _challengeSuccessfullyCompleted = false;
   bool _streakRenewed = false;
@@ -62,6 +68,20 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
     _progressChild = widget.child;
     _challengeSuccessfullyCompleted =
         widget.child.completedChallengeIds.contains(widget.challenge.number);
+    if (_ble.isConnected) {
+      _connectionStatus = _RobotConnectionStatus.connected;
+    }
+    _disconnectSub = _ble.onDisconnected.listen((_) {
+      if (!mounted) return;
+      setState(() {
+        _connectionStatus = _RobotConnectionStatus.disconnected;
+        _showDisconnectedToast = true;
+        _showConnectedToast = false;
+      });
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _showDisconnectedToast = false);
+      });
+    });
     _availableBlocks = {
       ...widget.challenge.availableBlocks,
       CodeBlockType.start,
@@ -93,6 +113,7 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
 
   @override
   void dispose() {
+    _disconnectSub?.cancel();
     _glowController.dispose();
     super.dispose();
   }
@@ -243,25 +264,34 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
   }
 
   // ── LED action ────────────────────────────────────────
-  void _applyLedAction(CodeBlockType type) {
+  Future<void> _applyLedAction(CodeBlockType type) async {
+    String? bleCmd;
     switch (type) {
       case CodeBlockType.setRed:
         setState(() => _ledColor = _kRed);
+        bleCmd = 'LR';
         break;
       case CodeBlockType.setGreen:
         setState(() => _ledColor = _kGreen);
+        bleCmd = 'LG';
         break;
       case CodeBlockType.setBlue:
         setState(() => _ledColor = _kBlue);
+        bleCmd = 'LB';
         break;
       case CodeBlockType.setYellow:
         setState(() => _ledColor = _kYellow);
+        bleCmd = 'LY';
         break;
       case CodeBlockType.ledOff:
         setState(() => _ledColor = _kOff);
+        bleCmd = 'SRGB';
         break;
       default:
         break;
+    }
+    if (bleCmd != null && _ble.isConnected) {
+      await _ble.sendCommand(bleCmd);
     }
   }
 
@@ -319,7 +349,10 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
           }
         }
 
-        if (mounted) setState(() => _ledColor = _kOff);
+        if (mounted) {
+          setState(() => _ledColor = _kOff);
+          if (_ble.isConnected) await _ble.sendCommand('SRGB');
+        }
         await Future.delayed(const Duration(milliseconds: 200));
         i = j;
       } else {
@@ -335,7 +368,7 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
         if (block.type == CodeBlockType.waitShort) {
           await Future.delayed(const Duration(milliseconds: 600));
         } else {
-          _applyLedAction(block.type);
+          await _applyLedAction(block.type);
           await Future.delayed(const Duration(milliseconds: 400));
         }
         i++;
@@ -439,12 +472,15 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
               });
               await Future.delayed(const Duration(milliseconds: 350));
               if (!mounted) return;
-              _applyLedAction(bodyBlock.type);
+              await _applyLedAction(bodyBlock.type);
               await Future.delayed(const Duration(milliseconds: 400));
             }
           }
 
-          if (mounted) setState(() => _ledColor = _kOff);
+          if (mounted) {
+            setState(() => _ledColor = _kOff);
+            if (_ble.isConnected) await _ble.sendCommand('SRGB');
+          }
           await Future.delayed(const Duration(milliseconds: 200));
           i = j;
         } else {
@@ -460,7 +496,7 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
           if (block.type == CodeBlockType.waitShort) {
             await Future.delayed(const Duration(milliseconds: 600));
           } else {
-            _applyLedAction(block.type);
+            await _applyLedAction(block.type);
             await Future.delayed(const Duration(milliseconds: 500));
           }
           seqIdx++;
@@ -564,10 +600,25 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
   Future<void> _handleConnect() async {
     if (_connectionStatus != _RobotConnectionStatus.disconnected) return;
     setState(() => _connectionStatus = _RobotConnectionStatus.connecting);
-    await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    setState(() => _connectionStatus = _RobotConnectionStatus.connected);
-    _showConnectedNotification();
+    try {
+      await _ble.connect();
+      robot_conn.ConnectionState().markConnected();
+      if (!mounted) return;
+      setState(() => _connectionStatus = _RobotConnectionStatus.connected);
+      _showConnectedNotification();
+    } catch (e) {
+      debugPrint('[BLE] connect failed: $e');
+      if (!mounted) return;
+      setState(() => _connectionStatus = _RobotConnectionStatus.disconnected);
+      robot_conn.ConnectionState().markDisconnected();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Could not connect to RoboLearn'),
+          duration: const Duration(seconds: 5),
+          backgroundColor: const Color(0xFFB71C1C),
+        ),
+      );
+    }
   }
 
   Future<void> _handleRobotAction() async {
@@ -704,21 +755,23 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
             left: 16,
             right: 16,
             child: IgnorePointer(
-              ignoring: !_showFailToast && !_showConnectedToast,
+              ignoring: !_showFailToast && !_showConnectedToast && !_showDisconnectedToast,
               child: AnimatedSlide(
-                offset: (_showFailToast || _showConnectedToast)
+                offset: (_showFailToast || _showConnectedToast || _showDisconnectedToast)
                     ? Offset.zero
                     : const Offset(0, -1),
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOut,
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 220),
-                  opacity: (_showFailToast || _showConnectedToast) ? 1 : 0,
+                  opacity: (_showFailToast || _showConnectedToast || _showDisconnectedToast) ? 1 : 0,
                   child: SafeArea(
                     bottom: false,
                     child: _showConnectedToast
                         ? const _ConnectedBanner()
-                        : const _FailBanner(),
+                        : _showDisconnectedToast
+                            ? const DisconnectedBanner()
+                            : const _FailBanner(),
                   ),
                 ),
               ),

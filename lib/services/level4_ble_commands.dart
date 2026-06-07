@@ -19,9 +19,11 @@ class Level4BleCommands {
       case CodeBlockType.varShowSun:
         return 'SUN';
       case CodeBlockType.varShowSnow:
-        return null;
+        return 'SAD';
       case CodeBlockType.varShowPlant:
         return _plantCommand(variables['water'] ?? 0);
+      case CodeBlockType.varShowFaster:
+        return (variables['speedA'] ?? 0) >= (variables['speedB'] ?? 0) ? 'HPY' : 'SAD';
       default:
         return null;
     }
@@ -38,7 +40,7 @@ class Level4BleCommands {
       case 3:
         return 'D3';
       case 5:
-        return 'D4';
+        return 'D5';
       case 10:
         return 'D10';
       default:
