@@ -292,6 +292,10 @@ class AppStrings {
       isArabic ? 'الروبوت متصل!' : 'Robot connected!';
   String get robotConnectedSub =>
       isArabic ? 'تم الاتصال بالروبوت بنجاح.' : 'Robot connected successfully.';
+  String get robotDisconnectedTitle =>
+      isArabic ? 'انقطع الاتصال بالروبوت!' : 'Robot disconnected!';
+  String get robotDisconnectedSub =>
+      isArabic ? 'تحقق من أن الروبوت مشغّل.' : 'Check if the robot is powered on.';
 
   // ── Welcome screen ────────────────────────────────────────
   String get welcomeTo => isArabic ? 'مرحبًا بك في' : 'Welcome to';
@@ -402,7 +406,7 @@ class AppStrings {
   String get termsDialogTitle => isArabic ? 'الشروط والخصوصية' : 'Terms & Privacy';
   String get termsDialogBody => isArabic
       ? 'الشروط والأحكام وسياسة الخصوصية\n'
-          'آخر تحديث: مايو 2026\n\n'
+          'آخر تحديث: مايو 2025\n\n'
           '1. القبول والاستخدام\n'
           'باستخدامك لتطبيق روبوليرن، فأنت تؤكد موافقتك على هذه الشروط، سواء كنت ولي أمر أو مشرفًا على الطفل، أو طفلًا يمتلك الوعي الكافي للاستخدام المستقل.\n\n'
           '2. إنشاء الحساب\n'
@@ -432,15 +436,6 @@ class AppStrings {
           'We reserve the right to update these terms at any time. You will be notified of any material changes through the app.\n\n'
           'robolearnapp1@gmail.com';
   String get gotIt => isArabic ? 'حسنًا! ✓' : 'Got it! ✓';
-
-  // ── Shared intro UI ───────────────────────────────────────
-  String get skip => isArabic ? 'تخطي' : 'Skip';
-  String get sequentialLogic => isArabic ? 'المنطق التسلسلي' : 'Sequential Logic';
-  String get conditionalStatements => isArabic ? 'الجمل الشرطية' : 'Conditional Statements';
-  String get variables => isArabic ? 'المتغيرات' : 'Variables';
-  String get tapToGoBack => isArabic ? '◀ اضغط للرجوع' : '◀ tap to go back';
-  String get tapToContinue => isArabic ? 'اضغط للمتابعة ▶' : 'tap to continue ▶';
-  String get letsPlayEmoji => isArabic ? 'هيا نلعب! 🎮' : "Let's Play! 🎮";
 
   // ── Choose child screen ───────────────────────────────────
   String get whoIsPlayingToday =>
@@ -508,7 +503,7 @@ class AppStrings {
     },
     11: {
       'title': 'خمّن الحيوان',
-      'instruction': '🐾 هل يستطيع الروبوت تخمين الحيوان؟\n\nإذا كان كبيراً:\n  • أنف طويل؟ → 🐘 فيل\n  • وإلا → 🦁 أسد\n\nإذا لم يكن كبيراً:\n  • فرو كثيف؟ → 🐱 قط\n  • وإلا → 🐶 كلب',
+      'instruction': 'ساعد الروبوت على تخمين الحيوان الذي يظهر.',
       'targetDisplay': 'كبير + أنف طويل  →  🐘 فيل\nكبير، لا أنف  →  🦁 أسد\nصغير + فرو كثيف  →  🐱 قط\nصغير، غير فروي  →  🐶 كلب',
     },
     // Level 3 – LED

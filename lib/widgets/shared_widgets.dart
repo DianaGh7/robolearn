@@ -810,174 +810,6 @@ class _ConfettiDot {
   });
 }
 
-// ─── Block workspace controls (drag handle + delete) ─────────────────────────
-
-/// Shared shell for workspace block action buttons (drag handle, delete).
-class BlockControlShell extends StatelessWidget {
-  final Widget child;
-
-  const BlockControlShell({super.key, required this.child});
-
-  static const double minTapSize = 28;
-  static const EdgeInsetsDirectional margin = EdgeInsetsDirectional.only(start: 6);
-  static const EdgeInsets padding = EdgeInsets.symmetric(horizontal: 7, vertical: 6);
-
-  static BoxDecoration decoration() => BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(5),
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: margin,
-      constraints: const BoxConstraints(
-        minWidth: minTapSize,
-        minHeight: minTapSize,
-      ),
-      padding: padding,
-      alignment: Alignment.center,
-      decoration: decoration(),
-      child: child,
-    );
-  }
-}
-
-/// Six-dot drag handle (2 columns × 3 rows). Dot grid is always LTR so spacing
-/// stays correct in Arabic/RTL layouts.
-class BlockDragHandle extends StatelessWidget {
-  final Color color;
-
-  const BlockDragHandle({super.key, this.color = Colors.white});
-
-  static const double _dotSize = 3.0;
-  static const double _gridWidth = 9.0;
-  static const double _gridHeight = 15.0;
-
-  @override
-  Widget build(BuildContext context) {
-    return BlockControlShell(
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: SizedBox(
-          width: _gridWidth,
-          height: _gridHeight,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(3, (_) {
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _dot(color),
-                  _dot(color),
-                ],
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-
-  static Widget _dot(Color color) {
-    return SizedBox(
-      width: _dotSize,
-      height: _dotSize,
-      child: DecoratedBox(
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      ),
-    );
-  }
-}
-
-class BlockDeleteButton extends StatelessWidget {
-  final VoidCallback? onTap;
-
-  const BlockDeleteButton({super.key, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: const BlockControlShell(
-        child: Icon(Icons.close_rounded, color: Colors.white, size: 14),
-      ),
-    );
-  }
-}
-
-/// Restricts drag initiation to [BlockDragHandle] so the rest of the block
-/// scrolls normally without accidental drags.
-class HandleOnlyDraggable<T extends Object> extends StatefulWidget {
-  final T data;
-  final bool enabled;
-  final Widget feedback;
-  final int maxSimultaneousDrags;
-  final VoidCallback? onDragStarted;
-  final void Function(DraggableDetails details)? onDragEnd;
-  final void Function(DragUpdateDetails details)? onDragUpdate;
-  final void Function(Velocity velocity, Offset offset)? onDraggableCanceled;
-  final Widget Function(bool isDragging, Widget? dragHandle) builder;
-
-  const HandleOnlyDraggable({
-    super.key,
-    required this.data,
-    required this.enabled,
-    required this.feedback,
-    required this.builder,
-    this.maxSimultaneousDrags = 1,
-    this.onDragStarted,
-    this.onDragEnd,
-    this.onDragUpdate,
-    this.onDraggableCanceled,
-  });
-
-  @override
-  State<HandleOnlyDraggable<T>> createState() => _HandleOnlyDraggableState<T>();
-}
-
-class _HandleOnlyDraggableState<T extends Object> extends State<HandleOnlyDraggable<T>> {
-  bool _dragging = false;
-
-  void _setDragging(bool value) {
-    if (_dragging != value && mounted) {
-      setState(() => _dragging = value);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    Widget? dragHandle;
-    if (widget.enabled) {
-      dragHandle = Draggable<T>(
-        data: widget.data,
-        maxSimultaneousDrags: widget.maxSimultaneousDrags,
-        onDragStarted: () {
-          _setDragging(true);
-          widget.onDragStarted?.call();
-        },
-        onDragEnd: (details) {
-          _setDragging(false);
-          widget.onDragEnd?.call(details);
-        },
-        onDragUpdate: widget.onDragUpdate,
-        onDraggableCanceled: (velocity, offset) {
-          _setDragging(false);
-          widget.onDraggableCanceled?.call(velocity, offset);
-        },
-        feedback: widget.feedback,
-        childWhenDragging: SizedBox(
-          width: BlockControlShell.minTapSize,
-          height: BlockControlShell.minTapSize,
-        ),
-        child: const BlockDragHandle(),
-      );
-    }
-    return widget.builder(_dragging, dragHandle);
-  }
-}
-
 // ─── Primary button ───────────────────────────────────────────────────────────
 
 class PrimaryButton extends StatelessWidget {
@@ -1181,6 +1013,75 @@ class _ProfileStat extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─── Disconnect Banner ───────────────────────────────────────────────────────
+
+class DisconnectedBanner extends StatelessWidget {
+  const DisconnectedBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final str = AppStrings.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2)],
+        ),
+        border: Border.all(color: const Color(0xFFF57C00), width: 2),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFF57C00).withValues(alpha: 0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF57C00),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.bluetooth_disabled_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  str.robotDisconnectedTitle,
+                  style: GoogleFonts.nunito(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFFE65100),
+                  ),
+                ),
+                Text(
+                  str.robotDisconnectedSub,
+                  style: GoogleFonts.nunito(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFBF360C),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

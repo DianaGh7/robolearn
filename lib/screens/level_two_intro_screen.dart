@@ -6,7 +6,6 @@ import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_strings.dart';
-import '../utils/responsive.dart';
 import 'level_two_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -355,51 +354,63 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
   Widget _header() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-      child: IntroTutorialHeaderRow(
-        badge: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFF7E8DF1).withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-                color: const Color(0xFF7E8DF1).withValues(alpha: 0.45)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.star_rounded,
-                  color: Color(0xFFFFB300), size: 15),
-              const SizedBox(width: 5),
-              Text(AppStrings.of(context).levelBadge(3),
-                  style: GoogleFonts.nunito(
-                      color: const Color(0xFF3949AB),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800)),
-            ],
-          ),
-        ),
-        title: AppStrings.of(context).conditionalStatements,
-        titleStyle: GoogleFonts.nunito(
-            color: const Color(0xFF5C6BC0),
-            fontSize: 15,
-            fontWeight: FontWeight.w600),
-        skipButton: GestureDetector(
-          onTap: _onPlay,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7E8DF1).withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: const Color(0xFF7E8DF1).withValues(alpha: 0.45)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star_rounded,
+                          color: Color(0xFFFFB300), size: 15),
+                      const SizedBox(width: 5),
+                      Text('Level 3',
+                          style: GoogleFonts.nunito(
+                              color: const Color(0xFF3949AB),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('Conditional Statements',
+                      style: GoogleFonts.nunito(
+                          color: const Color(0xFF5C6BC0),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ],
             ),
-            child: Text(AppStrings.of(context).isArabic ? 'تخطي' : 'Skip',
-                style: GoogleFonts.nunito(
-                    color: AppTheme.tealDark,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700)),
           ),
-        ),
+          GestureDetector(
+            onTap: _onPlay,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
+              ),
+              child: Text(AppStrings.of(context).isArabic ? 'تخطي' : 'Skip',
+                  style: GoogleFonts.nunito(
+                      color: AppTheme.tealDark,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
       ),
     ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.3, end: 0);
   }
@@ -505,12 +516,12 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
           const SizedBox(height: 16),
           _BigBlock(
             topTag: 'IF',
-            body: _t('😊  happy face on screen', '😊  وجه سعيد على الشاشة'),
+            body: '😊  happy face on screen',
             color: const Color(0xFFF29E4C),
             glowValue: g,
           ),
           const SizedBox(height: 12),
-          _YesNoArrow(label: '✅  ${AppStrings.of(context).yes}', color: const Color(0xFF4CAF50)),
+          _YesNoArrow(label: '✅  YES!', color: const Color(0xFF4CAF50)),
           const SizedBox(height: 12),
           AnimatedOpacity(
             opacity: _showResult ? 1 : 0,
@@ -520,8 +531,8 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
               duration: const Duration(milliseconds: 450),
               curve: Curves.easeOut,
               child: _BigBlock(
-                topTag: _t('Action!', 'إجراء!'),
-                body: _t('🎵  play music!', '🎵  شغّل الموسيقى!'),
+                topTag: 'Action!',
+                body: '🎵  play music!',
                 color: const Color(0xFF43A047),
                 glowValue: _showResult ? g : 0,
               ),
@@ -545,17 +556,17 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
           const SizedBox(height: 16),
           _BigBlock(
             topTag: 'IF',
-            body: _t('😊  happy face on screen', '😊  وجه سعيد على الشاشة'),
+            body: '😊  happy face on screen',
             color: const Color(0xFFF29E4C),
             glowValue: 0,
             dimmed: true,
           ),
           const SizedBox(height: 12),
-          _YesNoArrow(label: '❌  ${AppStrings.of(context).no}', color: const Color(0xFFE57373)),
+          _YesNoArrow(label: '❌  NO!', color: const Color(0xFFE57373)),
           const SizedBox(height: 12),
           _BigBlock(
             topTag: 'ELSE',
-            body: _t('↩️  do something else', '↩️  افعل شيئًا آخر'),
+            body: '↩️  do something else',
             color: const Color(0xFF7E8DF1),
             glowValue: g,
           ),
@@ -568,8 +579,8 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
               duration: const Duration(milliseconds: 450),
               curve: Curves.easeOut,
               child: _BigBlock(
-                topTag: _t('Action!', 'إجراء!'),
-                body: _t('😢  cry!', '😢  ابكِ!'),
+                topTag: 'Action!',
+                body: '😢  cry!',
                 color: const Color(0xFF7E8DF1),
                 glowValue: _showResult ? g * 0.6 : 0,
               ),
@@ -602,7 +613,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
             condText: _t('IF  moon 🌙', 'IF  القمر 🌙'),
             condColor: const Color(0xFF5C6BC0),
             actEmoji: '🌃',
-            actText: _t('night!', 'ليل!'),
+            actText: 'night!',
             glowValue: 0,
           ),
           const SizedBox(height: 6),
@@ -613,7 +624,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
             condText: _t('ELSE IF  sun ☀️', 'ELSE IF  الشمس ☀️'),
             condColor: const Color(0xFFF29E4C),
             actEmoji: '🌅',
-            actText: _t('morning!', 'صباح!'),
+            actText: 'morning!',
             glowValue: g,
           ),
           const SizedBox(height: 6),
@@ -632,8 +643,8 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(_t('ELSE  →  anything else!', 'ELSE  →  أي شيء آخر!'),
-                      style: GoogleFonts.nunito(
-                          fontSize: Responsive.fontSize(context, 19),
+                        style: GoogleFonts.nunito(
+                          fontSize: 19.0,
                           fontWeight: FontWeight.w800,
                           color: Colors.grey.shade700)),
                 ),
@@ -844,7 +855,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
               Flexible(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text(AppStrings.of(context).letsPlayEmoji,
+                  child: Text("Let's Play! 🎮",
                       style: GoogleFonts.nunito(
                           color: Colors.white,
                           fontSize: 22,
@@ -906,17 +917,31 @@ class _SpeechBubble extends StatelessWidget {
                 text,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.nunito(
-                  fontSize: Responsive.fontSize(context, 20),
+                      fontSize: 20.0,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.tealDark,
                   height: 1.55,
                 ),
               ),
               const SizedBox(height: 8),
-              SpeechBubbleHintRow(
-                showBackHint: showBackHint,
-                onBack: onBack,
-              ),
+                  if (showBackHint)
+                    GestureDetector(
+                      onTap: onBack,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.arrow_back, size: 14),
+                          const SizedBox(width: 6),
+                          Text('Back',
+                              style: GoogleFonts.nunito(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.tealDark)),
+                        ],
+                      ),
+                    )
+                  else
+                    const SizedBox.shrink(),
             ],
           ),
         ),
@@ -1101,7 +1126,6 @@ class _NoArrow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isArabic = AppStrings.of(context).isArabic;
     return Padding(
       padding: const EdgeInsets.only(left: 12),
       child: Row(
@@ -1109,7 +1133,7 @@ class _NoArrow extends StatelessWidget {
           Icon(Icons.subdirectory_arrow_right_rounded,
               size: 18, color: const Color(0xFFE57373)),
           const SizedBox(width: 4),
-          Text(isArabic ? 'لا ❌  افحص مجدداً...' : 'No ❌  check again...',
+          Text('No ❌  check again...',
               style: GoogleFonts.nunito(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

@@ -1,13 +1,15 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
 import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
-import '../widgets/code_blocks_drag.dart';
 import '../services/child_progress_service.dart';
-import '../services/robot_connection_helper.dart';
+import '../services/robolearn_ble_service.dart';
+import '../services/connection_state.dart' as robot_conn;
 import '../l10n/app_strings.dart';
 import 'level_one_intro_screen.dart';
 
@@ -36,6 +38,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
   bool _showCelebrationOverlay = false;
   bool _showFailToast = false;
   bool _showConnectedToast = false;
+  bool _showDisconnectedToast = false;
   bool _suppressFailToast = false;
   bool _challengeSuccessfullyCompleted = false;
   bool _streakRenewed = false;
@@ -46,6 +49,8 @@ class _LevelOneScreenState extends State<LevelOneScreen>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
   final ChildProgressService _progressService = ChildProgressService();
+  final RoboLearnBleService _ble = RoboLearnBleService();
+  StreamSubscription<void>? _disconnectSub;
 
   @override
   void initState() {
@@ -69,10 +74,6 @@ class _LevelOneScreenState extends State<LevelOneScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    if (RobotConnectionHelper.isAlreadyConnected) {
-      _connectionStatus = RobotConnectionStatus.connected;
-    }
-
     // Auto-show intro the first time a child opens Level 1 without any
     // completed Level 1 challenges.
     final bool isFirstLevel1Visit =
@@ -88,6 +89,21 @@ class _LevelOneScreenState extends State<LevelOneScreen>
         _showTutorial();
       });
     }
+
+    if (_ble.isConnected) {
+      _connectionStatus = RobotConnectionStatus.connected;
+    }
+    _disconnectSub = _ble.onDisconnected.listen((_) {
+      if (!mounted) return;
+      setState(() {
+        _connectionStatus = RobotConnectionStatus.disconnected;
+        _showDisconnectedToast = true;
+        _showConnectedToast = false;
+      });
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _showDisconnectedToast = false);
+      });
+    });
   }
 
   ChildModel _markChallengeCompleted() {
@@ -158,6 +174,7 @@ class _LevelOneScreenState extends State<LevelOneScreen>
 
   @override
   void dispose() {
+    _disconnectSub?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -278,7 +295,6 @@ class _LevelOneScreenState extends State<LevelOneScreen>
         continue;
       }
       setState(() => _activeBlockIndex = i);
-      await RobotConnectionHelper.sendBlockIfConnected(block.type);
       await Future.delayed(const Duration(milliseconds: 800));
       if (!mounted) return;
       setState(() {
@@ -420,12 +436,24 @@ class _LevelOneScreenState extends State<LevelOneScreen>
   Future<void> _handleConnect() async {
     if (_connectionStatus != RobotConnectionStatus.disconnected) return;
     setState(() => _connectionStatus = RobotConnectionStatus.connecting);
-    final ok = await RobotConnectionHelper.connect();
-    if (!mounted) return;
-    RobotConnectionHelper.logConnectionResult(ok);
-    setState(() => _connectionStatus = ok
-        ? RobotConnectionStatus.connected
-        : RobotConnectionStatus.disconnected);
+    try {
+      await _ble.connect();
+      robot_conn.ConnectionState().markConnected();
+      if (!mounted) return;
+      setState(() => _connectionStatus = RobotConnectionStatus.connected);
+      _showConnectedNotification();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _connectionStatus = RobotConnectionStatus.disconnected);
+      robot_conn.ConnectionState().markDisconnected();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not connect to RoboLearn'),
+          duration: Duration(seconds: 5),
+          backgroundColor: Color(0xFFB71C1C),
+        ),
+      );
+    }
   }
 
   @override
@@ -516,10 +544,9 @@ class _LevelOneScreenState extends State<LevelOneScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 3),
-                                ConstrainedBox(
-                                  constraints: BoxConstraints(minHeight: codeAreaHeight),
+                                SizedBox(
+                                  height: codeAreaHeight,
                                   child: _CodeBlocksArea(
-                                    workspaceHeight: (codeAreaHeight * 0.52).clamp(200.0, 300.0),
                                     arrangedBlocks: arrangedBlocks,
                                     onRemoveBlock: _removeBlock,
                                     onMoveBlock: _moveBlock,
@@ -549,21 +576,23 @@ class _LevelOneScreenState extends State<LevelOneScreen>
             left: 16,
             right: 16,
             child: IgnorePointer(
-              ignoring: !_showFailToast && !_showConnectedToast,
+              ignoring: !_showFailToast && !_showConnectedToast && !_showDisconnectedToast,
               child: AnimatedSlide(
-                offset: (_showFailToast || _showConnectedToast)
+                offset: (_showFailToast || _showConnectedToast || _showDisconnectedToast)
                     ? Offset.zero
                     : const Offset(0, -1),
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOut,
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 220),
-                  opacity: (_showFailToast || _showConnectedToast) ? 1 : 0,
+                  opacity: (_showFailToast || _showConnectedToast || _showDisconnectedToast) ? 1 : 0,
                   child: SafeArea(
                     bottom: false,
                     child: _showConnectedToast
                         ? const _ConnectedBanner()
-                        : const _FailBanner(),
+                        : _showDisconnectedToast
+                            ? const DisconnectedBanner()
+                            : const _FailBanner(),
                   ),
                 ),
               ),
@@ -1198,7 +1227,6 @@ class _GridCell extends StatelessWidget {
 // Code blocks area
 // ─────────────────────────────────────────────────────
 class _CodeBlocksArea extends StatelessWidget {
-  final double workspaceHeight;
   final List<CodeBlock> arrangedBlocks;
   final Function(int) onRemoveBlock;
   final Function(int, int) onMoveBlock;
@@ -1211,7 +1239,6 @@ class _CodeBlocksArea extends StatelessWidget {
   final VoidCallback onShowTutorial;
 
   const _CodeBlocksArea({
-    required this.workspaceHeight,
     required this.arrangedBlocks,
     required this.onRemoveBlock,
     required this.onMoveBlock,
@@ -1236,11 +1263,7 @@ class _CodeBlocksArea extends StatelessWidget {
           width: 1.5,
         ),
       ),
-      child: CodeBlocksDragHost(
-        enabled: !isExecuting,
-        child: Builder(
-          builder: (dragContext) => Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -1327,8 +1350,8 @@ class _CodeBlocksArea extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          SizedBox(
-            height: workspaceHeight,
+          Expanded(
+            flex: 2,
             child: Container(
               decoration: BoxDecoration(
                 color: const Color(0xFFF5FAF9),
@@ -1336,13 +1359,28 @@ class _CodeBlocksArea extends StatelessWidget {
                 border: Border.all(color: Colors.grey.shade200),
               ),
               child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-                  child: Column(
-                    children: List.generate(arrangedBlocks.length + 1, (index) {
-                      if (index == arrangedBlocks.length) {
-                        return CodeBlockDropSlot(
-                          slotId: codeBlockDropSlotId(index: index),
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                child: Column(
+                  children: List.generate(arrangedBlocks.length + 1, (index) {
+                    if (index == arrangedBlocks.length) {
+                      return _DropSlot(
+                        isExecuting: isExecuting,
+                        onAccept: (data) {
+                          if (data.fromIndex != null) {
+                            onMoveBlock(data.fromIndex!, index);
+                          } else if (data.type != null) {
+                            onInsertBlockAt(data.type!, index);
+                          }
+                        },
+                      );
+                    }
+
+                    final block = arrangedBlocks[index];
+                    final isActive = activeBlockIndex == index;
+                    return Column(
+                      children: [
+                        _DropSlot(
                           isExecuting: isExecuting,
                           onAccept: (data) {
                             if (data.fromIndex != null) {
@@ -1351,36 +1389,11 @@ class _CodeBlocksArea extends StatelessWidget {
                               onInsertBlockAt(data.type!, index);
                             }
                           },
-                        );
-                      }
-
-                      final block = arrangedBlocks[index];
-                      final isActive = activeBlockIndex == index;
-                      final dragCallbacks = CodeBlocksDragCallbacks.forData(
-                        dragContext,
-                        DraggedBlockData(fromIndex: index),
-                      );
-                      return Column(
-                        children: [
-                          CodeBlockDropSlot(
-                            slotId: codeBlockDropSlotId(index: index),
-                            isExecuting: isExecuting,
-                            onAccept: (data) {
-                              if (data.fromIndex != null) {
-                                onMoveBlock(data.fromIndex!, index);
-                              } else if (data.type != null) {
-                                onInsertBlockAt(data.type!, index);
-                              }
-                            },
-                          ),
-                          HandleOnlyDraggable<DraggedBlockData>(
-                            data: DraggedBlockData(fromIndex: index),
-                            enabled: !isExecuting,
-                            onDragStarted: dragCallbacks.onDragStarted,
-                            onDragEnd: dragCallbacks.onDragEnd,
-                            onDragUpdate: dragCallbacks.onDragUpdate,
-                            onDraggableCanceled: dragCallbacks.onDraggableCanceled,
-                            feedback: Material(
+                        ),
+                        Draggable<_DraggedBlockData>(
+                          data: _DraggedBlockData(fromIndex: index),
+                          maxSimultaneousDrags: isExecuting ? 0 : 1,
+                          feedback: Material(
                             color: Colors.transparent,
                             child: SizedBox(
                               width: MediaQuery.of(context).size.width - 72,
@@ -1388,12 +1401,11 @@ class _CodeBlocksArea extends StatelessWidget {
                                 block: block,
                                 isExecuting: true,
                                 isHighlighted: isActive,
-                                dragHandle: const BlockDragHandle(),
                               ),
                             ),
                           ),
-                          builder: (isDragging, dragHandle) => Opacity(
-                            opacity: isDragging ? 0.25 : 1.0,
+                          childWhenDragging: Opacity(
+                            opacity: 0.25,
                             child: _CodeBlockWidget(
                               block: block,
                               onRemove: isExecuting
@@ -1401,27 +1413,34 @@ class _CodeBlocksArea extends StatelessWidget {
                                   : () => onRemoveBlock(index),
                               isExecuting: isExecuting,
                               isHighlighted: isActive,
-                              dragHandle: dragHandle,
                             ),
                           ),
+                          child: _CodeBlockWidget(
+                            block: block,
+                            onRemove: isExecuting
+                                ? null
+                                : () => onRemoveBlock(index),
+                            isExecuting: isExecuting,
+                            isHighlighted: isActive,
                           ),
-                        ],
-                      );
-                    }),
-                  ),
+                        ),
+                      ],
+                    );
+                  }),
                 ),
+              ),
             ),
           ),
 
           const SizedBox(height: 10),
           Padding(
-            padding: const EdgeInsetsDirectional.only(start: 2, bottom: 6),
+            padding: const EdgeInsets.only(left: 2, bottom: 6),
             child: Row(
               children: [
                 const Icon(Icons.widgets_rounded, size: 13, color: AppTheme.tealPrimary),
                 const SizedBox(width: 5),
                 Text(
-                  AppStrings.of(dragContext).availableBlocks,
+                  AppStrings.of(context).availableBlocks,
                   style: GoogleFonts.nunito(
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
@@ -1432,38 +1451,42 @@ class _CodeBlocksArea extends StatelessWidget {
             ),
           ),
 
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: availableBlocks.map((blockType) {
-              final color = CodeBlock.typeColors[blockType]!;
-              final chip = _PaletteChip(blockType: blockType, color: color);
-              return CodeBlocksPaletteDraggable(
-                data: DraggedBlockData(type: blockType),
-                maxSimultaneousDrags: isExecuting ? 0 : 1,
-                feedback: Material(
-                  color: Colors.transparent,
-                  child: _PaletteChip(
-                    blockType: blockType,
-                    color: color,
-                    elevated: true,
-                  ),
-                ),
-                childWhenDragging: Opacity(opacity: 0.3, child: chip),
-                child: GestureDetector(
-                  onTap: isExecuting ? null : () => onAddBlock(blockType),
-                  child: AnimatedOpacity(
-                    opacity: isExecuting ? 0.45 : 1,
-                    duration: const Duration(milliseconds: 200),
-                    child: chip,
-                  ),
-                ),
-              );
-            }).toList(),
+          Expanded(
+            flex: 1,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: availableBlocks.map((blockType) {
+                  final color = CodeBlock.typeColors[blockType]!;
+                  final chip = _PaletteChip(blockType: blockType, color: color);
+                  return Draggable<_DraggedBlockData>(
+                    data: _DraggedBlockData(type: blockType),
+                    maxSimultaneousDrags: isExecuting ? 0 : 1,
+                    feedback: Material(
+                      color: Colors.transparent,
+                      child: _PaletteChip(
+                        blockType: blockType,
+                        color: color,
+                        elevated: true,
+                      ),
+                    ),
+                    childWhenDragging: Opacity(opacity: 0.3, child: chip),
+                    child: GestureDetector(
+                      onTap: isExecuting ? null : () => onAddBlock(blockType),
+                      child: AnimatedOpacity(
+                        opacity: isExecuting ? 0.45 : 1,
+                        duration: const Duration(milliseconds: 200),
+                        child: chip,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
           ),
         ],
-          ),
-        ),
       ),
     );
   }
@@ -1474,19 +1497,16 @@ class _CodeBlockWidget extends StatelessWidget {
   final VoidCallback? onRemove;
   final bool isExecuting;
   final bool isHighlighted;
-  final Widget? dragHandle;
 
   const _CodeBlockWidget({
     required this.block,
     this.onRemove,
     required this.isExecuting,
     this.isHighlighted = false,
-    this.dragHandle,
   });
 
   @override
   Widget build(BuildContext context) {
-    final handle = dragHandle;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -1522,10 +1542,80 @@ class _CodeBlockWidget extends StatelessWidget {
               ),
             ),
           ),
-          if (!isExecuting && handle != null) handle,
-          if (!isExecuting) BlockDeleteButton(onTap: onRemove),
+          if (!isExecuting)
+            GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                margin: const EdgeInsets.only(left: 6),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: const Icon(
+                  Icons.close_rounded,
+                  color: Colors.white,
+                  size: 14,
+                ),
+              ),
+            ),
         ],
       ),
+    );
+  }
+}
+
+class _DropSlot extends StatefulWidget {
+  final bool isExecuting;
+  final ValueChanged<_DraggedBlockData> onAccept;
+
+  const _DropSlot({required this.isExecuting, required this.onAccept});
+
+  @override
+  State<_DropSlot> createState() => _DropSlotState();
+}
+
+class _DropSlotState extends State<_DropSlot> {
+  bool _isHovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return DragTarget<_DraggedBlockData>(
+      onWillAcceptWithDetails: (_) {
+        if (widget.isExecuting) return false;
+        if (!mounted) return false;
+        setState(() => _isHovering = true);
+        return true;
+      },
+      onLeave: (_) {
+        if (mounted) {
+          setState(() => _isHovering = false);
+        }
+      },
+      onAcceptWithDetails: (details) {
+        if (mounted) {
+          setState(() => _isHovering = false);
+        }
+        widget.onAccept(details.data);
+      },
+      builder: (context, candidateData, rejectedData) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+          height: _isHovering ? 20 : 6,
+          decoration: BoxDecoration(
+            color: _isHovering
+                ? AppTheme.tealPrimary.withValues(alpha: 0.18)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _isHovering
+                  ? AppTheme.tealPrimary
+                  : Colors.grey.withValues(alpha: 0.25),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -1576,6 +1666,13 @@ class _PaletteChip extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DraggedBlockData {
+  final int? fromIndex;
+  final CodeBlockType? type;
+
+  const _DraggedBlockData({this.fromIndex, this.type});
 }
 
 IconData _blockIcon(CodeBlockType type) {

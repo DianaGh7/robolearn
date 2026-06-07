@@ -6,7 +6,6 @@ import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_strings.dart';
-import '../utils/responsive.dart';
 import 'level_four_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -16,11 +15,10 @@ import 'level_four_screen.dart';
 class _Frame {
   final int step;
   final String speech;
-  final String arabicSpeech;
   final bool resetScreen;
   final bool triggerDemo;
   final bool celebrate;
-  const _Frame(this.step, this.speech, this.arabicSpeech,
+  const _Frame(this.step, this.speech,
       {this.resetScreen = false,
       this.triggerDemo = false,
       this.celebrate = false});
@@ -51,30 +49,21 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
 
   static const _frames = [
     // Step 1 – greeting / concept
-    _Frame(1, "Hi! I'm Robo! 🤖", 'مرحبًا! أنا روبو! 🤖'),
-    _Frame(1, "Today you'll learn about\nVARIABLES! 📦",
-        'اليوم ستتعلم عن\nالمتغيرات! 📦'),
-    _Frame(1, "A variable is like a box\nthat stores a value! ✨",
-        'المتغير يشبه الصندوق\nالذي يخزّن قيمة! ✨'),
+    _Frame(1, "Hi! I'm Robo! 🤖"),
+    _Frame(1, "Today you'll learn about\nVARIABLES! 📦"),
+    _Frame(1, "A variable is like a box\nthat stores a value! ✨"),
     // Step 2 – what variables do
-    _Frame(2, "You can name the box...\nand put any number inside! 🔢",
-        'يمكنك تسمية الصندوق...\nووضع أي رقم بداخله! 🔢'),
-    _Frame(2, "And the value inside\ncan change anytime! 🔄",
-        'والقيمة بداخله\nيمكن أن تتغير في أي وقت! 🔄'),
+    _Frame(2, "You can name the box...\nand put any number inside! 🔢"),
+    _Frame(2, "And the value inside\ncan change anytime! 🔄"),
     // Step 3 – using variables
-    _Frame(3, "You can SHOW the value\non the robot screen! 📊",
-        'يمكنك عرض القيمة\nعلى شاشة الروبوت! 📊'),
-    _Frame(3, "Set it, change it, show it —\nthat's programming! 💡",
-        'اضبطها، غيّرها، اعرضها —\nهذه هي البرمجة! 💡'),
+    _Frame(3, "You can SHOW the value\non the robot screen! 📊"),
+    _Frame(3, "Set it, change it, show it —\nthat's programming! 💡"),
     // Step 4 – live demo
     _Frame(4, "Example: set score = 10\nthen show it on screen! 📌",
-        'مثال: اضبط score = 10\nثم اعرضه على الشاشة! 📌',
         resetScreen: true),
-    _Frame(4, "Watch the screen update! 👀", 'شاهد الشاشة تتحدّث! 👀',
-        triggerDemo: true),
+    _Frame(4, "Watch the screen update! 👀", triggerDemo: true),
     // Step 5 – celebrate
     _Frame(5, "Amazing! Now use variables\nto solve the challenges! 🌟",
-        'رائع! استخدم المتغيرات\nلحل التحديات! 🌟',
         celebrate: true),
   ];
 
@@ -140,13 +129,10 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
     final frame = _frames[index];
     _cancelDemo = true;
 
-    final localizedSpeech = AppStrings.of(context).isArabic
-        ? frame.arabicSpeech
-        : frame.speech;
     setState(() {
       _frameIndex = index;
       _step = frame.step;
-      _speech = localizedSpeech;
+      _speech = frame.speech;
       _showSpeech = true;
     });
 
@@ -347,51 +333,63 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
   Widget _header() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-      child: IntroTutorialHeaderRow(
-        badge: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppTheme.tealPrimary.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-                color: AppTheme.tealPrimary.withValues(alpha: 0.45)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: AppTheme.tealPrimary.withValues(alpha: 0.45)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star_rounded,
+                          color: Color(0xFFFFB300), size: 15),
+                      const SizedBox(width: 5),
+                      Text('Level 4',
+                          style: GoogleFonts.nunito(
+                              color: AppTheme.tealDark,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('Variables',
+                      style: GoogleFonts.nunito(
+                          color: AppTheme.tealPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.star_rounded,
-                  color: Color(0xFFFFB300), size: 15),
-              const SizedBox(width: 5),
-              Text(AppStrings.of(context).levelBadge(4),
+          GestureDetector(
+            onTap: _onPlay,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
+              ),
+              child: Text(_t('Skip', 'تخطي'),
                   style: GoogleFonts.nunito(
                       color: AppTheme.tealDark,
                       fontSize: 15,
-                      fontWeight: FontWeight.w800)),
-            ],
-          ),
-        ),
-        title: AppStrings.of(context).variables,
-        titleStyle: GoogleFonts.nunito(
-            color: AppTheme.tealPrimary,
-            fontSize: 15,
-            fontWeight: FontWeight.w600),
-        skipButton: GestureDetector(
-          onTap: _onPlay,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
+                      fontWeight: FontWeight.w700)),
             ),
-            child: Text(_t('Skip', 'تخطي'),
-                style: GoogleFonts.nunito(
-                    color: AppTheme.tealDark,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700)),
           ),
-        ),
+        ],
       ),
     ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.3, end: 0);
   }
@@ -417,13 +415,13 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(_t('VARIABLES! 📦', 'المتغيرات! 📦'),
+          Text('VARIABLES! 📦',
               style: GoogleFonts.nunito(
                   fontSize: 38,
                   fontWeight: FontWeight.w900,
                   color: AppTheme.tealDark)),
           const SizedBox(height: 10),
-          Text(_t('variable  =  a box for values', 'المتغير  =  صندوق للقيم'),
+          Text('variable  =  a box for values',
               style: GoogleFonts.nunito(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -444,8 +442,7 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
-            child: Text(_t('A box that stores a value! 📦',
-                'صندوق يخزّن قيمة! 📦'),
+            child: Text('A box that stores a value! 📦',
                 style: GoogleFonts.nunito(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
@@ -524,22 +521,22 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
           const SizedBox(height: 14),
           _StepCard(
               number: '1',
-              label: _t('SET it', 'اضبطه'),
+              label: 'SET it',
               desc: 'score = 10',
               color: const Color(0xFFE91E63),
               glowValue: g),
           const SizedBox(height: 8),
           _StepCard(
               number: '2',
-              label: _t('CHANGE it', 'غيّره'),
-              desc: _t('add 5 → score = 15', 'أضف 5 → score = 15'),
+              label: 'CHANGE it',
+              desc: 'add 5 → score = 15',
               color: const Color(0xFF4CAF50),
               glowValue: g),
           const SizedBox(height: 8),
           _StepCard(
               number: '3',
-              label: _t('SHOW it', 'اعرضه'),
-              desc: _t('screen: score = 15', 'الشاشة: score = 15'),
+              label: 'SHOW it',
+              desc: 'screen: score = 15',
               color: const Color(0xFF1565C0),
               glowValue: g),
         ],
@@ -750,21 +747,35 @@ class _SpeechBubble extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Text(
+                Text(
                 text,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.nunito(
-                  fontSize: Responsive.fontSize(context, 20),
+                  fontSize: 20.0,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.tealDark,
                   height: 1.55,
                 ),
               ),
               const SizedBox(height: 8),
-              SpeechBubbleHintRow(
-                showBackHint: showBackHint,
-                onBack: onBack,
-              ),
+              if (showBackHint)
+                GestureDetector(
+                  onTap: onBack,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.arrow_back, size: 14),
+                      const SizedBox(width: 6),
+                      Text('Back',
+                          style: GoogleFonts.nunito(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.tealDark)),
+                    ],
+                  ),
+                )
+              else
+                const SizedBox.shrink(),
             ],
           ),
         ),

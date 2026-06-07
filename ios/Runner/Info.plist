@@ -46,19 +46,6 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>RoboLearn needs Bluetooth to connect to your robot and send commands.</string>
-	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>RoboLearn needs Bluetooth to connect to your robot and send commands.</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.googleusercontent.apps.570232335671-9crjnot0to3sqlrldgd58ikl20tid56a</string>
-			</array>
-		</dict>
-	</array>
+	<string>RoboLearn uses Bluetooth to send programs to your robot screen.</string>
 </dict>
 </plist>

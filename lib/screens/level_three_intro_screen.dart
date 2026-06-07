@@ -6,7 +6,6 @@ import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_strings.dart';
-import '../utils/responsive.dart';
 import 'level_three_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -341,51 +340,63 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
     final str = AppStrings.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-      child: IntroTutorialHeaderRow(
-        badge: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFF7E57C2).withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-                color: const Color(0xFF7E57C2).withValues(alpha: 0.45)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.star_rounded,
-                  color: Color(0xFFFFB300), size: 15),
-              const SizedBox(width: 5),
-              Text(str.levelBadge(2),
-                  style: GoogleFonts.nunito(
-                      color: const Color(0xFF4527A0),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800)),
-            ],
-          ),
-        ),
-        title: str.levelTitle(2),
-        titleStyle: GoogleFonts.nunito(
-            color: const Color(0xFF7E57C2),
-            fontSize: 15,
-            fontWeight: FontWeight.w600),
-        skipButton: GestureDetector(
-          onTap: _onPlay,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7E57C2).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: const Color(0xFF7E57C2).withValues(alpha: 0.45)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star_rounded,
+                          color: Color(0xFFFFB300), size: 15),
+                      const SizedBox(width: 5),
+                      Text(str.levelBadge(2),
+                          style: GoogleFonts.nunito(
+                              color: const Color(0xFF4527A0),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(str.levelTitle(2),
+                      style: GoogleFonts.nunito(
+                          color: const Color(0xFF7E57C2),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ],
             ),
-            child: Text(_t('Skip', 'تخطي'),
-                style: GoogleFonts.nunito(
-                    color: AppTheme.tealDark,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700)),
           ),
-        ),
+          GestureDetector(
+            onTap: _onPlay,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
+              ),
+              child: Text(_t('Skip', 'تخطي'),
+                  style: GoogleFonts.nunito(
+                      color: AppTheme.tealDark,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
       ),
     ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.3, end: 0);
   }
@@ -443,7 +454,7 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
                       _t('Instead of writing the\nsame thing many times!',
                           'بدل كتابة نفس الشيء\nمرارًا وتكرارًا!'),
                       style: GoogleFonts.nunito(
-                          fontSize: Responsive.fontSize(context, 16),
+                          fontSize: 16.0,
                           fontWeight: FontWeight.w800,
                           color: const Color(0xFF4527A0))),
                 ),
@@ -766,21 +777,35 @@ class _SpeechBubble extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Text(
+                Text(
                 text,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.nunito(
-                  fontSize: Responsive.fontSize(context, 20),
+                  fontSize: 20.0,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.tealDark,
                   height: 1.55,
                 ),
               ),
               const SizedBox(height: 8),
-              SpeechBubbleHintRow(
-                showBackHint: showBackHint,
-                onBack: onBack,
-              ),
+              if (showBackHint)
+                GestureDetector(
+                  onTap: onBack,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.arrow_back, size: 14),
+                      const SizedBox(width: 6),
+                      Text('Back',
+                          style: GoogleFonts.nunito(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.tealDark)),
+                    ],
+                  ),
+                )
+              else
+                const SizedBox.shrink(),
             ],
           ),
         ),
@@ -999,9 +1024,7 @@ class _RepeatBlockWidget extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    AppStrings.of(context).isArabic
-                        ? 'REPEAT $repeatCount مرات'
-                        : 'REPEAT $repeatCount times',
+                    'REPEAT $repeatCount times',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.nunito(
