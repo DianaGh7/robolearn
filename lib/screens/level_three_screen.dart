@@ -347,13 +347,19 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
           if (!await _executeRecursive(body, depth + 1, lineMap, seqCounter)) {
             return false;
           }
+          // Brief LED off between iterations so each cycle visibly blinks.
+          if (r < count - 1 && mounted) {
+            setState(() => _ledColor = _kOff);
+            if (_ble.isConnected) await _ble.sendCommand('SRGB');
+            await Future.delayed(const Duration(milliseconds: 1100));
+          }
         }
 
         if (mounted) {
           setState(() => _ledColor = _kOff);
           if (_ble.isConnected) await _ble.sendCommand('SRGB');
         }
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future.delayed(const Duration(milliseconds: 1100));
         i = j;
       } else {
         // Single action block.
@@ -366,10 +372,10 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
         if (!mounted) return false;
 
         if (block.type == CodeBlockType.waitShort) {
-          await Future.delayed(const Duration(milliseconds: 600));
+          await Future.delayed(const Duration(milliseconds: 1100));
         } else {
           await _applyLedAction(block.type);
-          await Future.delayed(const Duration(milliseconds: 400));
+          await Future.delayed(const Duration(milliseconds: 1100));
         }
         i++;
       }
@@ -381,6 +387,35 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
   Future<void> _executeLedSequence() async {
     if (_isExecuting) return;
     if (!_hasValidStartEndOrder) {
+      setState(() {
+        _progressChild = _progressChild.copyWith(
+          attempts: _progressChild.attempts + 1,
+        );
+      });
+      _showFailNotification();
+      final childId = _progressChild.childId;
+      if (childId != null) {
+        _progressService
+            .registerChallengeFail(childId: childId, child: _progressChild)
+            .catchError((_) => _progressChild);
+      }
+      return;
+    }
+
+    // Validate full sequence and nesting before executing anything on hardware or UI.
+    final preCheckSequence = arrangedBlocks
+        .where((b) => b.type != CodeBlockType.start && b.type != CodeBlockType.end)
+        .map((b) => b.type)
+        .toList();
+    final isPreCorrect =
+        preCheckSequence.length == widget.challenge.correctSequence.length &&
+        preCheckSequence.asMap().entries.every(
+          (e) => e.value == widget.challenge.correctSequence[e.key],
+        ) &&
+        (widget.challenge.correctNesting == null ||
+            _nestingMatches(widget.challenge.correctNesting!));
+
+    if (!isPreCorrect) {
       setState(() {
         _progressChild = _progressChild.copyWith(
           attempts: _progressChild.attempts + 1,
@@ -473,7 +508,13 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
               await Future.delayed(const Duration(milliseconds: 350));
               if (!mounted) return;
               await _applyLedAction(bodyBlock.type);
-              await Future.delayed(const Duration(milliseconds: 400));
+              await Future.delayed(const Duration(milliseconds: 1100));
+            }
+            // Brief LED off between iterations so each cycle visibly blinks.
+            if (r < repeatCount - 1 && mounted) {
+              setState(() => _ledColor = _kOff);
+              if (_ble.isConnected) await _ble.sendCommand('SRGB');
+              await Future.delayed(const Duration(milliseconds: 1100));
             }
           }
 
@@ -481,7 +522,7 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
             setState(() => _ledColor = _kOff);
             if (_ble.isConnected) await _ble.sendCommand('SRGB');
           }
-          await Future.delayed(const Duration(milliseconds: 200));
+          await Future.delayed(const Duration(milliseconds: 1100));
           i = j;
         } else {
           setState(() {
@@ -494,10 +535,10 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
           if (!mounted) return;
 
           if (block.type == CodeBlockType.waitShort) {
-            await Future.delayed(const Duration(milliseconds: 600));
+            await Future.delayed(const Duration(milliseconds: 1100));
           } else {
             await _applyLedAction(block.type);
-            await Future.delayed(const Duration(milliseconds: 500));
+            await Future.delayed(const Duration(milliseconds: 1100));
           }
           seqIdx++;
           i++;
@@ -641,6 +682,11 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
   }
 
   Future<void> _goToNextChallenge() async {
+    // Turn off LED on hardware before leaving this challenge.
+    if (_ble.isConnected) await _ble.sendCommand('SRGB');
+    if (mounted) setState(() => _ledColor = _kOff);
+
+    if (!mounted) return;
     final challenges = LedChallenge.ledChallenges;
     final currentIndex = challenges.indexWhere((c) => c.number == widget.challenge.number);
     if (currentIndex == -1 || currentIndex >= challenges.length - 1) {

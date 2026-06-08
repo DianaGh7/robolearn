@@ -48,6 +48,8 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
   late List<CodeBlockType> _availableBlocks;
   RobotConnectionStatus _connectionStatus = RobotConnectionStatus.disconnected;
   final String _animalChallenge11 = 'cat';
+  // Randomly chosen each time the run button is pressed for challenge 10.
+  bool _isSunForChallenge10 = math.Random().nextBool();
   final SoundService _soundService = SoundService();
   bool _isArabic = false;
 
@@ -315,6 +317,11 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
         .toList();
     final solutionIsCorrect = _validateSequence(preCheckSeq);
 
+    // Re-randomise sun/moon each run for challenge 10.
+    if (widget.challenge.number == 10) {
+      setState(() => _isSunForChallenge10 = math.Random().nextBool());
+    }
+
     setState(() {
       _isExecuting = true;
       _activeBlockIndex = null;
@@ -349,8 +356,9 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
         }
       }
       if (widget.challenge.number == 10) {
-        final isDay = DateTime.now().hour >= 6 && DateTime.now().hour < 18;
-        return isDay
+        // Sun shown → execute the sun branch (elseIfSun, thenMorning → PL6).
+        // Moon shown → execute the moon branch (ifMoon, thenNight → PL7).
+        return _isSunForChallenge10
             ? {CodeBlockType.ifMoon, CodeBlockType.thenNight}
             : {CodeBlockType.elseIfSun, CodeBlockType.thenMorning};
       }
@@ -484,21 +492,27 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
       case CodeBlockType.beep:
       case CodeBlockType.happy:
       case CodeBlockType.music:
-      case CodeBlockType.thenMorning:
         return 'PL1';
       case CodeBlockType.cry:
-      case CodeBlockType.thenNight:
         return 'PL2';
-      case CodeBlockType.clap:
-      case CodeBlockType.catSound:
+      // Challenge 9 – Streaks: each branch gets its own command
+      case CodeBlockType.cheering:    // streak >= 5
         return 'PL3';
-      case CodeBlockType.encourage:
-      case CodeBlockType.dogSound:
+      case CodeBlockType.clap:        // streak >= 2
         return 'PL4';
-      case CodeBlockType.cheering:
+      case CodeBlockType.encourage:   // streak < 2
+        return 'PL5';
+      // Challenge 10 – Day & Night
+      case CodeBlockType.thenMorning: // sun shown
+        return 'PL6';
+      case CodeBlockType.thenNight:   // moon shown
+        return 'PL7';
+      // Challenge 11 – Guess the Animal
+      case CodeBlockType.catSound:
+      case CodeBlockType.dogSound:
       case CodeBlockType.elephantSound:
       case CodeBlockType.lionSound:
-        return 'PL5';
+        return 'PL8';
       default:
         return null;
     }
@@ -668,8 +682,6 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final totalHeight = constraints.maxHeight;
-                        final isDay = DateTime.now().hour >= 6 &&
-                            DateTime.now().hour < 18;
                         final streak = _progressChild.streak;
                         final localizedTarget = AppStrings.of(context)
                             .challengeTargetDisplay(widget.challenge.number,
@@ -681,7 +693,7 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                                     ? '👏'
                                     : '💪')
                             : widget.challenge.number == 10
-                                ? (isDay ? '☀️' : '🌙')
+                                ? (_isSunForChallenge10 ? '☀️' : '🌙')
                                 : widget.challenge.number == 11
                                     ? const {
                                         'elephant': '🐘',
