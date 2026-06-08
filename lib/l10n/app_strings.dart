@@ -452,6 +452,8 @@ class AppStrings {
       isArabic ? 'يرجى اختيار طفل أولاً!' : 'Please choose a child first!';
   String get letsPlay => isArabic ? 'هيا نلعب!' : "Let's Play!";
   String get parentsArea => isArabic ? 'منطقة الآباء' : 'Parents Area';
+  String get tapToGoBack => isArabic ? '← اضغط للرجوع' : '← Tap to go back';
+  String get tapToContinue => isArabic ? 'اضغط للمتابعة ←' : 'Tap to continue →';
   String get lvPrefix => isArabic ? 'المستوى' : 'Lv';
   String get couldNotLoadChildren =>
       isArabic ? 'تعذّر تحميل بيانات الأطفال' : 'Could not load children';
@@ -503,7 +505,7 @@ class AppStrings {
     },
     11: {
       'title': 'خمّن الحيوان',
-      'instruction': 'ساعد الروبوت على تخمين الحيوان الذي يظهر.',
+      'instruction': '🐾 هل يستطيع الروبوت تخمين الحيوان؟\n\nإذا كان كبيراً:\n  • أنف طويل؟ → 🐘 فيل\n  • وإلا → 🦁 أسد\n\nإذا لم يكن كبيراً:\n  • فرو كثيف؟ → 🐱 قط\n  • وإلا → 🐶 كلب',
       'targetDisplay': 'كبير + أنف طويل  →  🐘 فيل\nكبير، لا أنف  →  🦁 أسد\nصغير + فرو كثيف  →  🐱 قط\nصغير، غير فروي  →  🐶 كلب',
     },
     // Level 3 – LED
