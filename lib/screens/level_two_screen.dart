@@ -317,11 +317,6 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
         .toList();
     final solutionIsCorrect = _validateSequence(preCheckSeq);
 
-    // Re-randomise sun/moon each run for challenge 10.
-    if (widget.challenge.number == 10) {
-      setState(() => _isSunForChallenge10 = math.Random().nextBool());
-    }
-
     setState(() {
       _isExecuting = true;
       _activeBlockIndex = null;
@@ -470,7 +465,13 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
       // Brief pause so the child sees the wrong result, then unlock the Run button.
       await Future.delayed(const Duration(milliseconds: 1500));
       if (!mounted) return;
-      setState(() => _isExecuting = false);
+      setState(() {
+        _isExecuting = false;
+        // Give challenge 10 a fresh random emoji for the next attempt.
+        if (widget.challenge.number == 10) {
+          _isSunForChallenge10 = math.Random().nextBool();
+        }
+      });
       final childId = _progressChild.childId;
       if (childId != null) {
         _progressService
@@ -519,12 +520,18 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
   }
 
   Future<void> _executeSound(CodeBlockType type, {bool playSound = false}) async {
-    // Fire sound concurrently with animation; only plays if solution is correct.
     if (playSound) {
-      _soundService.playForBlock(type.name, isArabic: _isArabic);
-      if (_ble.isConnected) {
-        final cmd = _soundBleCommand(type);
-        if (cmd != null) await _ble.sendCommand(cmd);
+      final cmd = _soundBleCommand(type);
+      if (cmd != null) {
+        if (_ble.isConnected) {
+          // Hardware connected — send PL command; robot plays the sound.
+          await _ble.sendCommand(cmd);
+        } else {
+          // No hardware — play the matching local MP3 (PL1→0001.mp3 … PL8→0008.mp3).
+          final fileNum = int.parse(cmd.replaceFirst('PL', ''));
+          final fileName = '${fileNum.toString().padLeft(4, '0')}.mp3';
+          _soundService.playAssetPath('assets/sounds/$fileName');
+        }
       }
     }
 

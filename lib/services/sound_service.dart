@@ -24,6 +24,8 @@ class SoundService {
     await _player.dispose();
   }
 
+  Future<void> playAssetPath(String assetPath) => _playAsset(assetPath);
+
   // Condition and structural blocks — no sound should play for these.
   static const _silent = {
     'start', 'end', 'repeat',
