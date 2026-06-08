@@ -3,7 +3,9 @@
     "allow": [
       "Bash(flutter pub *)",
       "Bash(flutter analyze *)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(xargs grep -l \"DragTarget\\\\|Draggable\")",
+      "Bash(dart analyze *)"
     ]
   }
 }
