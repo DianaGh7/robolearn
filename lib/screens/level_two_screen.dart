@@ -719,11 +719,6 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                         final visualizationHeight = isEmojiOnly
                             ? 145.0
                             : (46.0 + lineCount * 48.0).clamp(110.0, 230.0);
-                        final codeAreaHeight = (totalHeight * 0.65).clamp(
-                          360.0,
-                          560.0,
-                        );
-
                         return SingleChildScrollView(
                           padding: const EdgeInsets.only(bottom: 84),
                           child: ConstrainedBox(
@@ -756,20 +751,17 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
                                   ),
                                 ],
                                 const SizedBox(height: 3),
-                                SizedBox(
-                                  height: codeAreaHeight,
-                                  child: _CodeBlocksArea(
-                                    arrangedBlocks: arrangedBlocks,
-                                    onRemoveBlock: _removeBlock,
-                                    onMoveBlock: _moveBlock,
-                                    onInsertBlockAt: _insertBlockAt,
-                                    availableBlocks: _availableBlocks,
-                                    onAddBlock: _addBlock,
-                                    isExecuting: _isExecuting,
-                                    activeBlockIndex: _activeBlockIndex,
-                                    onRun: _executeSoundSequence,
-                                    onShowTutorial: _showTutorial,
-                                  ),
+                                _CodeBlocksArea(
+                                  arrangedBlocks: arrangedBlocks,
+                                  onRemoveBlock: _removeBlock,
+                                  onMoveBlock: _moveBlock,
+                                  onInsertBlockAt: _insertBlockAt,
+                                  availableBlocks: _availableBlocks,
+                                  onAddBlock: _addBlock,
+                                  isExecuting: _isExecuting,
+                                  activeBlockIndex: _activeBlockIndex,
+                                  onRun: _executeSoundSequence,
+                                  onShowTutorial: _showTutorial,
                                 ),
                               ],
                             ),
@@ -1409,42 +1401,13 @@ class _CodeBlocksArea extends StatefulWidget {
 
 class _CodeBlocksAreaState extends State<_CodeBlocksArea> {
   bool _isDragging = false;
-  GlobalKey? _activeSlotKey;
-  final Map<String, GlobalKey> _slotKeys = {};
-
-  GlobalKey _slotKey(int idx, int level) =>
-      _slotKeys.putIfAbsent('$level-$idx', GlobalKey.new);
 
   void _startDrag() {
-    if (!_isDragging) setState(() { _isDragging = true; _activeSlotKey = null; });
+    if (!_isDragging) setState(() => _isDragging = true);
   }
 
   void _endDrag() {
-    if (_isDragging || _activeSlotKey != null) {
-      setState(() { _isDragging = false; _activeSlotKey = null; });
-    }
-  }
-
-  void _updateSlot(Offset globalPos) {
-    GlobalKey? nearest;
-    double nearestDist = double.infinity;
-    for (final k in _slotKeys.values) {
-      final box = k.currentContext?.findRenderObject() as RenderBox?;
-      if (box == null || !box.attached) continue;
-      final d = (globalPos.dy - box.localToGlobal(Offset.zero).dy).abs();
-      if (d < nearestDist) { nearestDist = d; nearest = k; }
-    }
-    const activationR = 40.0;
-    const deactivationR = 64.0;
-    if (nearest != null && nearestDist < activationR) {
-      if (nearest != _activeSlotKey) setState(() => _activeSlotKey = nearest);
-    } else if (_activeSlotKey != null) {
-      final box = _activeSlotKey!.currentContext?.findRenderObject() as RenderBox?;
-      if (box == null || !box.attached ||
-          (globalPos.dy - box.localToGlobal(Offset.zero).dy).abs() > deactivationR) {
-        setState(() => _activeSlotKey = null);
-      }
-    }
+    if (_isDragging) setState(() => _isDragging = false);
   }
 
   @override
@@ -1461,6 +1424,7 @@ class _CodeBlocksAreaState extends State<_CodeBlocksArea> {
         ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -1542,26 +1506,19 @@ class _CodeBlocksAreaState extends State<_CodeBlocksArea> {
             ],
           ),
           const SizedBox(height: 10),
-          Expanded(
-            flex: 2,
+          SizedBox(
+            height: 240,
             child: Container(
               decoration: BoxDecoration(
                 color: const Color(0xFFF5FAF9),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.grey.shade200),
               ),
-              child: DragTarget<Object>(
-                onWillAcceptWithDetails: (d) => false,
-                onMove: (details) => _updateSlot(details.offset),
-                onLeave: (_) {
-                  if (_activeSlotKey != null) setState(() => _activeSlotKey = null);
-                },
-                builder: (ctx, cd, rd) => SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-                  child: Column(
-                    children: _buildGroupedBlocks(context),
-                  ),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                child: Column(
+                  children: _buildGroupedBlocks(context),
                 ),
               ),
             ),
@@ -1584,43 +1541,37 @@ class _CodeBlocksAreaState extends State<_CodeBlocksArea> {
               ],
             ),
           ),
-          Expanded(
-            flex: 1,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: widget.availableBlocks.map((blockType) {
-                  final color = CodeBlock.typeColors[blockType]!;
-                  final chip = _PaletteChip(blockType: blockType, color: color);
-                  return Draggable<_DraggedBlockData>(
-                    data: _DraggedBlockData(type: blockType),
-                    maxSimultaneousDrags: isExecuting ? 0 : 1,
-                    onDragStarted: _startDrag,
-                    onDragEnd: (d) => _endDrag(),
-                    onDraggableCanceled: (vel, off) => _endDrag(),
-                    feedback: Material(
-                      color: Colors.transparent,
-                      child: _PaletteChip(
-                        blockType: blockType,
-                        color: color,
-                        elevated: true,
-                      ),
-                    ),
-                    childWhenDragging: Opacity(opacity: 0.3, child: chip),
-                    child: GestureDetector(
-                      onTap: isExecuting ? null : () => widget.onAddBlock(blockType),
-                      child: AnimatedOpacity(
-                        opacity: isExecuting ? 0.45 : 1,
-                        duration: const Duration(milliseconds: 200),
-                        child: chip,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: widget.availableBlocks.map((blockType) {
+              final color = CodeBlock.typeColors[blockType]!;
+              final chip = _PaletteChip(blockType: blockType, color: color);
+              return Draggable<_DraggedBlockData>(
+                data: _DraggedBlockData(type: blockType),
+                maxSimultaneousDrags: isExecuting ? 0 : 1,
+                onDragStarted: _startDrag,
+                onDragEnd: (d) => _endDrag(),
+                onDraggableCanceled: (vel, off) => _endDrag(),
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: _PaletteChip(
+                    blockType: blockType,
+                    color: color,
+                    elevated: true,
+                  ),
+                ),
+                childWhenDragging: Opacity(opacity: 0.3, child: chip),
+                child: GestureDetector(
+                  onTap: isExecuting ? null : () => widget.onAddBlock(blockType),
+                  child: AnimatedOpacity(
+                    opacity: isExecuting ? 0.45 : 1,
+                    duration: const Duration(milliseconds: 200),
+                    child: chip,
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
@@ -1630,10 +1581,8 @@ class _CodeBlocksAreaState extends State<_CodeBlocksArea> {
   List<Widget> _buildGroupedBlocks(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     if (widget.arrangedBlocks.isEmpty) {
-      final k = _slotKey(0, 0);
       return [_DropSlot(
-        key: k,
-        isActive: _activeSlotKey == k,
+        isDragging: _isDragging,
         isExecuting: widget.isExecuting,
         onAccept: (data) {
           if (data.fromIndex != null) {
@@ -1656,10 +1605,8 @@ class _CodeBlocksAreaState extends State<_CodeBlocksArea> {
     Color? parentColor,
   }) {
     _DropSlot makeDropSlot(int idx) {
-      final k = _slotKey(idx, nestingLevel);
       return _DropSlot(
-        key: k,
-        isActive: _activeSlotKey == k,
+        isDragging: _isDragging,
         isExecuting: widget.isExecuting,
         onAccept: (data) {
           if (data.fromIndex != null) {
@@ -1735,6 +1682,8 @@ class _CodeBlocksAreaState extends State<_CodeBlocksArea> {
           screenWidth: screenWidth,
           bodyChildren: bodyChildren,
           onRemove: () => widget.onRemoveBlock(headerIndex),
+          onDragStart: _startDrag,
+          onDragEnd: _endDrag,
         ));
 
         i = bodyEnd;
@@ -1781,7 +1730,7 @@ class _CodeBlockWidget extends StatefulWidget {
 }
 
 class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
-  bool _isDragging = false;
+  bool _isDraggingHandle = false;
 
   Widget _buildDotGrid({bool faded = false}) {
     final dotColor = Colors.white.withValues(alpha: faded ? 0.35 : 0.85);
@@ -1812,85 +1761,83 @@ class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final container = Container(
-      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: widget.block.color,
-        borderRadius: BorderRadius.circular(10),
-        border: widget.isHighlighted
-            ? Border.all(color: Colors.white, width: 2.4)
-            : null,
-        boxShadow: [
-          BoxShadow(
-            color: widget.block.color.withValues(alpha: 0.3),
-            blurRadius: widget.isHighlighted ? 10 : 6,
-            offset: const Offset(0, 2),
+    final canDragHandle = widget.canDrag && widget.dragData != null && !widget.isExecuting;
+
+    final Widget handle;
+    if (canDragHandle) {
+      handle = Draggable<_DraggedBlockData>(
+        data: widget.dragData!,
+        maxSimultaneousDrags: 1,
+        onDragStarted: () {
+          setState(() => _isDraggingHandle = true);
+          widget.onDragStart?.call();
+        },
+        onDragEnd: (_) {
+          setState(() => _isDraggingHandle = false);
+          widget.onDragEnd?.call();
+        },
+        onDraggableCanceled: (_, _) {
+          setState(() => _isDraggingHandle = false);
+          widget.onDragEnd?.call();
+        },
+        feedback: Material(
+          color: Colors.transparent,
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width - 72,
+            child: _CodeBlockWidget(block: widget.block, isExecuting: true, isHighlighted: false),
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(
-            _blockIcon(widget.block.type),
-            color: Colors.white.withValues(alpha: 0.9),
-            size: 14,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              widget.block.label,
-              style: GoogleFonts.nunito(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          if (!widget.isExecuting) ...[
-            if (widget.canDrag && widget.dragData != null)
-              Draggable<_DraggedBlockData>(
-                data: widget.dragData,
-                maxSimultaneousDrags: 1,
-                onDragStarted: () { setState(() => _isDragging = true); widget.onDragStart?.call(); },
-                onDragEnd: (_) { setState(() => _isDragging = false); widget.onDragEnd?.call(); },
-                onDraggableCanceled: (vel, off) { setState(() => _isDragging = false); widget.onDragEnd?.call(); },
-                feedback: Material(
-                  color: Colors.transparent,
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width - 72,
-                    child: _CodeBlockWidget(
-                      block: widget.block,
-                      isExecuting: true,
-                      isHighlighted: widget.isHighlighted,
-                    ),
-                  ),
-                ),
-                childWhenDragging: _buildDotGrid(faded: true),
-                child: _buildDotGrid(),
-              ),
-            GestureDetector(
-              onTap: widget.onRemove,
-              child: Container(
-                margin: const EdgeInsets.only(left: 6),
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: const Icon(
-                  Icons.close_rounded,
-                  color: Colors.white,
-                  size: 14,
-                ),
-              ),
+        ),
+        childWhenDragging: _buildDotGrid(faded: true),
+        child: _buildDotGrid(),
+      );
+    } else {
+      handle = _buildDotGrid();
+    }
+
+    return Opacity(
+      opacity: _isDraggingHandle ? 0.35 : 1.0,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: widget.block.color,
+          borderRadius: BorderRadius.circular(10),
+          border: widget.isHighlighted ? Border.all(color: Colors.white, width: 2.4) : null,
+          boxShadow: [
+            BoxShadow(
+              color: widget.block.color.withValues(alpha: 0.3),
+              blurRadius: widget.isHighlighted ? 10 : 6,
+              offset: const Offset(0, 2),
             ),
           ],
-        ],
+        ),
+        child: Row(
+          children: [
+            Icon(_blockIcon(widget.block.type), color: Colors.white.withValues(alpha: 0.9), size: 14),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(widget.block.label,
+                  style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+            ),
+            if (!widget.isExecuting) ...[
+              handle,
+              GestureDetector(
+                onTap: widget.onRemove,
+                child: Container(
+                  margin: const EdgeInsets.only(left: 6),
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
-
-    return _isDragging ? Opacity(opacity: 0.25, child: container) : container;
   }
 }
 
@@ -1902,6 +1849,8 @@ class _ContainerBlockWidget extends StatefulWidget {
   final double screenWidth;
   final List<Widget> bodyChildren;
   final VoidCallback onRemove;
+  final VoidCallback? onDragStart;
+  final VoidCallback? onDragEnd;
 
   const _ContainerBlockWidget({
     required this.block,
@@ -1911,6 +1860,8 @@ class _ContainerBlockWidget extends StatefulWidget {
     required this.screenWidth,
     required this.bodyChildren,
     required this.onRemove,
+    this.onDragStart,
+    this.onDragEnd,
   });
 
   @override
@@ -1918,7 +1869,7 @@ class _ContainerBlockWidget extends StatefulWidget {
 }
 
 class _ContainerBlockWidgetState extends State<_ContainerBlockWidget> {
-  bool _isDragging = false;
+  bool _isDraggingHandle = false;
 
   Widget _buildDotGrid({bool faded = false}) {
     final dotColor = Colors.white.withValues(alpha: faded ? 0.35 : 0.85);
@@ -1949,48 +1900,67 @@ class _ContainerBlockWidgetState extends State<_ContainerBlockWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final headerRow = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      child: Row(children: [
-        Icon(_blockIcon(widget.block.type), color: Colors.white.withValues(alpha: 0.9), size: 14),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(widget.block.label,
-              style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+    final Widget handle;
+    if (!widget.isExecuting) {
+      handle = Draggable<_DraggedBlockData>(
+        data: _DraggedBlockData(fromIndex: widget.blockIndex),
+        maxSimultaneousDrags: 1,
+        onDragStarted: () {
+          setState(() => _isDraggingHandle = true);
+          widget.onDragStart?.call();
+        },
+        onDragEnd: (_) {
+          setState(() => _isDraggingHandle = false);
+          widget.onDragEnd?.call();
+        },
+        onDraggableCanceled: (_, _) {
+          setState(() => _isDraggingHandle = false);
+          widget.onDragEnd?.call();
+        },
+        feedback: Material(
+          color: Colors.transparent,
+          child: SizedBox(
+            width: widget.screenWidth - 72,
+            child: _CodeBlockWidget(block: widget.block, isExecuting: true, isHighlighted: false),
+          ),
         ),
-        if (!widget.isExecuting) ...[
-          Draggable<_DraggedBlockData>(
-            data: _DraggedBlockData(fromIndex: widget.blockIndex),
-            maxSimultaneousDrags: 1,
-            onDragStarted: () => setState(() => _isDragging = true),
-            onDragEnd: (_) => setState(() => _isDragging = false),
-            onDraggableCanceled: (_, a) => setState(() => _isDragging = false),
-            feedback: Material(
-              color: Colors.transparent,
-              child: SizedBox(
-                width: widget.screenWidth - 72,
-                child: _CodeBlockWidget(block: widget.block, isExecuting: true, isHighlighted: widget.isActive),
+        childWhenDragging: _buildDotGrid(faded: true),
+        child: _buildDotGrid(),
+      );
+    } else {
+      handle = _buildDotGrid();
+    }
+
+    final headerRow = Opacity(
+      opacity: _isDraggingHandle ? 0.35 : 1.0,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        child: Row(children: [
+          Icon(_blockIcon(widget.block.type), color: Colors.white.withValues(alpha: 0.9), size: 14),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(widget.block.label,
+                style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+          ),
+          if (!widget.isExecuting) ...[
+            handle,
+            GestureDetector(
+              onTap: widget.onRemove,
+              child: Container(
+                margin: const EdgeInsets.only(left: 6),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(5)),
+                child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
               ),
             ),
-            childWhenDragging: _buildDotGrid(faded: true),
-            child: _buildDotGrid(),
-          ),
-          GestureDetector(
-            onTap: widget.onRemove,
-            child: Container(
-              margin: const EdgeInsets.only(left: 6),
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(5)),
-              child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
-            ),
-          ),
-        ],
-      ]),
+          ],
+        ]),
+      ),
     );
 
-    final container = Container(
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: widget.block.color,
@@ -2015,46 +1985,50 @@ class _ContainerBlockWidgetState extends State<_ContainerBlockWidget> {
         ],
       ),
     );
-
-    return _isDragging ? Opacity(opacity: 0.25, child: container) : container;
   }
 }
 
 class _DropSlot extends StatelessWidget {
-  final bool isActive;
+  final bool isDragging;
   final bool isExecuting;
   final ValueChanged<_DraggedBlockData> onAccept;
 
   const _DropSlot({
-    super.key,
-    required this.isActive,
+    required this.isDragging,
     required this.isExecuting,
     required this.onAccept,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      curve: Curves.easeOut,
-      height: isActive ? 28.0 : 0.0,
-      child: isActive
-          ? DragTarget<_DraggedBlockData>(
-              onWillAcceptWithDetails: (_) => !isExecuting,
-              onAcceptWithDetails: (details) => onAccept(details.data),
-              builder: (ctx, cd, rd) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppTheme.tealPrimary.withValues(alpha: 0.18),
+    return DragTarget<_DraggedBlockData>(
+      onWillAcceptWithDetails: (_) => isDragging && !isExecuting,
+      onAcceptWithDetails: (details) => onAccept(details.data),
+      builder: (ctx, candidateData, _) {
+        final isActive = candidateData.isNotEmpty;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
+          margin: const EdgeInsets.symmetric(horizontal: 6),
+          height: isActive ? 44.0 : 4.0,
+          decoration: isActive
+              ? BoxDecoration(
+                  color: AppTheme.tealPrimary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.tealPrimary),
-                ),
-                child: const Center(
-                  child: Icon(Icons.add_rounded, size: 14, color: AppTheme.tealPrimary),
-                ),
-              ),
-            )
-          : null,
+                  border: Border.all(color: AppTheme.tealPrimary, width: 1.5),
+                )
+              : null,
+          child: isActive
+              ? Center(
+                  child: Icon(
+                    Icons.add_rounded,
+                    size: 16,
+                    color: AppTheme.tealPrimary.withValues(alpha: 0.85),
+                  ),
+                )
+              : null,
+        );
+      },
     );
   }
 }

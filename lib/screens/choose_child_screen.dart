@@ -123,6 +123,23 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     return result ?? false;
   }
 
+  Future<void> _navigateToParentArea() async {
+    final navigator = Navigator.of(context);
+    final verified = await _showParentPasswordDialog();
+    if (!verified) return;
+    if (!mounted) return;
+    await navigator.push(
+      PageRouteBuilder(
+        pageBuilder: (_, _, _) => const ParentDashboardScreen(),
+        transitionsBuilder: (_, anim, _, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 500),
+      ),
+    );
+    if (!mounted) return;
+    await _loadChildren();
+  }
+
   Future<void> _showSettingsMenu() async {
     final lang = LangScope.of(context);
     final s = AppStrings(lang.isArabic);
@@ -295,25 +312,61 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
             opacity: _ctrl,
             child: Column(
               children: [
+                // ── Header: title centered over full width, icons at edges ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Icons pinned to the edges — never shift with text length
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _TopIconButton(
+                            icon: isArabic
+                                ? Icons.settings_outlined
+                                : Icons.family_restroom,
+                            onTap: isArabic
+                                ? _showSettingsMenu
+                                : _navigateToParentArea,
+                          ),
+                          _TopIconButton(
+                            icon: isArabic
+                                ? Icons.family_restroom
+                                : Icons.settings_outlined,
+                            onTap: isArabic
+                                ? _navigateToParentArea
+                                : _showSettingsMenu,
+                          ),
+                        ],
+                      ),
+                      // Title sits in the center; horizontal inset keeps it
+                      // clear of both 40px icon buttons + a small gap
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 52),
+                        child: Text(
+                          s.whoIsPlayingToday,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.nunito(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.tealDark,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 // ── Scrollable content area ───────────────────────────────
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.only(bottom: 24),
                     child: Column(
                       children: [
-                        const SizedBox(height: 36),
-
-                        // ── Title ─────────────────────────────────────────
-                        Text(
-                          s.whoIsPlayingToday,
-                          style: GoogleFonts.nunito(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            color: AppTheme.tealDark,
-                          ),
-                        ),
-
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
 
                         Text(
                           s.tapToSelectPrompt,
@@ -409,115 +462,48 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
 
                 // ── Let's Play button (always visible at bottom) ──────────
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(48, 8, 48, 0),
+                  padding: const EdgeInsets.fromLTRB(48, 8, 48, 16),
                   child: _LetsPlayButton(
                     enabled: _selectedIndex != null,
                     onPressed: _onLetsPlay,
-                  ),
-                ),
-
-                // ── Parents Area ──────────────────────────────────────────
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 20, top: 8, bottom: 16),
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: () async {
-                          final navigator = Navigator.of(context);
-                          final verified =
-                              await _showParentPasswordDialog();
-                          if (!verified) return;
-                          if (!mounted) return;
-                          await navigator.push(
-                            PageRouteBuilder(
-                              pageBuilder: (_, _, _) =>
-                                  const ParentDashboardScreen(),
-                              transitionsBuilder: (_, anim, _, child) =>
-                                  FadeTransition(opacity: anim, child: child),
-                              transitionDuration:
-                                  const Duration(milliseconds: 500),
-                            ),
-                          );
-                          if (!mounted) return;
-                          await _loadChildren();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.75),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.teal.withValues(alpha: 0.1),
-                                blurRadius: 8,
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.lock_outline_rounded,
-                                  size: 16, color: AppTheme.tealMid),
-                              const SizedBox(width: 6),
-                              Text(
-                                s.parentsArea,
-                                style: GoogleFonts.nunito(
-                                  fontSize: 13,
-                                  color: AppTheme.tealMid,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
                   ),
                 ),
               ],
             ),
           ),
         ),
-        // Settings button rendered last so it sits above scroll content
-        SafeArea(
-          child: Align(
-            alignment: isArabic ? Alignment.topLeft : Alignment.topRight,
-            child: Padding(
-              padding: EdgeInsets.only(
-                top: 8,
-                left: isArabic ? 16 : 0,
-                right: isArabic ? 0 : 16,
-              ),
-              child: GestureDetector(
-                onTap: _showSettingsMenu,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.82),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.teal.withValues(alpha: 0.12),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.settings_outlined,
-                    color: AppTheme.tealMid,
-                    size: 21,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
       ]),
+    );
+  }
+}
+
+// ─── Shared top icon button ───────────────────────────────────────────────────
+
+class _TopIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _TopIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.82),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.teal.withValues(alpha: 0.12),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: AppTheme.tealMid, size: 21),
+      ),
     );
   }
 }
