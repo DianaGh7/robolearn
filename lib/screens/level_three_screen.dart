@@ -740,8 +740,6 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final totalHeight = constraints.maxHeight;
-                        final codeAreaHeight = (totalHeight * 0.65).clamp(360.0, 560.0);
-
                         return SingleChildScrollView(
                           padding: const EdgeInsets.only(bottom: 84),
                           child: ConstrainedBox(
@@ -769,9 +767,7 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 3),
-                                SizedBox(
-                                  height: codeAreaHeight,
-                                  child: _CodeBlocksArea(
+                                _CodeBlocksArea(
                                     arrangedBlocks: arrangedBlocks,
                                     onRemoveBlock: _removeBlock,
                                     onMoveBlock: _moveBlock,
@@ -783,7 +779,6 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
                                     onRun: _handleRobotAction,
                                     onShowTutorial: _showTutorial,
                                   ),
-                                ),
                               ],
                             ),
                           ),
@@ -1377,7 +1372,7 @@ class _LedVisualizationCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────
 // Code Blocks Area (identical structure to Level 2)
 // ─────────────────────────────────────────────────────
-class _CodeBlocksArea extends StatelessWidget {
+class _CodeBlocksArea extends StatefulWidget {
   final List<CodeBlock> arrangedBlocks;
   final Function(int) onRemoveBlock;
   final Function(int, int, int) onMoveBlock;
@@ -1403,16 +1398,45 @@ class _CodeBlocksArea extends StatelessWidget {
   });
 
   @override
+  State<_CodeBlocksArea> createState() => _CodeBlocksAreaState();
+}
+
+class _CodeBlocksAreaState extends State<_CodeBlocksArea> {
+  int? _proactiveSlotIndex;
+  final GlobalKey _codeAreaKey = GlobalKey();
+  final ScrollController _scrollCtrl = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  int _calcSlotIndex(Offset globalOffset) {
+    final box = _codeAreaKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return widget.arrangedBlocks.length;
+    final localY = box.globalToLocal(globalOffset).dy +
+        (_scrollCtrl.hasClients ? _scrollCtrl.offset : 0.0) -
+        8.0;
+    if (localY <= 0) return 0;
+    const rowH = 44.0;
+    int best = 0;
+    double bestDist = double.infinity;
+    for (int i = 0; i <= widget.arrangedBlocks.length; i++) {
+      final dist = (localY - i * rowH).abs();
+      if (dist < bestDist) { bestDist = dist; best = i; }
+    }
+    return best;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppTheme.tealPrimary.withValues(alpha: 0.15),
-          width: 1.5,
-        ),
+        border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.15), width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1421,69 +1445,42 @@ class _CodeBlocksArea extends StatelessWidget {
             children: [
               const Icon(Icons.code_rounded, size: 14, color: AppTheme.tealPrimary),
               const SizedBox(width: 6),
-              Text(
-                AppStrings.of(context).yourCode,
-                style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.tealDark,
-                ),
-              ),
+              Text(AppStrings.of(context).yourCode,
+                  style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.tealDark)),
               const Spacer(),
-              // Tutorial replay button
               GestureDetector(
-                onTap: onShowTutorial,
+                onTap: widget.onShowTutorial,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                   decoration: BoxDecoration(
                     color: const Color(0xFF7C4DFF).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: const Color(0xFF7C4DFF).withValues(alpha: 0.35),
-                    ),
+                    border: Border.all(color: const Color(0xFF7C4DFF).withValues(alpha: 0.35)),
                   ),
-                  child: const Icon(
-                    Icons.ondemand_video_rounded,
-                    color: Color(0xFF7C4DFF),
-                    size: 16,
-                  ),
+                  child: const Icon(Icons.ondemand_video_rounded, color: Color(0xFF7C4DFF), size: 16),
                 ),
               ),
               const SizedBox(width: 8),
               GestureDetector(
-                onTap: isExecuting ? null : onRun,
+                onTap: widget.isExecuting ? null : widget.onRun,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                   decoration: BoxDecoration(
-                    color: isExecuting ? const Color(0xFF9CCFC5) : AppTheme.tealPrimary,
+                    color: widget.isExecuting ? const Color(0xFF9CCFC5) : AppTheme.tealPrimary,
                     borderRadius: BorderRadius.circular(20),
-                    boxShadow: isExecuting
+                    boxShadow: widget.isExecuting
                         ? null
-                        : [
-                            BoxShadow(
-                              color: AppTheme.tealPrimary.withValues(alpha: 0.35),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                        : [BoxShadow(color: AppTheme.tealPrimary.withValues(alpha: 0.35), blurRadius: 6, offset: const Offset(0, 2))],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        isExecuting ? Icons.hourglass_top_rounded : Icons.play_arrow_rounded,
-                        color: Colors.white,
-                        size: 15,
-                      ),
+                      Icon(widget.isExecuting ? Icons.hourglass_top_rounded : Icons.play_arrow_rounded, color: Colors.white, size: 15),
                       const SizedBox(width: 4),
                       Text(
-                        isExecuting ? AppStrings.of(context).running : AppStrings.of(context).run,
-                        style: GoogleFonts.nunito(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
+                        widget.isExecuting ? AppStrings.of(context).running : AppStrings.of(context).run,
+                        style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white),
                       ),
                     ],
                   ),
@@ -1493,19 +1490,30 @@ class _CodeBlocksArea extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          Expanded(
-            flex: 2,
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5FAF9),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-                child: Column(
-                  children: _buildGroupedBlocks(context),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 150, maxHeight: 300),
+            child: DragTarget<_DragData>(
+              onWillAcceptWithDetails: (_) => false,
+              onMove: (details) {
+                if (widget.isExecuting) return;
+                final idx = _calcSlotIndex(details.offset);
+                if (idx != _proactiveSlotIndex) setState(() => _proactiveSlotIndex = idx);
+              },
+              onLeave: (_) {
+                if (mounted) setState(() => _proactiveSlotIndex = null);
+              },
+              builder: (context, _, _) => Container(
+                key: _codeAreaKey,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5FAF9),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: SingleChildScrollView(
+                  controller: _scrollCtrl,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                  child: Column(children: _buildGroupedBlocks(context)),
                 ),
               ),
             ),
@@ -1518,48 +1526,37 @@ class _CodeBlocksArea extends StatelessWidget {
               children: [
                 const Icon(Icons.widgets_rounded, size: 13, color: AppTheme.tealPrimary),
                 const SizedBox(width: 5),
-                Text(
-                  AppStrings.of(context).availableBlocks,
-                  style: GoogleFonts.nunito(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    color: AppTheme.tealDark,
-                  ),
-                ),
+                Text(AppStrings.of(context).availableBlocks,
+                    style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.tealDark)),
               ],
             ),
           ),
-          Expanded(
-            flex: 1,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: availableBlocks.map((blockType) {
-                    final color = CodeBlock.typeColors[blockType]!;
-                    final chip = _PaletteChip(blockType: blockType, color: color);
-                    return Draggable<_DragData>(
-                      data: _DragData(type: blockType),
-                      maxSimultaneousDrags: isExecuting ? 0 : 1,
-                      feedback: Material(
-                        color: Colors.transparent,
-                        child: _PaletteChip(blockType: blockType, color: color, elevated: true),
-                      ),
-                      childWhenDragging: Opacity(opacity: 0.3, child: chip),
-                      child: GestureDetector(
-                        onTap: isExecuting ? null : () => onAddBlock(blockType),
-                        child: AnimatedOpacity(
-                          opacity: isExecuting ? 0.45 : 1,
-                          duration: const Duration(milliseconds: 200),
-                          child: chip,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-              ),
-            ),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: widget.availableBlocks.map((blockType) {
+              final color = CodeBlock.typeColors[blockType]!;
+              final chip = _PaletteChip(blockType: blockType, color: color);
+              return Draggable<_DragData>(
+                data: _DragData(type: blockType),
+                maxSimultaneousDrags: widget.isExecuting ? 0 : 1,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: _PaletteChip(blockType: blockType, color: color, elevated: true),
+                ),
+                childWhenDragging: Opacity(opacity: 0.3, child: chip),
+                child: GestureDetector(
+                  onTap: widget.isExecuting ? null : () => widget.onAddBlock(blockType),
+                  child: AnimatedOpacity(
+                    opacity: widget.isExecuting ? 0.45 : 1,
+                    duration: const Duration(milliseconds: 200),
+                    child: chip,
+                  ),
+                ),
+              );
+            }).toList(),
           ),
+          const SizedBox(height: 4),
         ],
       ),
     );
@@ -1567,19 +1564,21 @@ class _CodeBlocksArea extends StatelessWidget {
 
   List<Widget> _buildGroupedBlocks(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    if (arrangedBlocks.isEmpty) {
+    if (widget.arrangedBlocks.isEmpty) {
       return [_DropSlot(
-        isExecuting: isExecuting,
+        isExecuting: widget.isExecuting,
+        isProactivelyActive: _proactiveSlotIndex == 0,
         onAccept: (data) {
+          setState(() => _proactiveSlotIndex = null);
           if (data.fromIndex != null) {
-            onMoveBlock(data.fromIndex!, 0, 0);
+            widget.onMoveBlock(data.fromIndex!, 0, 0);
           } else if (data.type != null) {
-            onInsertBlockAt(data.type!, 0, 0);
+            widget.onInsertBlockAt(data.type!, 0, 0);
           }
         },
       )];
     }
-    return _buildBlocksInRange(context, screenWidth, 0, arrangedBlocks.length, 0);
+    return _buildBlocksInRange(context, screenWidth, 0, widget.arrangedBlocks.length, 0);
   }
 
   List<Widget> _buildBlocksInRange(
@@ -1591,25 +1590,27 @@ class _CodeBlocksArea extends StatelessWidget {
     Color? parentColor,
   }) {
     _DropSlot makeDropSlot(int idx) => _DropSlot(
-      isExecuting: isExecuting,
+      isExecuting: widget.isExecuting,
+      isProactivelyActive: _proactiveSlotIndex == idx,
       onAccept: (data) {
+        setState(() => _proactiveSlotIndex = null);
         if (data.fromIndex != null) {
-          onMoveBlock(data.fromIndex!, idx, nestingLevel);
+          widget.onMoveBlock(data.fromIndex!, idx, nestingLevel);
         } else if (data.type != null) {
-          onInsertBlockAt(data.type!, idx, nestingLevel);
+          widget.onInsertBlockAt(data.type!, idx, nestingLevel);
         }
       },
     );
 
     Widget makeDraggable(int idx) {
-      final block = arrangedBlocks[idx];
-      final isActive = activeBlockIndex == idx;
+      final block = widget.arrangedBlocks[idx];
+      final isActive = widget.activeBlockIndex == idx;
       return _BlockWidget(
         block: block,
-        onRemove: isExecuting ? null : () => onRemoveBlock(idx),
-        isExecuting: isExecuting,
+        onRemove: widget.isExecuting ? null : () => widget.onRemoveBlock(idx),
+        isExecuting: widget.isExecuting,
         isHighlighted: isActive,
-        dragData: isExecuting ? null : _DragData(fromIndex: idx),
+        dragData: widget.isExecuting ? null : _DragData(fromIndex: idx),
         feedbackWidth: screenWidth - 72,
       );
     }
@@ -1621,30 +1622,30 @@ class _CodeBlocksArea extends StatelessWidget {
     bool needLeadingDropSlot = true;
 
     while (i < endIdx) {
-      final block = arrangedBlocks[i];
+      final block = widget.arrangedBlocks[i];
 
       if (_isRepeatBlock(block.type) && block.nesting == nestingLevel) {
         if (needLeadingDropSlot) widgets.add(makeDropSlot(i));
 
-        final headerIndex = i; // capture before i changes
+        final headerIndex = i;
         final bodyStart = i + 1;
         int bodyEnd = bodyStart;
-        while (bodyEnd < endIdx && arrangedBlocks[bodyEnd].nesting > nestingLevel) {
+        while (bodyEnd < endIdx && widget.arrangedBlocks[bodyEnd].nesting > nestingLevel) {
           bodyEnd++;
         }
 
-        final isActive = activeBlockIndex == i;
+        final isActive = widget.activeBlockIndex == i;
 
         final List<Widget> bodyChildren;
         if (bodyStart == bodyEnd) {
           bodyChildren = [_BodyDropHint(
-            isExecuting: isExecuting,
+            isExecuting: widget.isExecuting,
             color: block.color,
             onInsert: (data) {
               if (data.fromIndex != null) {
-                onMoveBlock(data.fromIndex!, bodyStart, nestingLevel + 1);
+                widget.onMoveBlock(data.fromIndex!, bodyStart, nestingLevel + 1);
               } else if (data.type != null) {
-                onInsertBlockAt(data.type!, bodyStart, nestingLevel + 1);
+                widget.onInsertBlockAt(data.type!, bodyStart, nestingLevel + 1);
               }
             },
           )];
@@ -1658,7 +1659,7 @@ class _CodeBlocksArea extends StatelessWidget {
         final headerRow = Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
           child: Row(children: [
-            if (!isExecuting)
+            if (!widget.isExecuting)
               Draggable<_DragData>(
                 data: _DragData(fromIndex: headerIndex),
                 maxSimultaneousDrags: 1,
@@ -1679,9 +1680,9 @@ class _CodeBlocksArea extends StatelessWidget {
             Expanded(
               child: Text(block.label, style: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
             ),
-            if (!isExecuting)
+            if (!widget.isExecuting)
               GestureDetector(
-                onTap: () => onRemoveBlock(headerIndex),
+                onTap: () => widget.onRemoveBlock(headerIndex),
                 child: Container(
                   margin: const EdgeInsets.only(left: 6),
                   padding: const EdgeInsets.all(4),
@@ -1842,7 +1843,13 @@ class _BlockWidgetState extends State<_BlockWidget> {
 class _DropSlot extends StatefulWidget {
   final bool isExecuting;
   final ValueChanged<_DragData> onAccept;
-  const _DropSlot({required this.isExecuting, required this.onAccept});
+  final bool isProactivelyActive;
+
+  const _DropSlot({
+    required this.isExecuting,
+    required this.onAccept,
+    this.isProactivelyActive = false,
+  });
 
   @override
   State<_DropSlot> createState() => _DropSlotState();
@@ -1850,6 +1857,8 @@ class _DropSlot extends StatefulWidget {
 
 class _DropSlotState extends State<_DropSlot> {
   bool _hovering = false;
+
+  bool get _isActive => _hovering || widget.isProactivelyActive;
 
   @override
   Widget build(BuildContext context) {
@@ -1866,25 +1875,21 @@ class _DropSlotState extends State<_DropSlot> {
         if (mounted) setState(() => _hovering = false);
         widget.onAccept(details.data);
       },
-      builder: (context2, candidateData, rejectedData) => AnimatedContainer(
+      builder: (context2, _, _) => AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        height: _hovering ? 36 : 4,
+        height: _isActive ? 36 : 4,
         decoration: BoxDecoration(
-          color: _hovering
+          color: _isActive
               ? AppTheme.tealPrimary.withValues(alpha: 0.18)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          border: _hovering
+          border: _isActive
               ? Border.all(color: AppTheme.tealPrimary, width: 1.5)
               : null,
         ),
-        child: _hovering
-            ? Center(
-                child: Icon(Icons.add_rounded,
-                    size: 14,
-                    color: AppTheme.tealPrimary.withValues(alpha: 0.8)),
-              )
+        child: _isActive
+            ? Center(child: Icon(Icons.add_rounded, size: 14, color: AppTheme.tealPrimary.withValues(alpha: 0.8)))
             : null,
       ),
     );

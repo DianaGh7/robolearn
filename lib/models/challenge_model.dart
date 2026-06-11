@@ -816,6 +816,8 @@ class VarChallenge {
         CodeBlockType.varElse,
         CodeBlockType.varShowSnow,
       ],
+      // varShowSun must be inside IF, varShowSnow must be inside ELSE
+      correctNesting: [0, 0, 1, 0, 1],
     ),
     // Challenge 22 – Countdown (variable + loop + subtraction)
     VarChallenge(
@@ -837,6 +839,8 @@ class VarChallenge {
         CodeBlockType.varMinusOne,
         CodeBlockType.varShowCountdown,
       ],
+      // varMinusOne and the second varShowCountdown must be inside REPEAT 3×
+      correctNesting: [0, 0, 0, 1, 1],
     ),
   ];
 }

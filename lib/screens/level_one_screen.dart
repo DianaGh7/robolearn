@@ -508,11 +508,6 @@ class _LevelOneScreenState extends State<LevelOneScreen>
                           190.0,
                           250.0,
                         );
-                        final codeAreaHeight = (totalHeight * 0.62).clamp(
-                          360.0,
-                          560.0,
-                        );
-
                         return SingleChildScrollView(
                           padding: const EdgeInsets.only(bottom: 84),
                           child: ConstrainedBox(
@@ -544,20 +539,17 @@ class _LevelOneScreenState extends State<LevelOneScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 3),
-                                SizedBox(
-                                  height: codeAreaHeight,
-                                  child: _CodeBlocksArea(
-                                    arrangedBlocks: arrangedBlocks,
-                                    onRemoveBlock: _removeBlock,
-                                    onMoveBlock: _moveBlock,
-                                    onInsertBlockAt: _insertBlockAt,
-                                    availableBlocks: _availableBlocks,
-                                    onAddBlock: _addBlock,
-                                    isExecuting: isExecuting,
-                                    activeBlockIndex: _activeBlockIndex,
-                                    onRun: _executeCode,
-                                    onShowTutorial: _showTutorial,
-                                  ),
+                                _CodeBlocksArea(
+                                  arrangedBlocks: arrangedBlocks,
+                                  onRemoveBlock: _removeBlock,
+                                  onMoveBlock: _moveBlock,
+                                  onInsertBlockAt: _insertBlockAt,
+                                  availableBlocks: _availableBlocks,
+                                  onAddBlock: _addBlock,
+                                  isExecuting: isExecuting,
+                                  activeBlockIndex: _activeBlockIndex,
+                                  onRun: _executeCode,
+                                  onShowTutorial: _showTutorial,
                                 ),
                                 const SizedBox(height: 4),
                               ],
@@ -1226,7 +1218,7 @@ class _GridCell extends StatelessWidget {
 // ─────────────────────────────────────────────────────
 // Code blocks area
 // ─────────────────────────────────────────────────────
-class _CodeBlocksArea extends StatelessWidget {
+class _CodeBlocksArea extends StatefulWidget {
   final List<CodeBlock> arrangedBlocks;
   final Function(int) onRemoveBlock;
   final Function(int, int) onMoveBlock;
@@ -1250,6 +1242,41 @@ class _CodeBlocksArea extends StatelessWidget {
     required this.onRun,
     required this.onShowTutorial,
   });
+
+  @override
+  State<_CodeBlocksArea> createState() => _CodeBlocksAreaState();
+}
+
+class _CodeBlocksAreaState extends State<_CodeBlocksArea> {
+  int? _proactiveSlotIndex;
+  final GlobalKey _codeAreaKey = GlobalKey();
+  final ScrollController _scrollCtrl = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  int _calcSlotIndex(Offset globalOffset) {
+    final box = _codeAreaKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return widget.arrangedBlocks.length;
+    final localY = box.globalToLocal(globalOffset).dy +
+        (_scrollCtrl.hasClients ? _scrollCtrl.offset : 0.0) -
+        8.0;
+    if (localY <= 0) return 0;
+    const rowH = 44.0;
+    int best = 0;
+    double bestDist = double.infinity;
+    for (int i = 0; i <= widget.arrangedBlocks.length; i++) {
+      final dist = (localY - i * rowH).abs();
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    }
+    return best;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1285,7 +1312,7 @@ class _CodeBlocksArea extends StatelessWidget {
               const Spacer(),
               // Tutorial replay button
               GestureDetector(
-                onTap: onShowTutorial,
+                onTap: widget.onShowTutorial,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                   decoration: BoxDecoration(
@@ -1304,16 +1331,16 @@ class _CodeBlocksArea extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               GestureDetector(
-                onTap: isExecuting ? null : onRun,
+                onTap: widget.isExecuting ? null : widget.onRun,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                   decoration: BoxDecoration(
-                    color: isExecuting
+                    color: widget.isExecuting
                         ? const Color(0xFF9CCFC5)
                         : AppTheme.tealPrimary,
                     borderRadius: BorderRadius.circular(20),
-                    boxShadow: isExecuting
+                    boxShadow: widget.isExecuting
                         ? null
                         : [
                             BoxShadow(
@@ -1327,7 +1354,7 @@ class _CodeBlocksArea extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        isExecuting
+                        widget.isExecuting
                             ? Icons.hourglass_top_rounded
                             : Icons.play_arrow_rounded,
                         color: Colors.white,
@@ -1335,7 +1362,7 @@ class _CodeBlocksArea extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        isExecuting ? AppStrings.of(context).running : AppStrings.of(context).run,
+                        widget.isExecuting ? AppStrings.of(context).running : AppStrings.of(context).run,
                         style: GoogleFonts.nunito(
                           fontSize: 13,
                           fontWeight: FontWeight.w900,
@@ -1350,57 +1377,77 @@ class _CodeBlocksArea extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          Expanded(
-            flex: 2,
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5FAF9),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-                child: Column(
-                  children: List.generate(arrangedBlocks.length + 1, (index) {
-                    if (index == arrangedBlocks.length) {
-                      return _DropSlot(
-                        isExecuting: isExecuting,
-                        onAccept: (data) {
-                          if (data.fromIndex != null) {
-                            onMoveBlock(data.fromIndex!, index);
-                          } else if (data.type != null) {
-                            onInsertBlockAt(data.type!, index);
-                          }
-                        },
-                      );
-                    }
-
-                    final block = arrangedBlocks[index];
-                    final isActive = activeBlockIndex == index;
-                    return Column(
-                      children: [
-                        _DropSlot(
-                          isExecuting: isExecuting,
+          // Your Code area — outer DragTarget for proactive slot detection
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 150, maxHeight: 300),
+            child: DragTarget<_DraggedBlockData>(
+              onWillAcceptWithDetails: (_) => false, // visual only — slots handle drops
+              onMove: (details) {
+                if (widget.isExecuting) return;
+                final idx = _calcSlotIndex(details.offset);
+                if (idx != _proactiveSlotIndex) {
+                  setState(() => _proactiveSlotIndex = idx);
+                }
+              },
+              onLeave: (_) {
+                if (mounted) setState(() => _proactiveSlotIndex = null);
+              },
+              builder: (context, _, _) => Container(
+                key: _codeAreaKey,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5FAF9),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: SingleChildScrollView(
+                  controller: _scrollCtrl,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                  child: Column(
+                    children: List.generate(widget.arrangedBlocks.length + 1, (index) {
+                      if (index == widget.arrangedBlocks.length) {
+                        return _DropSlot(
+                          isExecuting: widget.isExecuting,
+                          isProactivelyActive: _proactiveSlotIndex == index,
                           onAccept: (data) {
+                            setState(() => _proactiveSlotIndex = null);
                             if (data.fromIndex != null) {
-                              onMoveBlock(data.fromIndex!, index);
+                              widget.onMoveBlock(data.fromIndex!, index);
                             } else if (data.type != null) {
-                              onInsertBlockAt(data.type!, index);
+                              widget.onInsertBlockAt(data.type!, index);
                             }
                           },
-                        ),
-                        _CodeBlockWidget(
-                          block: block,
-                          onRemove: isExecuting ? null : () => onRemoveBlock(index),
-                          isExecuting: isExecuting,
-                          isHighlighted: isActive,
-                          dragData: isExecuting ? null : _DraggedBlockData(fromIndex: index),
-                          feedbackWidth: MediaQuery.of(context).size.width - 72,
-                        ),
-                      ],
-                    );
-                  }),
+                        );
+                      }
+
+                      final block = widget.arrangedBlocks[index];
+                      final isActive = widget.activeBlockIndex == index;
+                      return Column(
+                        children: [
+                          _DropSlot(
+                            isExecuting: widget.isExecuting,
+                            isProactivelyActive: _proactiveSlotIndex == index,
+                            onAccept: (data) {
+                              setState(() => _proactiveSlotIndex = null);
+                              if (data.fromIndex != null) {
+                                widget.onMoveBlock(data.fromIndex!, index);
+                              } else if (data.type != null) {
+                                widget.onInsertBlockAt(data.type!, index);
+                              }
+                            },
+                          ),
+                          _CodeBlockWidget(
+                            block: block,
+                            onRemove: widget.isExecuting ? null : () => widget.onRemoveBlock(index),
+                            isExecuting: widget.isExecuting,
+                            isHighlighted: isActive,
+                            dragData: widget.isExecuting ? null : _DraggedBlockData(fromIndex: index),
+                            feedbackWidth: MediaQuery.of(context).size.width - 72,
+                          ),
+                        ],
+                      );
+                    }),
+                  ),
                 ),
               ),
             ),
@@ -1425,41 +1472,36 @@ class _CodeBlocksArea extends StatelessWidget {
             ),
           ),
 
-          Expanded(
-            flex: 1,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: availableBlocks.map((blockType) {
-                  final color = CodeBlock.typeColors[blockType]!;
-                  final chip = _PaletteChip(blockType: blockType, color: color);
-                  return Draggable<_DraggedBlockData>(
-                    data: _DraggedBlockData(type: blockType),
-                    maxSimultaneousDrags: isExecuting ? 0 : 1,
-                    feedback: Material(
-                      color: Colors.transparent,
-                      child: _PaletteChip(
-                        blockType: blockType,
-                        color: color,
-                        elevated: true,
-                      ),
-                    ),
-                    childWhenDragging: Opacity(opacity: 0.3, child: chip),
-                    child: GestureDetector(
-                      onTap: isExecuting ? null : () => onAddBlock(blockType),
-                      child: AnimatedOpacity(
-                        opacity: isExecuting ? 0.45 : 1,
-                        duration: const Duration(milliseconds: 200),
-                        child: chip,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: widget.availableBlocks.map((blockType) {
+              final color = CodeBlock.typeColors[blockType]!;
+              final chip = _PaletteChip(blockType: blockType, color: color);
+              return Draggable<_DraggedBlockData>(
+                data: _DraggedBlockData(type: blockType),
+                maxSimultaneousDrags: widget.isExecuting ? 0 : 1,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: _PaletteChip(
+                    blockType: blockType,
+                    color: color,
+                    elevated: true,
+                  ),
+                ),
+                childWhenDragging: Opacity(opacity: 0.3, child: chip),
+                child: GestureDetector(
+                  onTap: widget.isExecuting ? null : () => widget.onAddBlock(blockType),
+                  child: AnimatedOpacity(
+                    opacity: widget.isExecuting ? 0.45 : 1,
+                    duration: const Duration(milliseconds: 200),
+                    child: chip,
+                  ),
+                ),
+              );
+            }).toList(),
           ),
+          const SizedBox(height: 4),
         ],
       ),
     );
@@ -1587,8 +1629,13 @@ class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
 class _DropSlot extends StatefulWidget {
   final bool isExecuting;
   final ValueChanged<_DraggedBlockData> onAccept;
+  final bool isProactivelyActive;
 
-  const _DropSlot({required this.isExecuting, required this.onAccept});
+  const _DropSlot({
+    required this.isExecuting,
+    required this.onAccept,
+    this.isProactivelyActive = false,
+  });
 
   @override
   State<_DropSlot> createState() => _DropSlotState();
@@ -1596,6 +1643,8 @@ class _DropSlot extends StatefulWidget {
 
 class _DropSlotState extends State<_DropSlot> {
   bool _isHovering = false;
+
+  bool get _isActive => _isHovering || widget.isProactivelyActive;
 
   @override
   Widget build(BuildContext context) {
@@ -1607,30 +1656,29 @@ class _DropSlotState extends State<_DropSlot> {
         return true;
       },
       onLeave: (_) {
-        if (mounted) {
-          setState(() => _isHovering = false);
-        }
+        if (mounted) setState(() => _isHovering = false);
       },
       onAcceptWithDetails: (details) {
-        if (mounted) {
-          setState(() => _isHovering = false);
-        }
+        if (mounted) setState(() => _isHovering = false);
         widget.onAccept(details.data);
       },
-      builder: (context, candidateData, rejectedData) {
+      builder: (context, _, _) {
         return AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-          height: _isHovering ? 36 : 4,
+          height: _isActive ? 36 : 4,
           decoration: BoxDecoration(
-            color: _isHovering
+            color: _isActive
                 ? AppTheme.tealPrimary.withValues(alpha: 0.18)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
-            border: _isHovering
+            border: _isActive
                 ? Border.all(color: AppTheme.tealPrimary, width: 1.5)
                 : null,
           ),
+          child: _isActive
+              ? Center(child: Icon(Icons.add_rounded, size: 14, color: AppTheme.tealPrimary.withValues(alpha: 0.8)))
+              : null,
         );
       },
     );

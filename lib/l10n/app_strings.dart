@@ -436,6 +436,8 @@ class AppStrings {
           'We reserve the right to update these terms at any time. You will be notified of any material changes through the app.\n\n'
           'robolearnapp1@gmail.com';
   String get gotIt => isArabic ? 'حسنًا! ✓' : 'Got it! ✓';
+  String get tapToGoBack => isArabic ? 'اضغط للعودة' : 'Tap to go back';
+  String get tapToContinue => isArabic ? 'اضغط للمتابعة' : 'Tap to continue';
 
   // ── Choose child screen ───────────────────────────────────
   String get whoIsPlayingToday =>
