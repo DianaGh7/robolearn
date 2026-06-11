@@ -1615,31 +1615,13 @@ class _CodeBlocksArea extends StatelessWidget {
     Widget makeDraggable(int idx) {
       final block = arrangedBlocks[idx];
       final isActive = activeBlockIndex == idx;
-      return Draggable<_DraggedBlockData>(
-        data: _DraggedBlockData(fromIndex: idx),
-        maxSimultaneousDrags: isExecuting ? 0 : 1,
-        feedback: Material(
-          color: Colors.transparent,
-          child: SizedBox(
-            width: screenWidth - 72,
-            child: _CodeBlockWidget(block: block, isExecuting: true, isHighlighted: isActive),
-          ),
-        ),
-        childWhenDragging: Opacity(
-          opacity: 0.25,
-          child: _CodeBlockWidget(
-            block: block,
-            onRemove: isExecuting ? null : () => onRemoveBlock(idx),
-            isExecuting: isExecuting,
-            isHighlighted: isActive,
-          ),
-        ),
-        child: _CodeBlockWidget(
-          block: block,
-          onRemove: isExecuting ? null : () => onRemoveBlock(idx),
-          isExecuting: isExecuting,
-          isHighlighted: isActive,
-        ),
+      return _CodeBlockWidget(
+        block: block,
+        onRemove: isExecuting ? null : () => onRemoveBlock(idx),
+        isExecuting: isExecuting,
+        isHighlighted: isActive,
+        dragData: isExecuting ? null : _DraggedBlockData(fromIndex: idx),
+        feedbackWidth: screenWidth - 72,
       );
     }
 
@@ -1688,6 +1670,22 @@ class _CodeBlocksArea extends StatelessWidget {
         final headerRow = Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
           child: Row(children: [
+            if (!isExecuting)
+              Draggable<_DraggedBlockData>(
+                data: _DraggedBlockData(fromIndex: headerIndex),
+                maxSimultaneousDrags: 1,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: SizedBox(
+                    width: screenWidth - 72,
+                    child: _CodeBlockWidget(block: block, isExecuting: true, isHighlighted: isActive),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Icon(Icons.drag_indicator, color: Colors.white.withValues(alpha: 0.65), size: 16),
+                ),
+              ),
             Icon(_blockIcon(block.type), color: Colors.white.withValues(alpha: 0.9), size: 14),
             const SizedBox(width: 6),
             Expanded(
@@ -1717,16 +1715,7 @@ class _CodeBlocksArea extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Draggable<_DraggedBlockData>(
-                data: _DraggedBlockData(fromIndex: i),
-                maxSimultaneousDrags: isExecuting ? 0 : 1,
-                feedback: Material(
-                  color: Colors.transparent,
-                  child: SizedBox(width: screenWidth - 72, child: _CodeBlockWidget(block: block, isExecuting: true, isHighlighted: isActive)),
-                ),
-                childWhenDragging: Opacity(opacity: 0.25, child: headerRow),
-                child: headerRow,
-              ),
+              headerRow,
               Container(
                 margin: const EdgeInsets.only(left: 22, right: 4, bottom: 8),
                 padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
@@ -1758,74 +1747,119 @@ class _CodeBlocksArea extends StatelessWidget {
   }
 }
 
-class _CodeBlockWidget extends StatelessWidget {
+class _CodeBlockWidget extends StatefulWidget {
   final CodeBlock block;
   final VoidCallback? onRemove;
   final bool isExecuting;
   final bool isHighlighted;
+  final _DraggedBlockData? dragData;
+  final double feedbackWidth;
 
   const _CodeBlockWidget({
     required this.block,
     this.onRemove,
     required this.isExecuting,
     this.isHighlighted = false,
+    this.dragData,
+    this.feedbackWidth = 300,
   });
 
   @override
+  State<_CodeBlockWidget> createState() => _CodeBlockWidgetState();
+}
+
+class _CodeBlockWidgetState extends State<_CodeBlockWidget> {
+  bool _isDragging = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: block.color,
-        borderRadius: BorderRadius.circular(10),
-        border: isHighlighted
-            ? Border.all(color: Colors.white, width: 2.4)
-            : null,
-        boxShadow: [
-          BoxShadow(
-            color: block.color.withValues(alpha: 0.3),
-            blurRadius: isHighlighted ? 10 : 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(
-            _blockIcon(block.type),
-            color: Colors.white.withValues(alpha: 0.9),
-            size: 14,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              block.label,
-              style: GoogleFonts.nunito(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
+    final showHandle = widget.dragData != null && !widget.isExecuting;
+
+    return AnimatedOpacity(
+      opacity: _isDragging ? 0.3 : 1.0,
+      duration: const Duration(milliseconds: 150),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: widget.block.color,
+          borderRadius: BorderRadius.circular(10),
+          border: widget.isHighlighted
+              ? Border.all(color: Colors.white, width: 2.4)
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: widget.block.color.withValues(alpha: 0.3),
+              blurRadius: widget.isHighlighted ? 10 : 6,
+              offset: const Offset(0, 2),
             ),
-          ),
-          if (!isExecuting)
-            GestureDetector(
-              onTap: onRemove,
-              child: Container(
-                margin: const EdgeInsets.only(left: 6),
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(5),
+          ],
+        ),
+        child: Row(
+          children: [
+            if (showHandle)
+              Draggable<_DraggedBlockData>(
+                data: widget.dragData,
+                maxSimultaneousDrags: 1,
+                onDragStarted: () => setState(() => _isDragging = true),
+                onDragEnd: (_) => setState(() => _isDragging = false),
+                onDraggableCanceled: (_, _) =>
+                    setState(() => _isDragging = false),
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: SizedBox(
+                    width: widget.feedbackWidth,
+                    child: _CodeBlockWidget(
+                      block: widget.block,
+                      isExecuting: true,
+                      isHighlighted: widget.isHighlighted,
+                    ),
+                  ),
                 ),
-                child: const Icon(
-                  Icons.close_rounded,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Icon(
+                    Icons.drag_indicator,
+                    color: Colors.white.withValues(alpha: 0.65),
+                    size: 16,
+                  ),
+                ),
+              ),
+            Icon(
+              _blockIcon(widget.block.type),
+              color: Colors.white.withValues(alpha: 0.9),
+              size: 14,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                widget.block.label,
+                style: GoogleFonts.nunito(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
                   color: Colors.white,
-                  size: 14,
                 ),
               ),
             ),
-        ],
+            if (!widget.isExecuting)
+              GestureDetector(
+                onTap: widget.onRemove,
+                child: Container(
+                  margin: const EdgeInsets.only(left: 6),
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    color: Colors.white,
+                    size: 14,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1868,17 +1902,15 @@ class _DropSlotState extends State<_DropSlot> {
         return AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-          height: _isHovering ? 20 : 6,
+          height: _isHovering ? 36 : 4,
           decoration: BoxDecoration(
             color: _isHovering
                 ? AppTheme.tealPrimary.withValues(alpha: 0.18)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: _isHovering
-                  ? AppTheme.tealPrimary
-                  : Colors.grey.withValues(alpha: 0.25),
-            ),
+            border: _isHovering
+                ? Border.all(color: AppTheme.tealPrimary, width: 1.5)
+                : null,
           ),
         );
       },
