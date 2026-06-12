@@ -458,6 +458,9 @@ class AppStrings {
   String get gotIt => isArabic ? 'حسنًا! ✓' : 'Got it! ✓';
   String get tapToGoBack => isArabic ? 'اضغط للعودة' : 'Tap to go back';
   String get tapToContinue => isArabic ? 'اضغط للمتابعة' : 'Tap to continue';
+  String get tapAnywhereToAdvance =>
+      isArabic ? 'اضغط في أي مكان للاستمرار' : 'Tap anywhere to continue';
+  String get backHint => isArabic ? 'عودة' : 'Back';
 
   // ── Choose child screen ───────────────────────────────────
   String get whoIsPlayingToday =>

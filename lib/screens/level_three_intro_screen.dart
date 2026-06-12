@@ -223,7 +223,10 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
   Widget build(BuildContext context) {
     final btm = MediaQuery.of(context).padding.bottom;
     return Scaffold(
-      body: Stack(
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _showSpeech && !_showPlayButton ? _onForward : null,
+        child: Stack(
         children: [
           Container(
             decoration: const BoxDecoration(
@@ -304,7 +307,22 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
           ),
           if (_celebrating) _particles(),
           if (_showPlayButton) _playBtn(btm),
+          if (_showSpeech && !_showPlayButton)
+            Positioned(
+              bottom: 16 + btm,
+              left: 0,
+              right: 0,
+              child: Text(
+                AppStrings.of(context).tapAnywhereToAdvance,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.nunito(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.tealMid.withValues(alpha: 0.65)),
+              ),
+            ),
         ],
+        ),
       ),
     );
   }
@@ -796,7 +814,7 @@ class _SpeechBubble extends StatelessWidget {
                     children: [
                       const Icon(Icons.arrow_back, size: 14),
                       const SizedBox(width: 6),
-                      Text('Back',
+                      Text(AppStrings.of(context).backHint,
                           style: GoogleFonts.nunito(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
