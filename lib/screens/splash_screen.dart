@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'choose_child_screen.dart';
+import 'email_verification_screen.dart';
 import 'welcome_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -39,11 +40,17 @@ class _SplashScreenState extends State<SplashScreen>
         return FirebaseAuth.instance.currentUser;
       });
       if (!mounted) return;
-      final hasUser = restoredUser != null;
+      Widget destination;
+      if (restoredUser == null) {
+        destination = const WelcomeScreen();
+      } else if (!restoredUser.emailVerified) {
+        destination = const EmailVerificationScreen();
+      } else {
+        destination = const ChooseChildScreen();
+      }
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (_, _, _) =>
-              hasUser ? const ChooseChildScreen() : const WelcomeScreen(),
+          pageBuilder: (_, _, _) => destination,
           transitionsBuilder: (_, anim, _, child) =>
               FadeTransition(opacity: anim, child: child),
           transitionDuration: const Duration(milliseconds: 600),

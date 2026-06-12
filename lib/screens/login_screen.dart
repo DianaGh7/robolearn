@@ -7,6 +7,7 @@ import '../l10n/app_strings.dart';
 import '../services/language_notifier.dart';
 import 'signup_screen.dart';
 import 'choose_child_screen.dart';
+import 'email_verification_screen.dart';
 import '../services/parent_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -207,8 +208,10 @@ class _LoginScreenState extends State<LoginScreen>
         );
       }
       if (!mounted) return;
+      final verified = user?.emailVerified ?? false;
       Navigator.of(context).pushReplacement(PageRouteBuilder(
-        pageBuilder: (_, _, _) => const ChooseChildScreen(),
+        pageBuilder: (_, _, _) =>
+            verified ? const ChooseChildScreen() : const EmailVerificationScreen(),
         transitionsBuilder: (_, anim, _, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 500),
@@ -283,54 +286,65 @@ class _LoginScreenState extends State<LoginScreen>
                   onPressed: sending
                       ? null
                       : () async {
-                          final messenger = ScaffoldMessenger.of(context);
                           final email = _resetEmailCtrl.text.trim().toLowerCase();
                           final errStr = AppStrings(LanguageNotifier.instance.isArabic);
+
                           if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$')
                               .hasMatch(email)) {
-                            messenger.showSnackBar(SnackBar(
-                              content: Text(errStr.authError('invalid-email'),
-                                  style: GoogleFonts.nunito()),
-                              backgroundColor: Colors.red.shade700,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                            ));
+                            if (dialogContext.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text(errStr.authError('invalid-email'),
+                                    style: GoogleFonts.nunito()),
+                                backgroundColor: Colors.red.shade700,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ));
+                            }
                             return;
                           }
+
                           setDialogState(() => sending = true);
                           try {
                             await FirebaseAuth.instance
                                 .sendPasswordResetEmail(email: email);
+
                             if (dialogContext.mounted) {
                               Navigator.pop(dialogContext);
                             }
-                            messenger.showSnackBar(SnackBar(
-                              content: Text(errStr.resetEmailSent,
-                                  style: GoogleFonts.nunito()),
-                              backgroundColor: AppTheme.tealPrimary,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                            ));
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text(errStr.resetEmailSent,
+                                    style: GoogleFonts.nunito()),
+                                backgroundColor: AppTheme.tealPrimary,
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 6),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ));
+                            }
                           } on FirebaseAuthException catch (e) {
-                            messenger.showSnackBar(SnackBar(
-                              content: Text(errStr.authError(e.code),
-                                  style: GoogleFonts.nunito()),
-                              backgroundColor: Colors.red.shade700,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                            ));
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text(errStr.authError(e.code),
+                                    style: GoogleFonts.nunito()),
+                                backgroundColor: Colors.red.shade700,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ));
+                            }
                           } catch (_) {
-                            messenger.showSnackBar(SnackBar(
-                              content: Text(errStr.authError('network-request-failed'),
-                                  style: GoogleFonts.nunito()),
-                              backgroundColor: Colors.red.shade700,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                            ));
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text(errStr.authError('network-request-failed'),
+                                    style: GoogleFonts.nunito()),
+                                backgroundColor: Colors.red.shade700,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ));
+                            }
                           } finally {
                             if (dialogContext.mounted) {
                               setDialogState(() => sending = false);

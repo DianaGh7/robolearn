@@ -336,8 +336,8 @@ class AppStrings {
   String get noAccount => isArabic ? 'ليس لديك حساب؟ ' : "Don't have an account? ";
   String get signUpLink => isArabic ? 'إنشاء حساب' : 'Sign Up';
   String get forgotPasswordDialogBody => isArabic
-      ? 'أدخل بريدك الإلكتروني وسنرسل لك رابط الإعادة.'
-      : 'Enter your email and we will send you a reset link.';
+      ? 'أدخل بريدك الإلكتروني المسجَّل وسنرسل لك رابط إعادة تعيين كلمة المرور.'
+      : 'Enter your registered email address and we will send you a password reset link.';
   String get yourEmail => isArabic ? 'بريدك الإلكتروني' : 'Your email';
   String get cancel => isArabic ? 'إلغاء' : 'Cancel';
   String get confirm => isArabic ? 'تأكيد' : 'Confirm';
@@ -345,8 +345,8 @@ class AppStrings {
       isArabic ? 'أدخل كلمة المرور للمتابعة' : 'Enter your password to continue';
   String get sendLink => isArabic ? 'إرسال الرابط' : 'Send Link';
   String get resetEmailSent => isArabic
-      ? 'إذا كان البريد موجودًا، تم إرسال رابط الإعادة.'
-      : 'If this email exists, a reset link has been sent.';
+      ? 'إذا كان البريد مسجَّلاً، تم إرسال رابط الإعادة. تحقق من البريد الوارد ومجلد الرسائل غير المرغوب فيها.'
+      : 'If this email is registered, a reset link has been sent. Check your inbox and spam/junk folder.';
   String get continueWithGoogle =>
       isArabic ? 'المتابعة بحساب Google' : 'Continue with Google';
   String get googleSignInFailed => isArabic
@@ -386,6 +386,26 @@ class AppStrings {
       _ => 'فشلت المصادقة. يرجى المحاولة مرة أخرى.',
     };
   }
+
+  // ── Email verification screen ─────────────────────────────
+  String get emailVerificationTitle => isArabic ? 'تحقق من بريدك الإلكتروني' : 'Verify Your Email';
+  String get emailVerificationBody => isArabic ? 'أرسلنا رابط التحقق إلى:' : 'We sent a verification link to:';
+  String get emailVerificationInstruction => isArabic
+      ? 'تحقق من بريدك الوارد ومجلد الرسائل غير المرغوب فيها، ثم انقر على الرابط لتفعيل حسابك.'
+      : 'Check your inbox and spam/junk folder, then click the link to activate your account.';
+  String get iHaveVerified => isArabic ? 'لقد تحققت من بريدي' : "I've Verified My Email";
+  String get resendEmail => isArabic ? 'إعادة إرسال البريد' : 'Resend Email';
+  String resendIn(int n) => isArabic ? 'إعادة الإرسال بعد $nث' : 'Resend in ${n}s';
+  String get emailNotVerifiedYet => isArabic
+      ? 'البريد لم يُتحقق منه بعد. تحقق من بريدك الوارد وانقر على الرابط.'
+      : 'Email not verified yet. Please check your inbox and click the link.';
+  String get emailVerificationResent => isArabic
+      ? 'تم إعادة إرسال بريد التحقق. تحقق من بريدك الوارد.'
+      : 'Verification email resent. Check your inbox and spam folder.';
+  String get backToLogin => isArabic ? 'العودة إلى تسجيل الدخول' : 'Back to Login';
+  String get emailVerificationRequired => isArabic
+      ? 'يرجى تفعيل بريدك الإلكتروني. تحقق من بريدك الوارد للحصول على رابط التحقق.'
+      : 'Please verify your email. Check your inbox for a verification link.';
 
   // ── Sign up screen ────────────────────────────────────────
   String get joinRoboLearn => isArabic ? 'انضم إلى روبوليرن! 🚀' : 'Join RoboLearn! 🚀';

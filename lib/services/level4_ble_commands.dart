@@ -39,6 +39,8 @@ class Level4BleCommands {
         return 'D2';
       case 3:
         return 'D3';
+      case 4:
+        return 'D4';
       case 5:
         return 'D5';
       case 10:
