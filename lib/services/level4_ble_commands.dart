@@ -4,6 +4,9 @@ import 'package:robolearn/models/challenge_model.dart';
 class Level4BleCommands {
   Level4BleCommands._();
 
+  /// Sent to the robot to clear its screen when leaving a challenge.
+  static const String clearScreen = 'CLR';
+
   /// Returns a BLE command for show/display blocks, or null if none should be sent.
   static String? commandForBlock(
     CodeBlockType type,
