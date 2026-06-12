@@ -15,10 +15,11 @@ import 'level_four_screen.dart';
 class _Frame {
   final int step;
   final String speech;
+  final String arabicSpeech;
   final bool resetScreen;
   final bool triggerDemo;
   final bool celebrate;
-  const _Frame(this.step, this.speech,
+  const _Frame(this.step, this.speech, this.arabicSpeech,
       {this.resetScreen = false,
       this.triggerDemo = false,
       this.celebrate = false});
@@ -49,21 +50,24 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
 
   static const _frames = [
     // Step 1 – greeting / concept
-    _Frame(1, "Hi! I'm Robo! 🤖"),
-    _Frame(1, "Today you'll learn about\nVARIABLES! 📦"),
-    _Frame(1, "A variable is like a box\nthat stores a value! ✨"),
+    _Frame(1, "Hi! I'm Robo! 🤖", 'مرحبًا! أنا روبو! 🤖'),
+    _Frame(1, "Today you'll learn about\nVARIABLES! 📦", 'اليوم ستتعلم عن\nالمتغيرات! 📦'),
+    _Frame(1, "A variable is like a box\nthat stores a value! ✨", 'المتغير مثل صندوق\nيخزن قيمة! ✨'),
     // Step 2 – what variables do
-    _Frame(2, "You can name the box...\nand put any number inside! 🔢"),
-    _Frame(2, "And the value inside\ncan change anytime! 🔄"),
+    _Frame(2, "You can name the box...\nand put any number inside! 🔢", 'يمكنك تسمية الصندوق...\nووضع أي رقم بداخله! 🔢'),
+    _Frame(2, "And the value inside\ncan change anytime! 🔄", 'والقيمة بداخله\nيمكنها التغيير في أي وقت! 🔄'),
     // Step 3 – using variables
-    _Frame(3, "You can SHOW the value\non the robot screen! 📊"),
-    _Frame(3, "Set it, change it, show it —\nthat's programming! 💡"),
+    _Frame(3, "You can SHOW the value\non the robot screen! 📊", 'يمكنك عرض القيمة\nعلى شاشة الروبوت! 📊'),
+    _Frame(3, "Set it, change it, show it —\nthat's programming! 💡", 'اضبطها، غيّرها، اعرضها —\nهذه هي البرمجة! 💡'),
     // Step 4 – live demo
     _Frame(4, "Example: set score = 10\nthen show it on screen! 📌",
+        'مثال: اضبط score = 10\nثم اعرضها على الشاشة! 📌',
         resetScreen: true),
-    _Frame(4, "Watch the screen update! 👀", triggerDemo: true),
+    _Frame(4, "Watch the screen update! 👀", 'شاهد الشاشة تتحدث! 👀',
+        triggerDemo: true),
     // Step 5 – celebrate
     _Frame(5, "Amazing! Now use variables\nto solve the challenges! 🌟",
+        'رائع! الآن استخدم المتغيرات\nلحل التحديات! 🌟',
         celebrate: true),
   ];
 
@@ -129,10 +133,13 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
     final frame = _frames[index];
     _cancelDemo = true;
 
+    final localizedSpeech = AppStrings.of(context).isArabic
+        ? frame.arabicSpeech
+        : frame.speech;
     setState(() {
       _frameIndex = index;
       _step = frame.step;
-      _speech = frame.speech;
+      _speech = localizedSpeech;
       _showSpeech = true;
     });
 
@@ -213,7 +220,10 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
   Widget build(BuildContext context) {
     final btm = MediaQuery.of(context).padding.bottom;
     return Scaffold(
-      body: Stack(
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _showSpeech && !_showPlayButton ? _onForward : null,
+        child: Stack(
         children: [
           Container(
             decoration: const BoxDecoration(
@@ -298,7 +308,22 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
           ),
           if (_celebrating) _particles(),
           if (_showPlayButton) _playBtn(btm),
+          if (_showSpeech && !_showPlayButton)
+            Positioned(
+              bottom: 16 + btm,
+              left: 0,
+              right: 0,
+              child: Text(
+                AppStrings.of(context).tapAnywhereToAdvance,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.nunito(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.tealMid.withValues(alpha: 0.65)),
+              ),
+            ),
         ],
+        ),
       ),
     );
   }
@@ -766,7 +791,7 @@ class _SpeechBubble extends StatelessWidget {
                     children: [
                       const Icon(Icons.arrow_back, size: 14),
                       const SizedBox(width: 6),
-                      Text('Back',
+                      Text(AppStrings.of(context).backHint,
                           style: GoogleFonts.nunito(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,

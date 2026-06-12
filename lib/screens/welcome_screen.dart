@@ -396,6 +396,7 @@ class _Step extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(label,
+            textAlign: TextAlign.center,
             style: GoogleFonts.nunito(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,

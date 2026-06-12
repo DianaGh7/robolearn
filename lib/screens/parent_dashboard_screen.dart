@@ -473,7 +473,6 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
         : _children.fold<double>(0, (s, c) => s + _effectiveProgress(c)) /
             _children.length;
     final totalStreak = _children.fold<int>(0, (s, c) => s + c.streak);
-    final isArabic = AppStrings.of(context).isArabic;
     final s = AppStrings.of(context);
 
     return Scaffold(
@@ -525,8 +524,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                     ]),
                     Positioned(
                       top: 0,
-                      left: isArabic ? 0 : null,
-                      right: isArabic ? null : 0,
+                      left: null,
+                      right: 0,
                       child: GestureDetector(
                         onTap: _showSettingsMenu,
                         child: const Icon(

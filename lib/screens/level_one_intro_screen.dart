@@ -5,7 +5,31 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_strings.dart';
 import 'level_one_screen.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Frame data — one entry per step the user taps through
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _L1Frame {
+  final int phase;
+  final String speech;
+  final String arabicSpeech;
+  final bool triggerDrag;
+  final bool triggerRun;
+  final bool triggerExecute;
+  final bool celebrate;
+  const _L1Frame({
+    required this.phase,
+    this.speech = '',
+    this.arabicSpeech = '',
+    this.triggerDrag = false,
+    this.triggerRun = false,
+    this.triggerExecute = false,
+    this.celebrate = false,
+  });
+}
 
 class LevelOneIntroScreen extends StatefulWidget {
   final ChildModel child;
@@ -26,21 +50,33 @@ class LevelOneIntroScreen extends StatefulWidget {
 class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
     with TickerProviderStateMixin {
 
-  // ── Sequence ───────────────────────────────────────────────────────────────
+  // ── Frame navigation ────────────────────────────────────────────────────────
+  static const _frames = [
+    _L1Frame(phase: 1, speech: "Hi! I'm Robo! 🤖", arabicSpeech: 'مرحبًا! أنا روبو! 🤖'),
+    _L1Frame(phase: 1, speech: "Watch me show you\nhow to code! 🎯", arabicSpeech: 'دعني أريك\nكيف تكتب الكود! 🎯'),
+    _L1Frame(phase: 2, speech: "The robot must reach\nits goal! ⬆️", arabicSpeech: 'يجب أن يصل الروبوت\nإلى هدفه! ⬆️'),
+    _L1Frame(phase: 3, speech: "Step 1: Drag 'Move Forward'\nto your code! 📦",
+        arabicSpeech: "الخطوة 1: اسحب 'Move Forward'\nإلى الكود! 📦", triggerDrag: true),
+    _L1Frame(phase: 5, speech: "Step 2: Press Run ▶️\nWatch what happens!",
+        arabicSpeech: 'الخطوة 2: اضغط Run ▶️\nشاهد ما يحدث!', triggerRun: true),
+    _L1Frame(phase: 6, triggerExecute: true),
+    _L1Frame(phase: 7, speech: "Goal reached! 🎉\nOrder matters!",
+        arabicSpeech: 'وصل إلى الهدف! 🎉\nالترتيب مهم!', celebrate: true),
+  ];
+
+  int _frameIndex = -1;
+
+  // ── Phase / visual state ─────────────────────────────────────────────────────
   int _phase = 0;
-
-  // Grid robot: 0.0 = row 2 (start), 1.0 = row 1 (target)
   double _robotStep = 0.0;
-
-  // Code blocks visibility: [START, MOVE FORWARD, END]
   final List<bool> _commandVisible = [false, false, false];
   int _activeCommandIndex = -1;
 
   // Speech bubble
-  String _speechText = '';
+  String _speech = '';
   bool _showSpeech = false;
 
-  // Celebration / end
+  // End states
   bool _celebrating = false;
   bool _showPlayButton = false;
 
@@ -49,7 +85,8 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
   // 0.55 → 1.0 : move to Run button and press it
   double _handAnimValue = 0.0;
   bool _showHand = false;
-  bool _runButtonPressed = false; // visual "pressed" state for Run button
+  bool _runButtonPressed = false;
+  bool _cancelAnim = false;
 
   // ── Persistent animation controllers ──────────────────────────────────────
   late AnimationController _bounceController;
@@ -115,11 +152,14 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
       CurvedAnimation(parent: _runPulseController, curve: Curves.easeInOut),
     );
 
-    _startSequence();
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) _goToFrame(0);
+    });
   }
 
   @override
   void dispose() {
+    _cancelAnim = true;
     _bounceController.dispose();
     _celebrateController.dispose();
     _glowController.dispose();
@@ -127,21 +167,64 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
     super.dispose();
   }
 
-  // ── Sequence helpers ───────────────────────────────────────────────────────
+  // ── Localization helper ────────────────────────────────────────────────────
 
-  Future<void> _delay(int ms) => Future.delayed(Duration(milliseconds: ms));
+  String _t(String english, String arabic) =>
+      AppStrings.of(context).isArabic ? arabic : english;
 
-  void _setSpeech(String text) {
-    if (!mounted) return;
-    setState(() { _speechText = text; _showSpeech = true; });
+  // ── Frame navigation ───────────────────────────────────────────────────────
+
+  void _goToFrame(int index) {
+    if (!mounted || index < 0 || index >= _frames.length) return;
+    _cancelAnim = true;
+
+    final frame = _frames[index];
+    final speech = AppStrings.of(context).isArabic
+        ? frame.arabicSpeech
+        : frame.speech;
+
+    setState(() {
+      _frameIndex = index;
+      _phase = frame.phase;
+      _speech = speech;
+      _showSpeech = speech.isNotEmpty;
+      _commandVisible[0] = frame.phase >= 3;
+      _commandVisible[1] = frame.phase >= 5;
+      _commandVisible[2] = frame.phase >= 3;
+      _activeCommandIndex = -1;
+      _showHand = false;
+      _handAnimValue = 0.0;
+      _runButtonPressed = false;
+      _robotStep = frame.celebrate ? 1.0 : (frame.phase < 6 ? 0.0 : _robotStep);
+    });
+
+    if (frame.celebrate && !_celebrating) {
+      _bounceController.stop();
+      setState(() => _celebrating = true);
+      _celebrateController.forward();
+    }
+
+    if (frame.triggerDrag) _triggerDragAnimation();
+    if (frame.triggerRun) _triggerRunAnimation();
+    if (frame.triggerExecute) _triggerExecution();
   }
 
-  void _hideSpeech() {
-    if (!mounted) return;
-    setState(() => _showSpeech = false);
+  void _onForward() {
+    _cancelAnim = true;
+    if (_frameIndex >= _frames.length - 1) {
+      setState(() { _showSpeech = false; _showPlayButton = true; });
+    } else {
+      _goToFrame(_frameIndex + 1);
+    }
   }
 
-  /// Animates `_handAnimValue` from [from] to [to] over [durationMs].
+  void _onBack() {
+    if (_frameIndex <= 0) return;
+    _goToFrame(_frameIndex - 1);
+  }
+
+  // ── Animation helpers ──────────────────────────────────────────────────────
+
   Future<void> _animateHand(double from, double to, int durationMs) async {
     final ctrl = AnimationController(
       vsync: this,
@@ -151,7 +234,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
       CurvedAnimation(parent: ctrl, curve: Curves.easeInOut),
     );
     anim.addListener(() {
-      if (mounted) setState(() => _handAnimValue = anim.value);
+      if (mounted && !_cancelAnim) setState(() => _handAnimValue = anim.value);
     });
     await ctrl.forward();
     ctrl.dispose();
@@ -167,100 +250,66 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
       CurvedAnimation(parent: ctrl, curve: Curves.easeInOut),
     );
     anim.addListener(() {
-      if (mounted) setState(() => _robotStep = anim.value);
+      if (mounted && !_cancelAnim) setState(() => _robotStep = anim.value);
     });
     ctrl.forward().then((_) => ctrl.dispose());
   }
 
-  // ── Main animation sequence ────────────────────────────────────────────────
+  Future<void> _triggerDragAnimation() async {
+    _cancelAnim = false;
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted || _cancelAnim) return;
 
-  void _startSequence() async {
-    await _delay(700);
-
-    // ── Phase 1: Greeting ──────────────────────────────────────────────────
-    if (!mounted) return;
-    setState(() => _phase = 1);
-    _setSpeech("Hi! I'm Robo! 🤖");
-    await _delay(2400);
-    if (!mounted) return;
-    _setSpeech("Watch me teach you\nhow to code! 🎯");
-    await _delay(2900);
-    _hideSpeech();
-    await _delay(450);
-
-    // ── Phase 2: Grid + challenge ─────────────────────────────────────────
-    if (!mounted) return;
-    setState(() => _phase = 2);
-    await _delay(250);
-    _setSpeech("The robot must reach\nits goal! ⬆️");
-    await _delay(3000);
-    _hideSpeech();
-    await _delay(450);
-
-    // ── Phase 3: Palette appears ──────────────────────────────────────────
-    if (!mounted) return;
-    setState(() {
-      _phase = 3;
-      _commandVisible[0] = true; // START
-      _commandVisible[2] = true; // END
-    });
-    _setSpeech("Step 1: Drag 'Move Forward'\nto your code! 📦");
-    await _delay(1000);
-
-    // Hand appears at the Move Forward palette chip, then drags it up
-    if (!mounted) return;
     setState(() => _showHand = true);
-    await _animateHand(0.0, 0.55, 2400);   // drag: palette → code area
+    await _animateHand(0.0, 0.55, 2400);
+    if (!mounted || _cancelAnim) return;
 
-    // Block lands in code area
-    if (!mounted) return;
-    setState(() { _commandVisible[1] = true; _phase = 4; });
-    _hideSpeech();
-    await _delay(600);
+    setState(() {
+      _commandVisible[1] = true;
+      _showHand = false;
+      _handAnimValue = 0.0;
+    });
+  }
 
-    // ── Phase 5: Step 2 – press Run ───────────────────────────────────────
-    if (!mounted) return;
-    setState(() => _phase = 5);
-    _setSpeech("Step 2: Press Run ▶️\nWatch what happens!");
-    await _delay(1000);
+  Future<void> _triggerRunAnimation() async {
+    _cancelAnim = false;
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted || _cancelAnim) return;
 
-    // Hand moves from code area to Run button, then taps
-    await _animateHand(0.55, 1.0, 2000);   // move to Run → tap
+    setState(() {
+      _showHand = true;
+      _handAnimValue = 0.55;
+    });
+    await _animateHand(0.55, 1.0, 2000);
+    if (!mounted || _cancelAnim) return;
 
-    // Visual "tap" on the Run button
-    if (!mounted) return;
     setState(() => _runButtonPressed = true);
-    await _delay(320);
-    setState(() => _runButtonPressed = false);
-    _hideSpeech();
-    await _delay(250);
-    setState(() => _showHand = false);
+    await Future.delayed(const Duration(milliseconds: 320));
+    if (!mounted || _cancelAnim) return;
 
-    // ── Phase 6: Execute – robot moves ────────────────────────────────────
-    if (!mounted) return;
-    setState(() => _phase = 6);
+    setState(() {
+      _runButtonPressed = false;
+      _showHand = false;
+      _handAnimValue = 0.0;
+    });
+  }
+
+  Future<void> _triggerExecution() async {
+    _cancelAnim = false;
     setState(() => _activeCommandIndex = 0);
-    await _delay(1200);
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (!mounted || _cancelAnim) return;
 
-    if (!mounted) return;
     setState(() => _activeCommandIndex = 1);
     _animateRobotTo(1.0);
-    await _delay(2200);
+    await Future.delayed(const Duration(milliseconds: 2200));
+    if (!mounted || _cancelAnim) return;
 
-    if (!mounted) return;
     setState(() => _activeCommandIndex = 2);
-    await _delay(900);
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted || _cancelAnim) return;
 
-    // ── Phase 7: Celebrate ────────────────────────────────────────────────
-    if (!mounted) return;
-    _bounceController.stop();
-    setState(() { _phase = 7; _celebrating = true; });
-    _setSpeech("Goal reached! 🎉\nOrder matters!");
-    _celebrateController.forward();
-    await _delay(4000);
-
-    if (!mounted) return;
-    setState(() { _showSpeech = false; _showPlayButton = true; });
+    _goToFrame(_frameIndex + 1);
   }
 
   void _onPlay() {
@@ -281,11 +330,39 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
 
   // ── Build ──────────────────────────────────────────────────────────────────
 
+  // ── Progress dots ──────────────────────────────────────────────────────────
+
+  Widget _progressDots() {
+    const totalDots = 5;
+    final current = (_frameIndex + 1).clamp(0, 5);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(totalDots, (i) {
+        final done = i < current;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: done ? 18 : 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: done
+                ? AppTheme.tealPrimary
+                : AppTheme.tealPrimary.withValues(alpha: 0.22),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        );
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).padding.bottom;
     return Scaffold(
-      body: Stack(
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: !_showPlayButton ? _onForward : null,
+        child: Stack(
         children: [
           _buildBackground(),
           SafeArea(
@@ -293,15 +370,22 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
               children: [
                 _buildHeader(),
                 const SizedBox(height: 4),
+                if (_frameIndex >= 0 && !_celebrating) _progressDots(),
+                const SizedBox(height: 4),
                 AnimatedSize(
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeInOut,
                   child: _showSpeech
-                      ? Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
-                          child: _SpeechBubble(
-                            key: ValueKey(_speechText),
-                            text: _speechText,
+                      ? GestureDetector(
+                          onTap: _onForward,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
+                            child: _SpeechBubble(
+                              key: ValueKey(_speech),
+                              text: _speech,
+                              showBackHint: _frameIndex > 0,
+                              onBack: _onBack,
+                            ),
                           ),
                         )
                       : const SizedBox.shrink(),
@@ -316,7 +400,22 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
           ),
           if (_celebrating) _buildParticles(),
           if (_showPlayButton) _buildPlayButton(bottomPad),
+          if (_showSpeech && !_showPlayButton)
+            Positioned(
+              bottom: 16 + bottomPad,
+              left: 0,
+              right: 0,
+              child: Text(
+                AppStrings.of(context).tapAnywhereToAdvance,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.nunito(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.tealMid.withValues(alpha: 0.65)),
+              ),
+            ),
         ],
+        ),
       ),
     );
   }
@@ -358,7 +457,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                     children: [
                       const Icon(Icons.star_rounded, color: Color(0xFFFFB300), size: 15),
                       const SizedBox(width: 5),
-                      Text('Level 1',
+                      Text(AppStrings.of(context).levelBadge(1),
                           style: GoogleFonts.nunito(
                               color: AppTheme.tealDark,
                               fontSize: 15,
@@ -368,7 +467,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text('Sequential Logic',
+                  child: Text(AppStrings.of(context).levelTitle(1),
                       style: GoogleFonts.nunito(
                           color: AppTheme.tealMid,
                           fontSize: 15,
@@ -386,7 +485,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.3)),
               ),
-              child: Text('Skip',
+              child: Text(_t('Skip', 'تخطي'),
                   style: GoogleFonts.nunito(
                       color: AppTheme.tealDark,
                       fontSize: 15,
@@ -1131,7 +1230,15 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
 
 class _SpeechBubble extends StatelessWidget {
   final String text;
-  const _SpeechBubble({super.key, required this.text});
+  final bool showBackHint;
+  final VoidCallback? onBack;
+
+  const _SpeechBubble({
+    super.key,
+    required this.text,
+    this.showBackHint = false,
+    this.onBack,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1140,7 +1247,7 @@ class _SpeechBubble extends StatelessWidget {
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),
@@ -1152,15 +1259,38 @@ class _SpeechBubble extends StatelessWidget {
               ),
             ],
           ),
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.nunito(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.tealDark,
-              height: 1.45,
-            ),
+          child: Column(
+            children: [
+              Text(
+                text,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.nunito(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.tealDark,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (showBackHint)
+                GestureDetector(
+                  onTap: onBack,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.arrow_back, size: 14),
+                      const SizedBox(width: 6),
+                      Text(AppStrings.of(context).backHint,
+                          style: GoogleFonts.nunito(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.tealDark)),
+                    ],
+                  ),
+                )
+              else
+                const SizedBox.shrink(),
+            ],
           ),
         ),
         Align(
