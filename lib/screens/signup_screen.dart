@@ -5,7 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../l10n/app_strings.dart';
 import '../services/language_notifier.dart';
-import 'choose_child_screen.dart';
+import 'email_verification_screen.dart';
 import '../services/parent_service.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -274,6 +274,7 @@ class _SignUpScreenState extends State<SignUpScreen>
 
       final user = credential.user;
       if (user != null) {
+        await user.sendEmailVerification();
         await ParentService().upsertParentProfile(
           uid: user.uid,
           email: user.email ?? _emailCtrl.text.trim().toLowerCase(),
@@ -282,7 +283,7 @@ class _SignUpScreenState extends State<SignUpScreen>
       }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(PageRouteBuilder(
-        pageBuilder: (_, _, _) => const ChooseChildScreen(),
+        pageBuilder: (_, _, _) => const EmailVerificationScreen(),
         transitionsBuilder: (_, anim, _, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 500),

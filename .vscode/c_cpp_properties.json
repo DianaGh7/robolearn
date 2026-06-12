@@ -1,0 +1,35 @@
+{
+  "configurations": [
+    {
+      "name": "Arduino (ESP32)",
+      "includePath": [
+        "${workspaceFolder}/firmware/**",
+        "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/*/cores/esp32",
+        "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/*/variants/esp32",
+        "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/*/libraries/Wire/src",
+        "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/*/libraries/BLE/src",
+        "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/*/libraries/WiFi/src",
+        "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/*/libraries/FS/src",
+        "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/*/tools/sdk/esp32/include/**",
+        "${env:LOCALAPPDATA}/Arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/*/xtensa-esp32-elf/include",
+        "${env:USERPROFILE}/Documents/Arduino/libraries/Adafruit_SSD1306",
+        "${env:USERPROFILE}/Documents/Arduino/libraries/Adafruit_GFX_Library",
+        "${env:USERPROFILE}/Documents/Arduino/libraries/**",
+        "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/**"
+      ],
+      "defines": [
+        "ARDUINO=10819",
+        "ESP32",
+        "ESP_PLATFORM",
+        "F_CPU=240000000L",
+        "ARDUINO_ESP32_DEV",
+        "ARDUINO_ARCH_ESP32"
+      ],
+      "compilerPath": "${env:LOCALAPPDATA}/Arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/*/bin/xtensa-esp32-elf-gcc",
+      "cStandard": "c11",
+      "cppStandard": "c++14",
+      "intelliSenseMode": "gcc-x64"
+    }
+  ],
+  "version": 4
+}
