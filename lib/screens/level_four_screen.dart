@@ -706,6 +706,8 @@ class _LevelFourScreenState extends State<LevelFourScreen> {
       orElse: () => challenges.first,
     );
     if (prev.number == widget.challenge.number) return;
+    if (_ble.isConnected) await _ble.sendCommand(Level4BleCommands.clearScreen);
+    if (!mounted) return;
     final updated = await Navigator.push<ChildModel>(
       context,
       MaterialPageRoute(
@@ -723,9 +725,13 @@ class _LevelFourScreenState extends State<LevelFourScreen> {
       orElse: () => challenges.last,
     );
     if (next.number == widget.challenge.number) {
+      if (_ble.isConnected) await _ble.sendCommand(Level4BleCommands.clearScreen);
+      if (!mounted) return;
       Navigator.pop(context, _progressChild);
       return;
     }
+    if (_ble.isConnected) await _ble.sendCommand(Level4BleCommands.clearScreen);
+    if (!mounted) return;
     final updated = await Navigator.push<ChildModel>(
       context,
       MaterialPageRoute(
