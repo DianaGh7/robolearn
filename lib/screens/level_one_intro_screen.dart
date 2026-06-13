@@ -691,13 +691,15 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
         final h = box.maxHeight;
 
         // Approximate positions relative to the panel's top-left corner.
-        // Run button sits in the header row, right side.
-        final runBtnPos = Offset(w * 0.82, h * 0.055);
+        // In RTL (Arabic) the header Row and Wrap palette flip, so Run button
+        // moves to the left and the Move Forward chip mirrors to the right.
+        final isAr = AppStrings.of(ctx).isArabic;
+        final runBtnPos = isAr ? Offset(47.0, 25.0) : Offset(w - 47.0, 25.0);
         // Drop zone = center of the code-area section (~35 % down the panel).
         final dropZonePos = Offset(w * 0.50, h * 0.34);
-        // Move Forward chip in the palette row = 2nd chip, ~40 % from left,
-        // near the bottom of the panel.
-        final paletteChipPos = Offset(w * 0.38, h * 0.83);
+        // Move Forward chip: 2nd chip in palette Wrap.
+        // LTR: ~38 % from left.  RTL: mirrored to ~62 % from left.
+        final paletteChipPos = Offset(isAr ? w * 0.62 : w * 0.38, h * 0.83);
 
         return Stack(
           clipBehavior: Clip.none,
