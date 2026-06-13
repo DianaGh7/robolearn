@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:robolearn/firebase_options.dart';
 import 'package:robolearn/services/connection_state.dart' as robot_conn;
@@ -24,18 +25,30 @@ class RoboLearnApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LangScope(
-      notifier: LanguageNotifier.instance,
-      child: MaterialApp(
-        title: 'RoboLearn',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF4DD0C4)),
-          useMaterial3: true,
-          textTheme: GoogleFonts.nunitoTextTheme(),
-        ),
-        home: const SplashScreen(),
-      ),
+    return ListenableBuilder(
+      listenable: LanguageNotifier.instance,
+      builder: (context, _) {
+        return LangScope(
+          notifier: LanguageNotifier.instance,
+          child: MaterialApp(
+            title: 'RoboLearn',
+            debugShowCheckedModeBanner: false,
+            locale: LanguageNotifier.instance.locale,
+            supportedLocales: const [Locale('en'), Locale('ar')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF4DD0C4)),
+              useMaterial3: true,
+              textTheme: GoogleFonts.nunitoTextTheme(),
+            ),
+            home: const SplashScreen(),
+          ),
+        );
+      },
     );
   }
 }

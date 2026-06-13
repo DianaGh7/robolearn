@@ -53,8 +53,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
     _Frame(1, "...and decide what to do!\nIF tells me how! 🤔"),
     // Step 2 – robot sees the screen
     _Frame(2, "The screen shows me a face 📺", stopBounce: true),
-    _Frame(2, "It could be 😊 happy\nOR 😢 sad"),
-    _Frame(2, "I look at it... then I decide!"),
+    _Frame(2, "It could be 😊 happy\nOR 😢 sad — I look and decide!"),
     // Step 3 – IF → music
     _Frame(3, "IF I see 😊 happy face..."),
     _Frame(3, "...I play music! 🎵\nIF = do this when TRUE ✅", showResult: true),
@@ -63,8 +62,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
     _Frame(4, "ELSE → I cry! 😢\nELSE = do this when FALSE ❌", showResult: true),
     // Step 5 – ELSE IF
     _Frame(5, "I can check MORE than one thing!\nThat's ELSE IF!"),
-    _Frame(5, "🌙 Moon? → night! 🌃"),
-    _Frame(5, "☀️ Sun? → morning! 🌅\nOtherwise → something else!"),
+    _Frame(5, "🌙 Moon → night!\n☀️ Sun → morning!\nOtherwise → something else!"),
     // Step 6 – Nested IF
     _Frame(6, "IF can go INSIDE another IF!\nThat's called Nested! 🐾"),
     _Frame(6, "Big animal?\n→ check AGAIN inside!\nTall nose? → 🐘   No tall nose? → 🦁"),
@@ -272,6 +270,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
                               text: _speech,
                               showBackHint: _frameIndex > 0,
                               onBack: _onBack,
+                              onForward: _onForward,
                             ),
                           ),
                         )
@@ -322,20 +321,6 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
           ),
           if (_celebrating) _particles(),
           if (_showPlayButton) _playBtn(btm),
-          if (_showSpeech && !_showPlayButton)
-            Positioned(
-              bottom: 16 + btm,
-              left: 0,
-              right: 0,
-              child: Text(
-                AppStrings.of(context).tapAnywhereToAdvance,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.nunito(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.tealMid.withValues(alpha: 0.65)),
-              ),
-            ),
         ],
         ),
       ),
@@ -903,12 +888,14 @@ class _SpeechBubble extends StatelessWidget {
   final String text;
   final bool showBackHint;
   final VoidCallback? onBack;
+  final VoidCallback? onForward;
 
   const _SpeechBubble({
     super.key,
     required this.text,
     this.showBackHint = false,
     this.onBack,
+    this.onForward,
   });
 
   @override
@@ -941,25 +928,61 @@ class _SpeechBubble extends StatelessWidget {
                   height: 1.55,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: showBackHint
+                    ? MainAxisAlignment.spaceBetween
+                    : MainAxisAlignment.center,
+                children: [
                   if (showBackHint)
                     GestureDetector(
                       onTap: onBack,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.arrow_back, size: 14),
-                          const SizedBox(width: 6),
-                          Text(AppStrings.of(context).backHint,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.arrow_back_ios_new,
+                                size: 13, color: AppTheme.tealDark),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppStrings.of(context).backHint,
                               style: GoogleFonts.nunito(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.tealDark)),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.tealDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  GestureDetector(
+                    onTap: onForward,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            AppStrings.of(context).tapAnywhereToAdvance,
+                            style: GoogleFonts.nunito(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.tealDark,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_forward_ios,
+                              size: 13, color: AppTheme.tealDark),
                         ],
                       ),
-                    )
-                  else
-                    const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),

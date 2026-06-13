@@ -1238,7 +1238,7 @@ class _VarVisualizationCard extends StatelessWidget {
             child: Container(
               height: 88,
               decoration: BoxDecoration(
-                color: screenActive ? const Color(0xFF111827) : const Color(0xFF1F2937),
+                color: Colors.black,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: screenActive
@@ -1264,32 +1264,7 @@ class _VarVisualizationCard extends StatelessWidget {
                         ),
                         textAlign: TextAlign.center,
                       )
-                    : expectedOutput.isNotEmpty
-                        ? Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'target',
-                                style: GoogleFonts.sourceCodePro(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade600,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                expectedOutput,
-                                style: GoogleFonts.sourceCodePro(
-                                  fontSize: expectedOutput.length <= 6 ? 24 : 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF6EE7B7).withValues(alpha: 0.35),
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          )
-                        : null,
+                    : null,
               ),
             ),
           ),

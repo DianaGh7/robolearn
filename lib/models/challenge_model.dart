@@ -390,7 +390,7 @@ class SoundChallenge {
       number: 9,
       levelNumber: 3,
       title: 'Streaks',
-      instruction: '🤖 Mission: Help the robot cheer you on!\n• Big streak? → Celebrate! 🎉\n• Medium streak? → Clap! 👏\n• Small streak? → Encourage the robot! 💪',
+      instruction: '🤖 Mission: Help the robot cheer you on!\n• Big streak? → Celebrate! 🎉\n• Medium streak? → Clap! 👏\n• Small streak? → Encourage! 💪',
       targetDisplay: '🔥 streak 5+  →  Celebrate! 🎉\n📈 streak 2+  →  Clap! 👏\n💪 else  →  Keep going!',
       availableBlocks: [
         CodeBlockType.start,

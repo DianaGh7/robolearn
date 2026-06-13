@@ -1051,49 +1051,52 @@ class _RobotGridWidget extends StatelessWidget {
                     gridHeight;
                 final childAspectRatio = cellWidth / cellHeight;
 
-                return GridView.builder(
-                  padding: EdgeInsets.zero,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: gridWidth,
-                    mainAxisSpacing: spacing,
-                    crossAxisSpacing: spacing,
-                    childAspectRatio: childAspectRatio,
-                  ),
-                  itemCount: gridWidth * gridHeight,
-                  itemBuilder: (context, index) {
-                    final x = index % gridWidth;
-                    final y = index ~/ gridWidth;
-                    final isRobot =
-                        currentRobotState.x == x && currentRobotState.y == y;
-                    final isTarget =
-                        targetRobotState.x == x &&
-                        targetRobotState.y == y &&
-                        !isRobot;
+                return Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: GridView.builder(
+                    padding: EdgeInsets.zero,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: gridWidth,
+                      mainAxisSpacing: spacing,
+                      crossAxisSpacing: spacing,
+                      childAspectRatio: childAspectRatio,
+                    ),
+                    itemCount: gridWidth * gridHeight,
+                    itemBuilder: (context, index) {
+                      final x = index % gridWidth;
+                      final y = index ~/ gridWidth;
+                      final isRobot =
+                          currentRobotState.x == x && currentRobotState.y == y;
+                      final isTarget =
+                          targetRobotState.x == x &&
+                          targetRobotState.y == y &&
+                          !isRobot;
 
-                    if (isTarget) {
-                      return AnimatedBuilder(
-                        animation: pulseAnim,
-                        builder: (context, child) => Transform.scale(
-                          scale: pulseAnim.value,
-                          child: _GridCell(
-                            isRobot: isRobot,
-                            isTarget: isTarget,
-                            robotDirection: isRobot
-                                ? currentRobotState.direction
-                                : null,
+                      if (isTarget) {
+                        return AnimatedBuilder(
+                          animation: pulseAnim,
+                          builder: (context, child) => Transform.scale(
+                            scale: pulseAnim.value,
+                            child: _GridCell(
+                              isRobot: isRobot,
+                              isTarget: isTarget,
+                              robotDirection: isRobot
+                                  ? currentRobotState.direction
+                                  : null,
+                            ),
                           ),
-                        ),
+                        );
+                      }
+                      return _GridCell(
+                        isRobot: isRobot,
+                        isTarget: isTarget,
+                        robotDirection: isRobot
+                            ? currentRobotState.direction
+                            : null,
                       );
-                    }
-                    return _GridCell(
-                      isRobot: isRobot,
-                      isTarget: isTarget,
-                      robotDirection: isRobot
-                          ? currentRobotState.direction
-                          : null,
-                    );
-                  },
+                    },
+                  ),
                 );
               },
             ),
