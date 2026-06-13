@@ -463,11 +463,12 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
+              final arrowText = AppStrings.of(context).isArabic ? '←' : '→';
               final boxes = [
                 _VarBox(label: 'score', value: '0'),
-                const Text('→', style: TextStyle(fontSize: 28)),
+                Text(arrowText, style: const TextStyle(fontSize: 28)),
                 _VarBox(label: 'score', value: '5', active: true),
-                const Text('→', style: TextStyle(fontSize: 28)),
+                Text(arrowText, style: const TextStyle(fontSize: 28)),
                 _VarBox(label: 'score', value: '10', active: true),
               ];
               if (constraints.maxWidth < 300) {
@@ -541,7 +542,7 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
           _StepCard(
               number: '2',
               label: 'CHANGE it',
-              desc: 'add 5 → score = 15',
+              desc: _t('add 5 → score = 15', 'add 5 ← score = 15'),
               color: const Color(0xFF4CAF50),
               glowValue: g),
           const SizedBox(height: 8),

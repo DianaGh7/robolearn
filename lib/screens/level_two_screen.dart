@@ -48,8 +48,11 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
   late List<CodeBlockType> _availableBlocks;
   RobotConnectionStatus _connectionStatus = RobotConnectionStatus.disconnected;
   final String _animalChallenge11 = 'cat';
-  // Randomly chosen each time the run button is pressed for challenge 10.
-  bool _isSunForChallenge10 = math.Random().nextBool();
+  // True during daytime (6:00–18:00), false at night — reflects device clock.
+  bool _isSunForChallenge10 = () {
+    final hour = DateTime.now().hour;
+    return hour >= 6 && hour < 18;
+  }();
   final SoundService _soundService = SoundService();
   bool _isArabic = false;
 
@@ -188,12 +191,41 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
     }
 
     setState(() {
-      final block = arrangedBlocks.removeAt(fromIndex);
-      final adjustedTarget = fromIndex < toIndex ? toIndex - 1 : toIndex;
-      final updated = block.nesting != newNesting
-          ? CodeBlock(id: block.id, type: block.type, label: block.label, color: block.color, nesting: newNesting)
-          : block;
-      arrangedBlocks.insert(adjustedTarget, updated);
+      final block = arrangedBlocks[fromIndex];
+      if (_isIfHeader(block.type)) {
+        int groupEnd = fromIndex + 1;
+        while (groupEnd < arrangedBlocks.length &&
+            arrangedBlocks[groupEnd].nesting > block.nesting) {
+          groupEnd++;
+        }
+        final group = arrangedBlocks.sublist(fromIndex, groupEnd);
+        arrangedBlocks.removeRange(fromIndex, groupEnd);
+        final groupSize = group.length;
+        final adjustedTarget = (fromIndex < toIndex
+                ? toIndex - groupSize
+                : toIndex)
+            .clamp(0, arrangedBlocks.length);
+        final nestingDiff = newNesting - block.nesting;
+        final updatedGroup = nestingDiff != 0
+            ? group
+                .map((b) => CodeBlock(
+                      id: b.id,
+                      type: b.type,
+                      label: b.label,
+                      color: b.color,
+                      nesting: b.nesting + nestingDiff,
+                    ))
+                .toList()
+            : group;
+        arrangedBlocks.insertAll(adjustedTarget, updatedGroup);
+      } else {
+        arrangedBlocks.removeAt(fromIndex);
+        final adjustedTarget = fromIndex < toIndex ? toIndex - 1 : toIndex;
+        final updated = block.nesting != newNesting
+            ? CodeBlock(id: block.id, type: block.type, label: block.label, color: block.color, nesting: newNesting)
+            : block;
+        arrangedBlocks.insert(adjustedTarget, updated);
+      }
     });
   }
 
@@ -467,9 +499,10 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
       if (!mounted) return;
       setState(() {
         _isExecuting = false;
-        // Give challenge 10 a fresh random emoji for the next attempt.
+        // Re-evaluate day/night from device clock for the next attempt.
         if (widget.challenge.number == 10) {
-          _isSunForChallenge10 = math.Random().nextBool();
+          final hour = DateTime.now().hour;
+          _isSunForChallenge10 = hour >= 6 && hour < 18;
         }
       });
       final childId = _progressChild.childId;

@@ -146,12 +146,41 @@ class _LevelThreeScreenState extends State<LevelThreeScreen>
       return;
     }
     setState(() {
-      final block = arrangedBlocks.removeAt(fromIndex);
-      final adjustedTarget = fromIndex < toIndex ? toIndex - 1 : toIndex;
-      final updated = block.nesting != newNesting
-          ? CodeBlock(id: block.id, type: block.type, label: block.label, color: block.color, nesting: newNesting)
-          : block;
-      arrangedBlocks.insert(adjustedTarget, updated);
+      final block = arrangedBlocks[fromIndex];
+      if (_isRepeatBlock(block.type)) {
+        int groupEnd = fromIndex + 1;
+        while (groupEnd < arrangedBlocks.length &&
+            arrangedBlocks[groupEnd].nesting > block.nesting) {
+          groupEnd++;
+        }
+        final group = arrangedBlocks.sublist(fromIndex, groupEnd);
+        arrangedBlocks.removeRange(fromIndex, groupEnd);
+        final groupSize = group.length;
+        final adjustedTarget = (fromIndex < toIndex
+                ? toIndex - groupSize
+                : toIndex)
+            .clamp(0, arrangedBlocks.length);
+        final nestingDiff = newNesting - block.nesting;
+        final updatedGroup = nestingDiff != 0
+            ? group
+                .map((b) => CodeBlock(
+                      id: b.id,
+                      type: b.type,
+                      label: b.label,
+                      color: b.color,
+                      nesting: b.nesting + nestingDiff,
+                    ))
+                .toList()
+            : group;
+        arrangedBlocks.insertAll(adjustedTarget, updatedGroup);
+      } else {
+        arrangedBlocks.removeAt(fromIndex);
+        final adjustedTarget = fromIndex < toIndex ? toIndex - 1 : toIndex;
+        final updated = block.nesting != newNesting
+            ? CodeBlock(id: block.id, type: block.type, label: block.label, color: block.color, nesting: newNesting)
+            : block;
+        arrangedBlocks.insert(adjustedTarget, updated);
+      }
     });
   }
 

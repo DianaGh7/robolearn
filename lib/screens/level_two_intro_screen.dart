@@ -150,17 +150,17 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
       case 'But if I do NOT see 😊...':
         return 'لكن إذا لم أرَ 😊...';
       case 'ELSE → I cry! 😢\nELSE = do this when FALSE ❌':
-        return 'ELSE → أبكي! 😢\nELSE = افعل هذا عندما يكون خاطئًا ❌';
+        return 'ELSE ← أبكي! 😢\nELSE = افعل هذا عندما يكون خاطئًا ❌';
       case 'I can check MORE than one thing!\nThat\'s ELSE IF!':
         return 'يمكنني التحقق من أكثر من شيء!\nهذا هو ELSE IF!';
       case '🌙 Moon? → night! 🌃':
-        return '🌙 قمر؟ → ليل! 🌃';
+        return '🌙 قمر؟ ← ليل! 🌃';
       case '☀️ Sun? → morning! 🌅\nOtherwise → something else!':
-        return '☀️ شمس؟ → صباح! 🌅\nوإلا → شيء آخر!';
+        return '☀️ شمس؟ ← صباح! 🌅\nوإلا ← شيء آخر!';
       case 'IF can go INSIDE another IF!\nThat\'s called Nested! 🐾':
         return 'يمكن أن يكون IF داخل IF!\nهذا ما يسمى بالتداخل! 🐾';
       case 'Big animal?\n→ check AGAIN inside!\nTall nose? → 🐘   No tall nose? → 🦁':
-        return 'حيوان كبير؟\n→ افحص مرة أخرى بالداخل!\nأنف طويل؟ → 🐘   لا أنف طويل؟ → 🦁';
+        return 'حيوان كبير؟\n← افحص مرة أخرى بالداخل!\nأنف طويل؟ ← 🐘   لا أنف طويل؟ ← 🦁';
       case 'Amazing! You learned it all! 🌟\nNow it\'s YOUR turn!':
         return 'رائع! لقد تعلّمت كل شيء! 🌟\nالآن دورك!';
       default:
@@ -645,7 +645,7 @@ class _LevelTwoIntroScreenState extends State<LevelTwoIntroScreen>
                 const Text('↩️', style: TextStyle(fontSize: 28)),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(_t('ELSE  →  anything else!', 'ELSE  →  أي شيء آخر!'),
+                  child: Text(_t('ELSE  →  anything else!', 'ELSE  ←  أي شيء آخر!'),
                         style: GoogleFonts.nunito(
                           fontSize: 19.0,
                           fontWeight: FontWeight.w800,
@@ -1248,8 +1248,13 @@ class _SimpleRow extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Icon(Icons.arrow_forward_rounded,
-              color: const Color(0xFF4CAF50), size: 22),
+          child: Icon(
+            Directionality.of(context) == TextDirection.rtl
+                ? Icons.arrow_back_rounded
+                : Icons.arrow_forward_rounded,
+            color: const Color(0xFF4CAF50),
+            size: 22,
+          ),
         ),
         Expanded(
           flex: 4,

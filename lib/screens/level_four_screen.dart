@@ -159,17 +159,46 @@ class _LevelFourScreenState extends State<LevelFourScreen> {
       return;
     }
     setState(() {
-      final block = arrangedBlocks.removeAt(fromIndex);
-      final adjusted = fromIndex < toIndex ? toIndex - 1 : toIndex;
-      final updated = block.nesting != newNesting
-          ? CodeBlock(
-              id: block.id,
-              type: block.type,
-              label: block.label,
-              color: block.color,
-              nesting: newNesting)
-          : block;
-      arrangedBlocks.insert(adjusted, updated);
+      final block = arrangedBlocks[fromIndex];
+      if (_isContainerBlock(block.type)) {
+        int groupEnd = fromIndex + 1;
+        while (groupEnd < arrangedBlocks.length &&
+            arrangedBlocks[groupEnd].nesting > block.nesting) {
+          groupEnd++;
+        }
+        final group = arrangedBlocks.sublist(fromIndex, groupEnd);
+        arrangedBlocks.removeRange(fromIndex, groupEnd);
+        final groupSize = group.length;
+        final adjustedTarget = (fromIndex < toIndex
+                ? toIndex - groupSize
+                : toIndex)
+            .clamp(0, arrangedBlocks.length);
+        final nestingDiff = newNesting - block.nesting;
+        final updatedGroup = nestingDiff != 0
+            ? group
+                .map((b) => CodeBlock(
+                      id: b.id,
+                      type: b.type,
+                      label: b.label,
+                      color: b.color,
+                      nesting: b.nesting + nestingDiff,
+                    ))
+                .toList()
+            : group;
+        arrangedBlocks.insertAll(adjustedTarget, updatedGroup);
+      } else {
+        arrangedBlocks.removeAt(fromIndex);
+        final adjusted = fromIndex < toIndex ? toIndex - 1 : toIndex;
+        final updated = block.nesting != newNesting
+            ? CodeBlock(
+                id: block.id,
+                type: block.type,
+                label: block.label,
+                color: block.color,
+                nesting: newNesting)
+            : block;
+        arrangedBlocks.insert(adjusted, updated);
+      }
     });
   }
 
@@ -294,6 +323,7 @@ class _LevelFourScreenState extends State<LevelFourScreen> {
 
   // Side log = variable state changes. Screen output = only explicit "show" blocks.
   void _applyVarAction(CodeBlockType type) {
+    final arrow = AppStrings.of(context).isArabic ? '←' : '→';
     switch (type) {
       case CodeBlockType.varSetScore:
         _variables['score'] = 10;
@@ -303,7 +333,7 @@ class _LevelFourScreenState extends State<LevelFourScreen> {
         setState(() => _addSideLog('score = 0'));
       case CodeBlockType.varAdd5:
         _variables['score'] = (_variables['score'] ?? 0) + 5;
-        setState(() => _addSideLog('+5  →  score = ${_variables['score']}'));
+        setState(() => _addSideLog('+5  $arrow  score = ${_variables['score']}'));
       case CodeBlockType.varShowScore:
         setState(() { _screenOutput = '${_variables['score'] ?? 0}'; _screenActive = true; });
       case CodeBlockType.varSetCount:
@@ -311,7 +341,7 @@ class _LevelFourScreenState extends State<LevelFourScreen> {
         setState(() => _addSideLog('count = 0'));
       case CodeBlockType.varAddOne:
         _variables['count'] = (_variables['count'] ?? 0) + 1;
-        setState(() => _addSideLog('+1  →  count = ${_variables['count']}'));
+        setState(() => _addSideLog('+1  $arrow  count = ${_variables['count']}'));
       case CodeBlockType.varShowCount:
         setState(() { _screenOutput = '${_variables['count'] ?? 0}'; _screenActive = true; });
       case CodeBlockType.varSetTempHot:
@@ -319,7 +349,7 @@ class _LevelFourScreenState extends State<LevelFourScreen> {
         setState(() => _addSideLog('temp = 40'));
       case CodeBlockType.varIfHot:
         _conditionMet = (_variables['temp'] ?? 0) > 30;
-        setState(() => _addSideLog('temp > 30  →  ${_conditionMet ? "✓ hot" : "✗ cold"}'));
+        setState(() => _addSideLog('temp > 30  $arrow  ${_conditionMet ? "✓ hot" : "✗ cold"}'));
       case CodeBlockType.varShowSun:
         setState(() { _screenOutput = '☀️'; _screenActive = true; });
       case CodeBlockType.varElse:
@@ -345,7 +375,7 @@ class _LevelFourScreenState extends State<LevelFourScreen> {
         setState(() => _addSideLog('countdown = 3'));
       case CodeBlockType.varMinusOne:
         _variables['countdown'] = (_variables['countdown'] ?? 0) - 1;
-        setState(() => _addSideLog('-1  →  countdown = ${_variables['countdown']}'));
+        setState(() => _addSideLog('-1  $arrow  countdown = ${_variables['countdown']}'));
       case CodeBlockType.varShowCountdown:
         final cd = _variables['countdown'] ?? 0;
         setState(() {
@@ -364,7 +394,7 @@ class _LevelFourScreenState extends State<LevelFourScreen> {
         setState(() {
           _screenOutput = plantStage;
           _screenActive = true;
-          _addSideLog('water=$w → $plantStage');
+          _addSideLog('water=$w $arrow $plantStage');
         });
       default:
         break;
