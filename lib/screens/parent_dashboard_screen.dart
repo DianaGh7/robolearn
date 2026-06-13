@@ -522,10 +522,9 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                       ]),
                       const Spacer(),
                     ]),
-                    Positioned(
+                    PositionedDirectional(
                       top: 0,
-                      left: null,
-                      right: 0,
+                      end: 0,
                       child: GestureDetector(
                         onTap: _showSettingsMenu,
                         child: const Icon(
