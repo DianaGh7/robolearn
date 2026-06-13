@@ -54,16 +54,16 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
     _Frame(1, "Today you'll learn about\nVARIABLES! 📦", 'اليوم ستتعلم عن\nالمتغيرات! 📦'),
     _Frame(1, "A variable is like a box\nthat stores a value! ✨", 'المتغير مثل صندوق\nيخزن قيمة! ✨'),
     // Step 2 – what variables do
-    _Frame(2, "You can name the box...\nand put any number inside! 🔢", 'يمكنك تسمية الصندوق...\nووضع أي رقم بداخله! 🔢'),
+    _Frame(2, "Give it a name and store\nany number you want! 🔢", 'أعطه اسمًا وخزّن\nأي رقم تريد! 🔢'),
     _Frame(2, "And the value inside\ncan change anytime! 🔄", 'والقيمة بداخله\nيمكنها التغيير في أي وقت! 🔄'),
     // Step 3 – using variables
-    _Frame(3, "You can SHOW the value\non the robot screen! 📊", 'يمكنك عرض القيمة\nعلى شاشة الروبوت! 📊'),
+    _Frame(3, "Variables make your code\nsmart and reusable! 🧠", 'المتغيرات تجعل كودك\nذكيًا وقابلًا للاستخدام! 🧠'),
     _Frame(3, "Set it, change it, show it —\nthat's programming! 💡", 'اضبطها، غيّرها، اعرضها —\nهذه هي البرمجة! 💡'),
     // Step 4 – live demo
-    _Frame(4, "Example: set score = 10\nthen show it on screen! 📌",
-        'مثال: اضبط score = 10\nثم اعرضها على الشاشة! 📌',
+    _Frame(4, "Example: set score = 5\nthen show it on screen! 📌",
+        'مثال: اضبط score = 5\nثم اعرضها على الشاشة! 📌',
         resetScreen: true),
-    _Frame(4, "Watch the screen update! 👀", 'شاهد الشاشة تتحدث! 👀',
+    _Frame(4, "score = 5 stored and\nshown on screen instantly! ✅", 'score = 5 محفوظ وظاهر\nعلى الشاشة فورًا! ✅',
         triggerDemo: true),
     // Step 5 – celebrate
     _Frame(5, "Amazing! Now use variables\nto solve the challenges! 🌟",
@@ -162,17 +162,17 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
   Future<void> _startDemo() async {
     _cancelDemo = false;
 
-    // Step 1: set score = 10
+    // Step 1: set score = 5
     if (!mounted || _cancelDemo) return;
     setState(() {
       _screenActive = true;
-      _screenOutput = 'score = 10';
+      _screenOutput = '5';
     });
     await Future.delayed(const Duration(milliseconds: 900));
 
     // Step 2: show score (confirm)
     if (!mounted || _cancelDemo) return;
-    setState(() => _screenOutput = 'score = 10  ✓');
+    setState(() => _screenOutput = '5  ✓');
     await Future.delayed(const Duration(milliseconds: 700));
   }
 
@@ -260,6 +260,7 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
                               text: _speech,
                               showBackHint: _frameIndex > 0,
                               onBack: _onBack,
+                              onForward: _onForward,
                             ),
                           ),
                         )
@@ -308,20 +309,6 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
           ),
           if (_celebrating) _particles(),
           if (_showPlayButton) _playBtn(btm),
-          if (_showSpeech && !_showPlayButton)
-            Positioned(
-              bottom: 16 + btm,
-              left: 0,
-              right: 0,
-              child: Text(
-                AppStrings.of(context).tapAnywhereToAdvance,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.nunito(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.tealMid.withValues(alpha: 0.65)),
-              ),
-            ),
         ],
         ),
       ),
@@ -595,7 +582,7 @@ class _LevelFourIntroScreenState extends State<LevelFourIntroScreen>
           const SizedBox(height: 12),
           // Code blocks
           _MiniCodeBlock(
-              label: 'score = 10 📌',
+              label: 'score = 5 📌',
               color: const Color(0xFFE91E63)),
           const SizedBox(height: 5),
           _MiniCodeBlock(
@@ -744,12 +731,14 @@ class _SpeechBubble extends StatelessWidget {
   final String text;
   final bool showBackHint;
   final VoidCallback? onBack;
+  final VoidCallback? onForward;
 
   const _SpeechBubble({
     super.key,
     required this.text,
     this.showBackHint = false,
     this.onBack,
+    this.onForward,
   });
 
   @override
@@ -782,25 +771,61 @@ class _SpeechBubble extends StatelessWidget {
                   height: 1.55,
                 ),
               ),
-              const SizedBox(height: 8),
-              if (showBackHint)
-                GestureDetector(
-                  onTap: onBack,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.arrow_back, size: 14),
-                      const SizedBox(width: 6),
-                      Text(AppStrings.of(context).backHint,
-                          style: GoogleFonts.nunito(
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: showBackHint
+                    ? MainAxisAlignment.spaceBetween
+                    : MainAxisAlignment.center,
+                children: [
+                  if (showBackHint)
+                    GestureDetector(
+                      onTap: onBack,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.arrow_back_ios_new,
+                                size: 13, color: AppTheme.tealDark),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppStrings.of(context).backHint,
+                              style: GoogleFonts.nunito(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.tealDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  GestureDetector(
+                    onTap: onForward,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            AppStrings.of(context).tapAnywhereToAdvance,
+                            style: GoogleFonts.nunito(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
-                              color: AppTheme.tealDark)),
-                    ],
+                              color: AppTheme.tealDark,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_forward_ios,
+                              size: 13, color: AppTheme.tealDark),
+                        ],
+                      ),
+                    ),
                   ),
-                )
-              else
-                const SizedBox.shrink(),
+                ],
+              ),
             ],
           ),
         ),

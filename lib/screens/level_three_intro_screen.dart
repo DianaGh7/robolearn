@@ -61,7 +61,7 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
     _Frame(3, "Put commands INSIDE the block...\nand Robo loops them! ✅", 'ضع الأوامر داخل البلوك...\nوروّبو يكررها! ✅'),
     // Step 4 – live blink demo
     _Frame(4, "Example: Blink RED 3 times!\nREPEAT 3 does it automatically 🔴", 'مثال: ومض الأحمر 3 مرات!\nREPEAT 3 يفعل ذلك تلقائيًا 🔴', resetLed: true),
-    _Frame(4, "Watch the light blink! 👀", 'شاهد الضوء يومض! 👀', triggerBlink: true),
+    _Frame(4, "3 blinks — just ONE REPEAT 3!\nNo copy-paste needed! 💡", '3 ومضات — REPEAT 3 واحد!\nلا تكرار يدوي! 💡', triggerBlink: true),
     // Step 5 – celebrate
     _Frame(5, "Great! Now you can use loops\nto solve the challenges! 🌟", 'رائع! الآن يمكنك استخدام الحلقات\nلحل التحديات! 🌟', celebrate: true),
   ];
@@ -259,6 +259,7 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
                               text: _speech,
                               showBackHint: _frameIndex > 0,
                               onBack: _onBack,
+                              onForward: _onForward,
                             ),
                           ),
                         )
@@ -307,20 +308,6 @@ class _LevelThreeIntroScreenState extends State<LevelThreeIntroScreen>
           ),
           if (_celebrating) _particles(),
           if (_showPlayButton) _playBtn(btm),
-          if (_showSpeech && !_showPlayButton)
-            Positioned(
-              bottom: 16 + btm,
-              left: 0,
-              right: 0,
-              child: Text(
-                AppStrings.of(context).tapAnywhereToAdvance,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.nunito(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.tealMid.withValues(alpha: 0.65)),
-              ),
-            ),
         ],
         ),
       ),
@@ -767,12 +754,14 @@ class _SpeechBubble extends StatelessWidget {
   final String text;
   final bool showBackHint;
   final VoidCallback? onBack;
+  final VoidCallback? onForward;
 
   const _SpeechBubble({
     super.key,
     required this.text,
     this.showBackHint = false,
     this.onBack,
+    this.onForward,
   });
 
   @override
@@ -805,25 +794,61 @@ class _SpeechBubble extends StatelessWidget {
                   height: 1.55,
                 ),
               ),
-              const SizedBox(height: 8),
-              if (showBackHint)
-                GestureDetector(
-                  onTap: onBack,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.arrow_back, size: 14),
-                      const SizedBox(width: 6),
-                      Text(AppStrings.of(context).backHint,
-                          style: GoogleFonts.nunito(
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: showBackHint
+                    ? MainAxisAlignment.spaceBetween
+                    : MainAxisAlignment.center,
+                children: [
+                  if (showBackHint)
+                    GestureDetector(
+                      onTap: onBack,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.arrow_back_ios_new,
+                                size: 13, color: AppTheme.tealDark),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppStrings.of(context).backHint,
+                              style: GoogleFonts.nunito(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.tealDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  GestureDetector(
+                    onTap: onForward,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            AppStrings.of(context).tapAnywhereToAdvance,
+                            style: GoogleFonts.nunito(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
-                              color: AppTheme.tealDark)),
-                    ],
+                              color: AppTheme.tealDark,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_forward_ios,
+                              size: 13, color: AppTheme.tealDark),
+                        ],
+                      ),
+                    ),
                   ),
-                )
-              else
-                const SizedBox.shrink(),
+                ],
+              ),
             ],
           ),
         ),

@@ -385,6 +385,7 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
                               text: _speech,
                               showBackHint: _frameIndex > 0,
                               onBack: _onBack,
+                              onForward: _onForward,
                             ),
                           ),
                         )
@@ -400,20 +401,6 @@ class _LevelOneIntroScreenState extends State<LevelOneIntroScreen>
           ),
           if (_celebrating) _buildParticles(),
           if (_showPlayButton) _buildPlayButton(bottomPad),
-          if (_showSpeech && !_showPlayButton)
-            Positioned(
-              bottom: 16 + bottomPad,
-              left: 0,
-              right: 0,
-              child: Text(
-                AppStrings.of(context).tapAnywhereToAdvance,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.nunito(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.tealMid.withValues(alpha: 0.65)),
-              ),
-            ),
         ],
         ),
       ),
@@ -1232,12 +1219,14 @@ class _SpeechBubble extends StatelessWidget {
   final String text;
   final bool showBackHint;
   final VoidCallback? onBack;
+  final VoidCallback? onForward;
 
   const _SpeechBubble({
     super.key,
     required this.text,
     this.showBackHint = false,
     this.onBack,
+    this.onForward,
   });
 
   @override
@@ -1271,25 +1260,61 @@ class _SpeechBubble extends StatelessWidget {
                   height: 1.45,
                 ),
               ),
-              const SizedBox(height: 8),
-              if (showBackHint)
-                GestureDetector(
-                  onTap: onBack,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.arrow_back, size: 14),
-                      const SizedBox(width: 6),
-                      Text(AppStrings.of(context).backHint,
-                          style: GoogleFonts.nunito(
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: showBackHint
+                    ? MainAxisAlignment.spaceBetween
+                    : MainAxisAlignment.center,
+                children: [
+                  if (showBackHint)
+                    GestureDetector(
+                      onTap: onBack,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.arrow_back_ios_new,
+                                size: 13, color: AppTheme.tealDark),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppStrings.of(context).backHint,
+                              style: GoogleFonts.nunito(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.tealDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  GestureDetector(
+                    onTap: onForward,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            AppStrings.of(context).tapAnywhereToAdvance,
+                            style: GoogleFonts.nunito(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
-                              color: AppTheme.tealDark)),
-                    ],
+                              color: AppTheme.tealDark,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_forward_ios,
+                              size: 13, color: AppTheme.tealDark),
+                        ],
+                      ),
+                    ),
                   ),
-                )
-              else
-                const SizedBox.shrink(),
+                ],
+              ),
             ],
           ),
         ),
