@@ -12,6 +12,7 @@ import 'package:robolearn/services/child_progress_service.dart';
 import 'package:robolearn/services/robolearn_ble_service.dart';
 import 'package:robolearn/services/connection_state.dart' as robot_conn;
 import 'package:robolearn/l10n/app_strings.dart';
+import 'package:robolearn/services/session_service.dart';
 import 'level_two_intro_screen.dart';
 
 class LevelTwoScreen extends StatefulWidget {
@@ -113,6 +114,16 @@ class _LevelTwoScreenState extends State<LevelTwoScreen>
         if (!mounted) return;
         _showTutorial();
       });
+    }
+
+    final cid = widget.child.childId;
+    if (cid != null) {
+      SessionService().startSession(
+        childId: cid,
+        childName: widget.child.name,
+        levelNumber: widget.challenge.levelNumber,
+        challengeNumber: widget.challenge.number,
+      );
     }
   }
 
@@ -1098,7 +1109,7 @@ class _HeaderBar extends StatelessWidget {
                 ],
               ),
               padding: const EdgeInsets.all(2.5),
-              child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender)),
+              child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender, imageUrl: child.imageUrl)),
             ),
           ),
         ],

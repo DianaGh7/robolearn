@@ -10,60 +10,11 @@ import 'level_one_screen.dart';
 import 'level_two_screen.dart';
 import 'level_three_screen.dart';
 import 'level_four_screen.dart';
-import 'login_screen.dart';
 
 class AdventureMapScreen extends StatelessWidget {
   final ChildModel child;
   const AdventureMapScreen({super.key, required this.child});
 
-  Future<void> _showSettingsMenu(BuildContext context) async {
-    final s = AppStrings.of(context);
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          margin: const EdgeInsets.all(12),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: ListTile(
-            leading: const Icon(Icons.logout_rounded, color: Color(0xFFD84E4E)),
-            title: Text(
-              s.logout,
-              style: GoogleFonts.nunito(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFFD84E4E),
-              ),
-            ),
-            onTap: () => Navigator.pop(context, 'logout'),
-          ),
-        );
-      },
-    );
-
-    if (selected == 'logout' && context.mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        PageRouteBuilder(
-          pageBuilder: (_, _, _) => const LoginScreen(),
-          transitionsBuilder: (_, anim, _, child) =>
-              FadeTransition(opacity: anim, child: child),
-          transitionDuration: const Duration(milliseconds: 350),
-        ),
-        (route) => false,
-      );
-    }
-  }
 
   static const List<_LevelData> _levels = [
     _LevelData(number: 1, title: 'Move Your Robot'),
@@ -176,7 +127,7 @@ class AdventureMapScreen extends StatelessWidget {
                             ),
                             border: Border.all(color: Colors.white, width: 2),
                           ),
-                          child: AvatarFace(seed: child.avatarSeed),
+                          child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender, imageUrl: child.imageUrl)),
                         ),
                       ),
                     ),
@@ -205,29 +156,6 @@ class AdventureMapScreen extends StatelessWidget {
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                    // Settings button
-                    GestureDetector(
-                      onTap: () => _showSettingsMenu(context),
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.82),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.teal.withValues(alpha: 0.12),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.settings_outlined,
-                          color: AppTheme.tealMid,
-                        ),
                       ),
                     ),
                   ],
@@ -381,7 +309,7 @@ class _LevelNode extends StatelessWidget {
       padding: EdgeInsets.only(
         left: isLeft ? 32 : 120,
         right: isLeft ? 120 : 32,
-        bottom: 24,
+        bottom: 14,
       ),
       child: Column(
         children: [
@@ -526,13 +454,13 @@ class _LevelNode extends StatelessWidget {
                     }
                   : null,
               child: SizedBox(
-                width: 128,
-                height: 128,
+                width: 118,
+                height: 118,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
                     CustomPaint(
-                      size: const Size(128, 128),
+                      size: const Size(118, 118),
                       painter: _DashedCirclePainter(
                         completedColor: completedDashColor,
                         pendingColor: pendingDashColor,
@@ -541,8 +469,8 @@ class _LevelNode extends StatelessWidget {
                       ),
                     ),
                     Container(
-                      width: 110,
-                      height: 110,
+                      width: 101,
+                      height: 101,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: nodeColor,
@@ -566,12 +494,12 @@ class _LevelNode extends StatelessWidget {
                                     ? Icons.check_rounded
                                     : Icons.star_rounded,
                                 color: Colors.white,
-                                size: 30,
+                                size: 27,
                               ),
                               Text(
                                 s.level,
                                 style: GoogleFonts.nunito(
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -579,7 +507,7 @@ class _LevelNode extends StatelessWidget {
                               Text(
                                 '${data.number}',
                                 style: GoogleFonts.nunito(
-                                  fontSize: 28,
+                                  fontSize: 26,
                                   color: Colors.white,
                                   fontWeight: FontWeight.w900,
                                 ),
@@ -594,7 +522,7 @@ class _LevelNode extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Builder(
             builder: (context) {
               final s = AppStrings.of(context);

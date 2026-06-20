@@ -1,10 +1,13 @@
-﻿import 'dart:math' as math;
+﻿import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_strings.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
+import '../services/session_service.dart';
 
 // ─── Background ──────────────────────────────────────────────────────────────
 
@@ -245,175 +248,37 @@ class _RobotFacePainter extends CustomPainter {
 class AvatarFace extends StatelessWidget {
   final int seed;
   final String gender;
-  const AvatarFace({super.key, required this.seed, this.gender = ''});
-  @override
-  Widget build(BuildContext context) =>
-      CustomPaint(painter: _AvatarFacePainter(seed: seed, gender: gender));
-}
+  final String? imageUrl;
+  const AvatarFace({super.key, required this.seed, this.gender = '', this.imageUrl});
 
-class _AvatarFacePainter extends CustomPainter {
-  final int seed;
-  final String gender;
-  const _AvatarFacePainter({required this.seed, this.gender = ''});
+  static const _girlAssets = ['assets/avatars/avatar_0.jpg', 'assets/avatars/avatar_2.jpg', 'assets/avatars/avatar_5.jpg', 'assets/avatars/avatar_6.jpg'];
+  static const _boyAssets  = ['assets/avatars/avatar_1.jpg', 'assets/avatars/avatar_3.jpg', 'assets/avatars/avatar_4.jpg'];
 
-  static const _hair = [Color(0xFF5A3A1A), Color(0xFF2C1A47), Color(0xFFB84040)];
-  static const _skin = [Color(0xFFF5C5A3), Color(0xFFDDA87A), Color(0xFFEFC090)];
-  static const _iris = [Color(0xFF4A7C59), Color(0xFF4A6FA5), Color(0xFF8B5E3C)];
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width  == 0 ? 88.0 : size.width;
-    final h = size.height == 0 ? 88.0 : size.height;
-    final cx = w / 2, cy = h / 2;
-    final s = seed % 3;
-    final isGirl = gender == 'girl';
-    final skin = _skin[s];
-    final hair = _hair[s];
-    final hairP = Paint()..color = hair;
-
-    // ── Neck ──────────────────────────────────────────────────────────────────
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(cx - w * .10, cy + h * .30, w * .20, h * .16),
-        const Radius.circular(6),
-      ),
-      Paint()..color = skin,
-    );
-
-    // ── Ears ──────────────────────────────────────────────────────────────────
-    final earP = Paint()..color = skin;
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * .36, cy + h * .02), width: w * .12, height: h * .16), earP);
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * .36, cy + h * .02), width: w * .12, height: h * .16), earP);
-    final innerEar = Paint()..color = Color.fromARGB(120, ((skin.r * 255).round() - 15).clamp(0, 255), ((skin.g * 255).round() - 20).clamp(0, 255), ((skin.b * 255).round() - 20).clamp(0, 255));
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * .36, cy + h * .02), width: w * .06, height: h * .09), innerEar);
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * .36, cy + h * .02), width: w * .06, height: h * .09), innerEar);
-
-    // ── Girl hair back strands (behind face) ───────────────────────────────────
-    if (isGirl) {
-      final leftStrand = Path()
-        ..moveTo(cx - w * .34, cy - h * .08)
-        ..quadraticBezierTo(cx - w * .44, cy + h * .22, cx - w * .28, cy + h * .48)
-        ..lineTo(cx - w * .18, cy + h * .48)
-        ..quadraticBezierTo(cx - w * .30, cy + h * .18, cx - w * .22, cy - h * .06)
-        ..close();
-      final rightStrand = Path()
-        ..moveTo(cx + w * .34, cy - h * .08)
-        ..quadraticBezierTo(cx + w * .44, cy + h * .22, cx + w * .28, cy + h * .48)
-        ..lineTo(cx + w * .18, cy + h * .48)
-        ..quadraticBezierTo(cx + w * .30, cy + h * .18, cx + w * .22, cy - h * .06)
-        ..close();
-      canvas.drawPath(leftStrand, hairP);
-      canvas.drawPath(rightStrand, hairP);
-    }
-
-    // ── Face oval ─────────────────────────────────────────────────────────────
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx, cy + h * .04), width: w * .72, height: h * .76),
-      Paint()..color = skin,
-    );
-
-    // ── Hair top ──────────────────────────────────────────────────────────────
-    if (isGirl) {
-      final top = Path()
-        ..moveTo(cx - w * .35, cy - h * .04)
-        ..quadraticBezierTo(cx - w * .37, cy - h * .44, cx, cy - h * .46)
-        ..quadraticBezierTo(cx + w * .37, cy - h * .44, cx + w * .35, cy - h * .04)
-        ..quadraticBezierTo(cx + w * .18, cy - h * .10, cx, cy - h * .12)
-        ..quadraticBezierTo(cx - w * .18, cy - h * .10, cx - w * .35, cy - h * .04)
-        ..close();
-      canvas.drawPath(top, hairP);
-      // Hair clip
-      final clipP = Paint()..color = const Color(0xFFE8A0BF);
-      canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * .19, cy - h * .27), width: w * .15, height: h * .09), clipP);
-      canvas.drawCircle(Offset(cx + w * .19, cy - h * .27), w * .028, Paint()..color = Colors.white);
-    } else {
-      final top = Path()
-        ..moveTo(cx - w * .36, cy - h * .02)
-        ..quadraticBezierTo(cx - w * .37, cy - h * .44, cx, cy - h * .47)
-        ..quadraticBezierTo(cx + w * .37, cy - h * .44, cx + w * .36, cy - h * .02)
-        ..quadraticBezierTo(cx + w * .12, cy - h * .08, cx, cy - h * .10)
-        ..quadraticBezierTo(cx - w * .12, cy - h * .08, cx - w * .36, cy - h * .02)
-        ..close();
-      canvas.drawPath(top, hairP);
-      // Sideburns
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * .36, cy - h * .03, w * .08, h * .11), const Radius.circular(3)), hairP);
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + w * .28, cy - h * .03, w * .08, h * .11), const Radius.circular(3)), hairP);
-    }
-
-    // ── Eyebrows ──────────────────────────────────────────────────────────────
-    final browP = Paint()
-      ..color = Color.fromARGB(210, (hair.r * 255).round(), (hair.g * 255).round(), (hair.b * 255).round())
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * .033
-      ..strokeCap = StrokeCap.round;
-    if (isGirl) {
-      canvas.drawPath(Path()..moveTo(cx - w * .18, cy - h * .09)..quadraticBezierTo(cx - w * .10, cy - h * .145, cx - w * .03, cy - h * .11), browP);
-      canvas.drawPath(Path()..moveTo(cx + w * .18, cy - h * .09)..quadraticBezierTo(cx + w * .10, cy - h * .145, cx + w * .03, cy - h * .11), browP);
-    } else {
-      canvas.drawPath(Path()..moveTo(cx - w * .19, cy - h * .105)..quadraticBezierTo(cx - w * .10, cy - h * .135, cx - w * .02, cy - h * .11), browP);
-      canvas.drawPath(Path()..moveTo(cx + w * .19, cy - h * .105)..quadraticBezierTo(cx + w * .10, cy - h * .135, cx + w * .02, cy - h * .11), browP);
-    }
-
-    // ── Eyes: sclera ──────────────────────────────────────────────────────────
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * .12, cy + h * .02), width: w * .16, height: h * .13), Paint()..color = Colors.white);
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * .12, cy + h * .02), width: w * .16, height: h * .13), Paint()..color = Colors.white);
-
-    // Iris
-    canvas.drawCircle(Offset(cx - w * .12, cy + h * .024), w * .054, Paint()..color = _iris[s]);
-    canvas.drawCircle(Offset(cx + w * .12, cy + h * .024), w * .054, Paint()..color = _iris[s]);
-
-    // Pupil
-    canvas.drawCircle(Offset(cx - w * .12, cy + h * .024), w * .030, Paint()..color = const Color(0xFF1A1A2E));
-    canvas.drawCircle(Offset(cx + w * .12, cy + h * .024), w * .030, Paint()..color = const Color(0xFF1A1A2E));
-
-    // Shine
-    canvas.drawCircle(Offset(cx - w * .107, cy + h * .009), w * .013, Paint()..color = Colors.white);
-    canvas.drawCircle(Offset(cx + w * .133, cy + h * .009), w * .013, Paint()..color = Colors.white);
-
-    // Eyelid line
-    final lidP = Paint()
-      ..color = Color.fromARGB(80, (hair.r * 255).round(), (hair.g * 255).round(), (hair.b * 255).round())
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * .020
-      ..strokeCap = StrokeCap.round;
-    canvas.drawArc(Rect.fromCenter(center: Offset(cx - w * .12, cy + h * .02), width: w * .17, height: h * .14), 3.45, 2.80, false, lidP);
-    canvas.drawArc(Rect.fromCenter(center: Offset(cx + w * .12, cy + h * .02), width: w * .17, height: h * .14), 3.45, 2.80, false, lidP);
-
-    // ── Nose (subtle) ─────────────────────────────────────────────────────────
-    final noseShade = Paint()
-      ..color = Color.fromARGB(100, ((skin.r * 255).round() - 25).clamp(0, 255), ((skin.g * 255).round() - 30).clamp(0, 255), ((skin.b * 255).round() - 30).clamp(0, 255))
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * .020
-      ..strokeCap = StrokeCap.round;
-    canvas.drawPath(
-      Path()
-        ..moveTo(cx - w * .04, cy + h * .07)
-        ..quadraticBezierTo(cx - w * .07, cy + h * .13, cx - w * .04, cy + h * .15)
-        ..quadraticBezierTo(cx, cy + h * .165, cx + w * .04, cy + h * .15)
-        ..quadraticBezierTo(cx + w * .07, cy + h * .13, cx + w * .04, cy + h * .07),
-      noseShade,
-    );
-
-    // ── Cheek blush ───────────────────────────────────────────────────────────
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * .24, cy + h * .10), width: w * .18, height: h * .10), Paint()..color = const Color(0x4DFF9999));
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * .24, cy + h * .10), width: w * .18, height: h * .10), Paint()..color = const Color(0x4DFF9999));
-
-    // ── Mouth ─────────────────────────────────────────────────────────────────
-    canvas.drawPath(
-      Path()..moveTo(cx - w * .10, cy + h * .21)..quadraticBezierTo(cx, cy + h * .275, cx + w * .10, cy + h * .21),
-      Paint()..color = const Color(0xFFC0705A)..style = PaintingStyle.stroke..strokeWidth = w * .028..strokeCap = StrokeCap.round,
-    );
-    canvas.drawPath(
-      Path()..moveTo(cx - w * .10, cy + h * .21)..quadraticBezierTo(cx - w * .04, cy + h * .19, cx, cy + h * .20)..quadraticBezierTo(cx + w * .04, cy + h * .19, cx + w * .10, cy + h * .21),
-      Paint()..color = const Color(0xFFC0705A)..style = PaintingStyle.stroke..strokeWidth = w * .016..strokeCap = StrokeCap.round,
-    );
-    // Dimples
-    canvas.drawCircle(Offset(cx - w * .13, cy + h * .235), w * .014, Paint()..color = const Color(0x66D4A090));
-    canvas.drawCircle(Offset(cx + w * .13, cy + h * .235), w * .014, Paint()..color = const Color(0x66D4A090));
+  String get _assetPath {
+    if (gender == 'girl') return _girlAssets[seed % _girlAssets.length];
+    return _boyAssets[seed % _boyAssets.length];
   }
 
   @override
-  bool shouldRepaint(_) => false;
+  Widget build(BuildContext context) {
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      if (imageUrl!.startsWith('data:image')) {
+        return Image.memory(
+          base64Decode(imageUrl!.split(',').last),
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+        );
+      }
+      return Image.network(
+        imageUrl!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildAsset(),
+      );
+    }
+    return _buildAsset();
+  }
+
+  Widget _buildAsset() => Image.asset(_assetPath, fit: BoxFit.cover);
 }
 
 // ─── Info card ────────────────────────────────────────────────────────────────
@@ -880,18 +745,48 @@ void showChildProfileDialog(BuildContext context, ChildModel child) {
   );
 }
 
-class _ChildProfileDialog extends StatelessWidget {
+class _ChildProfileDialog extends StatefulWidget {
   final ChildModel child;
   const _ChildProfileDialog({required this.child});
 
   @override
+  State<_ChildProfileDialog> createState() => _ChildProfileDialogState();
+}
+
+class _ChildProfileDialogState extends State<_ChildProfileDialog> {
+  List<FirestoreSession>? _sessions;
+  bool _loadingSessions = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSessions();
+  }
+
+  Future<void> _fetchSessions() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final cid = widget.child.childId;
+    if (uid == null || cid == null) {
+      if (mounted) setState(() => _loadingSessions = false);
+      return;
+    }
+    try {
+      final list = await SessionService().getRecentSessions(uid, cid, limit: 5);
+      if (mounted) setState(() { _sessions = list; _loadingSessions = false; });
+    } catch (_) {
+      if (mounted) setState(() { _sessions = []; _loadingSessions = false; });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final child = widget.child;
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
       child: Container(
-        width: 280,
+        width: 300,
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -907,6 +802,7 @@ class _ChildProfileDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // ── Avatar ──────────────────────────────────────────────────────
             Container(
               width: 84,
               height: 84,
@@ -927,7 +823,7 @@ class _ChildProfileDialog extends StatelessWidget {
                 ],
               ),
               child: ClipOval(
-                child: AvatarFace(seed: child.avatarSeed, gender: child.gender),
+                child: AvatarFace(seed: child.avatarSeed, gender: child.gender, imageUrl: child.imageUrl),
               ),
             ),
             const SizedBox(height: 14),
@@ -949,14 +845,9 @@ class _ChildProfileDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            Container(
-              height: 1,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE0F2EF),
-                borderRadius: BorderRadius.circular(1),
-              ),
-            ),
+            _divider(),
             const SizedBox(height: 18),
+            // ── Stats row ───────────────────────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -978,11 +869,58 @@ class _ChildProfileDialog extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 18),
+            _divider(),
+            const SizedBox(height: 14),
+            // ── Sessions section ────────────────────────────────────────────
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                s.recentSessions,
+                style: GoogleFonts.nunito(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.tealDark,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (_loadingSessions)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 10),
+                child: Center(
+                  child: SizedBox(
+                    width: 20, height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              )
+            else if (_sessions == null || _sessions!.isEmpty)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  s.noSessionsYet,
+                  style: GoogleFonts.nunito(
+                    fontSize: 12,
+                    color: Colors.grey.shade400,
+                  ),
+                ),
+              )
+            else
+              ..._sessions!.map((fs) => _CompactSessionRow(session: fs)),
           ],
         ),
       ),
     );
   }
+
+  Widget _divider() => Container(
+        height: 1,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE0F2EF),
+          borderRadius: BorderRadius.circular(1),
+        ),
+      );
 }
 
 class _ProfileStat extends StatelessWidget {
@@ -1013,6 +951,97 @@ class _ProfileStat extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─── Compact session row (used inside _ChildProfileDialog) ───────────────────
+
+class _CompactSessionRow extends StatelessWidget {
+  final FirestoreSession session;
+  const _CompactSessionRow({required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    final endTime = session.formattedEndTime;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.tealPrimary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.tealPrimary.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: AppTheme.pink.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                'L${session.startLevelNumber}',
+                style: GoogleFonts.nunito(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.pink,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                session.formattedDate,
+                style: GoogleFonts.nunito(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.tealDark,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (session.durationSeconds != null)
+              Text(
+                session.formattedDuration,
+                style: GoogleFonts.nunito(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.tealPrimary,
+                ),
+              ),
+          ]),
+          if (endTime != null) ...[
+            const SizedBox(height: 3),
+            Row(children: [
+              Icon(Icons.logout_rounded, size: 11, color: Colors.grey.shade400),
+              const SizedBox(width: 4),
+              Text(
+                endTime,
+                style: GoogleFonts.nunito(
+                  fontSize: 10,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                session.hasCompletions
+                    ? s.sessionCompletions(session.completedChallengesDuringSession.length)
+                    : s.noCompletionsThisSession,
+                style: GoogleFonts.nunito(
+                  fontSize: 10,
+                  color: session.hasCompletions
+                      ? AppTheme.tealPrimary
+                      : Colors.grey.shade400,
+                ),
+              ),
+            ]),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -1,10 +1,11 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import 'firebase_refs.dart';
+import 'session_service.dart';
 
 class ChildProgressService {
   /// Updates child progress + streak in one transaction.
@@ -19,7 +20,7 @@ class ChildProgressService {
   }) async {
     final doc = FirebaseRefs.childDoc(childId);
 
-    return FirebaseRefs.firestore.runTransaction<ChildModel>((tx) async {
+    final updated = await FirebaseRefs.firestore.runTransaction<ChildModel>((tx) async {
       final snap = await tx.get(doc);
       final remote = snap.exists ? ChildModel.fromFirestore(snap) : child;
 
@@ -53,7 +54,7 @@ class ChildProgressService {
       }
 
       // Merge challenge completion/progress (same logic as ChallengeScreen, but
-      // done here so it’s always persisted consistently).
+      // done here so it's always persisted consistently).
       final completedSet = <int>{...remote.completedChallengeIds, challenge.number};
 
       final levelChallenges = Challenge.demoChallenge
@@ -75,7 +76,7 @@ class ChildProgressService {
       final steppedProgress = (oldProgress + 1).clamp(0, maxProgress);
       progressMap[challenge.levelNumber] = math.max(steppedProgress, reachedIndex);
 
-      final updated = remote.copyWith(
+      final result = remote.copyWith(
         childId: childId,
         streak: nextStreak,
         streakLastPlayedDateIso: today.toIso8601String(),
@@ -83,7 +84,7 @@ class ChildProgressService {
         subLevelProgressByLevel: progressMap,
       );
 
-      final writeData = updated.toFirestore(includeTimestamps: false);
+      final writeData = result.toFirestore(includeTimestamps: false);
       writeData['updatedAt'] = FieldValue.serverTimestamp();
 
       tx.set(
@@ -92,8 +93,12 @@ class ChildProgressService {
         SetOptions(merge: true),
       );
 
-      return updated;
+      return result;
     });
+
+    // Record only after the transaction commits successfully.
+    SessionService().recordChallengeCompleted(challenge.number);
+    return updated;
   }
 
   /// Same as [registerChallengeSuccess] but for Level 2 / Level 3 challenges
@@ -161,6 +166,7 @@ class ChildProgressService {
 
       tx.set(doc, writeData, SetOptions(merge: true));
 
+      SessionService().recordChallengeCompleted(challengeNumber);
       return updated;
     });
   }

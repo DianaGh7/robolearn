@@ -152,12 +152,20 @@ class ChildModel {
 
   // Avatar palette
   static const List<List<Color>> palettes = [
-    [Color(0xFFE8A0BF), Color(0xFFF7D6E0)], // pink  – Lina
-    [Color(0xFF6FC8E8), Color(0xFFB8E8F8)], // blue  – Adam
-    [Color(0xFFF4A742), Color(0xFFFDE8C0)], // orange– Sara
+    [Color(0xFFE8A0BF), Color(0xFFF7D6E0)], // 0: pink
+    [Color(0xFF6FC8E8), Color(0xFFB8E8F8)], // 1: blue
+    [Color(0xFFF4A742), Color(0xFFFDE8C0)], // 2: orange
+    [Color(0xFFBA55D3), Color(0xFFE8C8F5)], // 3: purple
+    [Color(0xFFFFD700), Color(0xFFFFF5B0)], // 4: gold
+    [Color(0xFF4DD0C4), Color(0xFFB0F0EC)], // 5: teal
+    [Color(0xFF9370DB), Color(0xFFD8B0F5)], // 6: violet
+    [Color(0xFF58CC02), Color(0xFFB8F078)], // 7: green
+    [Color(0xFFFF6B9D), Color(0xFFFFB8D5)], // 8: rose
   ];
 
-  List<Color> get palette => palettes[avatarSeed % palettes.length];
+  List<Color> get palette => gender == 'girl'
+      ? const [Color(0xFFFFADD2), Color(0xFFFFD6E8)]   // light pink
+      : const [Color(0xFF90CAF9), Color(0xFFBBDEFB)];  // light blue
 
   // Demo data
   static final List<ChildModel> demoChildren = [
