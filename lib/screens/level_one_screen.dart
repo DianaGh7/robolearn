@@ -261,6 +261,16 @@ class _LevelOneScreenState extends State<LevelOneScreen>
         arrangedBlocks.last.type == CodeBlockType.end;
   }
 
+  String? _bleCommandForBlock(CodeBlockType type) {
+    switch (type) {
+      case CodeBlockType.moveForward:  return 'MF';
+      case CodeBlockType.moveBackward: return 'MB';
+      case CodeBlockType.turnLeft:     return 'TL';
+      case CodeBlockType.turnRight:    return 'TR';
+      default: return null;
+    }
+  }
+
   Future<void> _executeCode() async {
     if (isExecuting) return;
     if (!_hasValidStartEndOrder) {
@@ -286,6 +296,9 @@ class _LevelOneScreenState extends State<LevelOneScreen>
       isExecuting = true;
       currentRobotState = initialRobotState;
       _activeBlockIndex = null;
+      if (_connectionStatus == RobotConnectionStatus.connected) {
+        _connectionStatus = RobotConnectionStatus.executing;
+      }
     });
 
     for (int i = 0; i < arrangedBlocks.length; i++) {
@@ -295,7 +308,19 @@ class _LevelOneScreenState extends State<LevelOneScreen>
         continue;
       }
       setState(() => _activeBlockIndex = i);
-      await Future.delayed(const Duration(milliseconds: 800));
+
+      final bleCmd = _bleCommandForBlock(block.type);
+      if (bleCmd != null && _ble.isConnected) {
+        await _ble.sendCommand(bleCmd);
+        // Wait for the robot to physically finish the move before proceeding.
+        // Turns take ~600ms + 300ms delay; forward/backward take ~1100ms.
+        final isTurn = block.type == CodeBlockType.turnLeft ||
+            block.type == CodeBlockType.turnRight;
+        await Future.delayed(Duration(milliseconds: isTurn ? 1000 : 1500));
+      } else {
+        await Future.delayed(const Duration(milliseconds: 800));
+      }
+
       if (!mounted) return;
       setState(() {
         switch (block.type) {
@@ -335,6 +360,9 @@ class _LevelOneScreenState extends State<LevelOneScreen>
 
     setState(() {
       isExecuting = false;
+      if (_connectionStatus == RobotConnectionStatus.executing) {
+        _connectionStatus = RobotConnectionStatus.connected;
+      }
     });
     if (success) {
       final lastPlayedDateBefore = _progressChild.streakLastPlayedDateIso;
