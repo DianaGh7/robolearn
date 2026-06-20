@@ -1,9 +1,12 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/child_model.dart';
 import '../models/challenge_model.dart';
 import '../services/child_firestore_service.dart';
+import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../l10n/app_strings.dart';
@@ -48,6 +51,10 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
   List<ChildModel> _children = [];
   bool _loading = true;
   int? _expandedIndex;
+
+  // ── Session cache: childId → loaded sessions ──────────────────────────────
+  final Map<String, List<FirestoreSession>> _sessionCache = {};
+  bool _loadingSessions = false;
 
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
 
@@ -131,12 +138,55 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
     }
   }
 
+  Future<void> _loadSessionsForChild(String childId) async {
+    if (_uid == null) {
+      debugPrint('[Sessions] uid is null, skipping load');
+      return;
+    }
+    setState(() => _loadingSessions = true);
+    debugPrint('[Sessions] loading for child=$childId uid=$_uid');
+    try {
+      final list =
+          await SessionService().getRecentSessions(_uid!, childId);
+      debugPrint('[Sessions] fetched ${list.length} sessions for child=$childId');
+      if (mounted) {
+        setState(() {
+          _sessionCache[childId] = list;
+          _loadingSessions = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[Sessions] ERROR loading sessions: $e');
+      if (mounted) {
+        setState(() {
+          _sessionCache[childId] = [];
+          _loadingSessions = false;
+        });
+      }
+    }
+  }
+
+  // ── Image picker ─────────────────────────────────────────────────────────────
+
+  Future<String?> _pickImageAsBase64() async {
+    final xFile = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 300,
+      maxHeight: 300,
+      imageQuality: 70,
+    );
+    if (xFile == null) return null;
+    final bytes = await xFile.readAsBytes();
+    return 'data:image/jpeg;base64,${base64Encode(bytes)}';
+  }
+
   // ── Add child ────────────────────────────────────────────────────────────────
 
   void _showAddChildDialog() {
     final nameCtrl = TextEditingController();
     int age = 7;
     String gender = 'girl';
+    String? pickedImageB64;
 
     showDialog(
       context: context,
@@ -149,6 +199,41 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
               style: GoogleFonts.nunito(
                   fontWeight: FontWeight.w800, color: AppTheme.tealDark)),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
+            GestureDetector(
+              onTap: () async {
+                final b64 = await _pickImageAsBase64();
+                if (b64 != null) setDialogState(() => pickedImageB64 = b64);
+              },
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  Container(
+                    width: 80, height: 80,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFFE0F7F5),
+                    ),
+                    child: ClipOval(
+                      child: pickedImageB64 != null
+                          ? Image.memory(
+                              base64Decode(pickedImageB64!.split(',').last),
+                              fit: BoxFit.cover,
+                            )
+                          : AvatarFace(seed: _children.length % 9, gender: gender),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: const BoxDecoration(
+                      color: AppTheme.tealPrimary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
             TextField(
               controller: nameCtrl,
               style: GoogleFonts.nunito(),
@@ -232,7 +317,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                 final newChild = ChildModel(
                   name: name,
                   level: 1,
-                  avatarSeed: _children.length % 3,
+                  avatarSeed: _children.length % 9,
                   completedLevels: 0,
                   totalLevels: 4,
                   attempts: 0,
@@ -242,6 +327,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                   gender: gender,
                   joinDate: joinDate,
                   recentSessions: const [],
+                  imageUrl: pickedImageB64,
                 );
 
                 try {
@@ -272,6 +358,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
     final nameCtrl = TextEditingController(text: child.name);
     int age = child.age;
     String gender = child.gender;
+    String? pickedImageB64;
 
     showDialog(
       context: context,
@@ -284,6 +371,41 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
               style: GoogleFonts.nunito(
                   fontWeight: FontWeight.w800, color: AppTheme.tealDark)),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
+            GestureDetector(
+              onTap: () async {
+                final b64 = await _pickImageAsBase64();
+                if (b64 != null) setDialogState(() => pickedImageB64 = b64);
+              },
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  Container(
+                    width: 80, height: 80,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFFE0F7F5),
+                    ),
+                    child: ClipOval(
+                      child: pickedImageB64 != null
+                          ? Image.memory(
+                              base64Decode(pickedImageB64!.split(',').last),
+                              fit: BoxFit.cover,
+                            )
+                          : AvatarFace(seed: child.avatarSeed, gender: child.gender, imageUrl: child.imageUrl),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: const BoxDecoration(
+                      color: AppTheme.tealPrimary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
             TextField(
               controller: nameCtrl,
               style: GoogleFonts.nunito(),
@@ -361,7 +483,12 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
 
                 // Only update if the child already has a Firestore id.
                 // (If childId is null it was a demo child — skip Firestore.)
-                final updated = child.copyWith(name: name, age: age, gender: gender);
+                final updated = child.copyWith(
+                  name: name,
+                  age: age,
+                  gender: gender,
+                  imageUrl: pickedImageB64 ?? child.imageUrl,
+                );
 
                 if (child.childId != null) {
                   try {
@@ -634,12 +761,28 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
                             _EmptyState()
                           else
                             ...List.generate(_children.length, (i) {
+                              final cid = _children[i].childId;
                               return _ChildProgressCard(
                                 child: _children[i],
                                 isExpanded: _expandedIndex == i,
-                                onToggle: () => setState(() =>
-                                    _expandedIndex =
-                                        _expandedIndex == i ? null : i),
+                                sessions: cid != null
+                                    ? _sessionCache[cid]
+                                    : null,
+                                loadingSessions:
+                                    _loadingSessions && _expandedIndex == i,
+                                onToggle: () {
+                                  final expanding = _expandedIndex != i;
+                                  setState(() =>
+                                      _expandedIndex = expanding ? i : null);
+                                  if (expanding &&
+                                      _uid != null &&
+                                      cid != null) {
+                                    final cached = _sessionCache[cid];
+                                    if (cached == null || cached.isEmpty) {
+                                      _loadSessionsForChild(cid);
+                                    }
+                                  }
+                                },
                                 onDelete: () => _deleteChild(i),
                                 onEdit: () => _showEditChildDialog(i),
                               );
@@ -714,13 +857,17 @@ class _ChildProgressCard extends StatelessWidget {
   final bool isExpanded;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
-  final VoidCallback onEdit;        // ← now wired to real edit dialog
+  final VoidCallback onEdit;
+  final List<FirestoreSession>? sessions;
+  final bool loadingSessions;
   const _ChildProgressCard({
     required this.child,
     required this.isExpanded,
     required this.onToggle,
     required this.onDelete,
     required this.onEdit,
+    this.sessions,
+    this.loadingSessions = false,
   });
 
   @override
@@ -766,7 +913,7 @@ class _ChildProgressCard extends StatelessWidget {
                         blurRadius: 8)
                   ],
                 ),
-                child: AvatarFace(seed: child.avatarSeed, gender: child.gender),
+                child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender, imageUrl: child.imageUrl)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -874,12 +1021,23 @@ class _ChildProgressCard extends StatelessWidget {
                         color: AppTheme.tealDark)),
               ),
               const SizedBox(height: 8),
-              if (child.recentSessions.isEmpty)
+              if (loadingSessions)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                )
+              else if (sessions == null || sessions!.isEmpty)
                 Text(s.noSessionsYet,
                     style: GoogleFonts.nunito(
                         color: Colors.grey, fontSize: 13))
               else
-                ...child.recentSessions.map((s) => _SessionRow(session: s)),
+                ...sessions!.map((fs) => _FirestoreSessionRow(session: fs)),
               const SizedBox(height: 12),
 
               // Edit / Delete buttons
@@ -967,61 +1125,95 @@ class _MiniStat extends StatelessWidget {
 
 // ─── Session row ───────────────────────────────────────────────────────────────
 
-class _SessionRow extends StatelessWidget {
-  final SessionModel session;
-  const _SessionRow({required this.session});
+class _FirestoreSessionRow extends StatelessWidget {
+  final FirestoreSession session;
+  const _FirestoreSessionRow({required this.session});
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    final hasEnd = session.endTime != null;
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: session.passed
-            ? AppTheme.tealPrimary.withValues(alpha: 0.07)
-            : Colors.red.shade50,
-        borderRadius: BorderRadius.circular(12),
+        color: AppTheme.tealPrimary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppTheme.tealPrimary.withValues(alpha: 0.15),
+        ),
       ),
-      child: Row(children: [
-        Icon(
-          session.passed
-              ? Icons.check_circle_rounded
-              : Icons.cancel_rounded,
-          color: session.passed
-              ? AppTheme.tealPrimary
-              : Colors.red.shade300,
-          size: 18,
-        ),
-        const SizedBox(width: 10),
-        Text(session.date,
-            style: GoogleFonts.nunito(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.tealDark)),
-        const Spacer(),
-        Text(session.duration,
-            style: GoogleFonts.nunito(
-                fontSize: 12, color: Colors.grey.shade500)),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: session.passed
-                ? AppTheme.tealPrimary.withValues(alpha: 0.15)
-                : Colors.red.shade100,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            session.passed ? AppStrings.of(context).passed : AppStrings.of(context).failed,
-            style: GoogleFonts.nunito(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: session.passed
-                    ? AppTheme.tealDark
-                    : Colors.red.shade400),
-          ),
-        ),
-      ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.schedule_rounded,
+                size: 15, color: AppTheme.tealPrimary.withValues(alpha: 0.7)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(session.formattedDate,
+                  style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.tealDark)),
+            ),
+            if (hasEnd)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppTheme.tealPrimary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(session.formattedDuration,
+                    style: GoogleFonts.nunito(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.tealDark)),
+              ),
+          ]),
+          if (session.formattedEndTime != null) ...[
+            const SizedBox(height: 4),
+            Row(children: [
+              Icon(Icons.logout_rounded,
+                  size: 13, color: Colors.grey.shade400),
+              const SizedBox(width: 5),
+              Text(session.formattedEndTime!,
+                  style: GoogleFonts.nunito(
+                      fontSize: 11, color: Colors.grey.shade500)),
+            ]),
+          ],
+          const SizedBox(height: 6),
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppTheme.pink.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'L${session.startLevelNumber}',
+                style: GoogleFonts.nunito(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.pink),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              session.hasCompletions
+                  ? s.sessionCompletions(
+                      session.completedChallengesDuringSession.length)
+                  : s.noCompletionsThisSession,
+              style: GoogleFonts.nunito(
+                  fontSize: 12,
+                  color: session.hasCompletions
+                      ? AppTheme.tealPrimary
+                      : Colors.grey.shade500),
+            ),
+          ]),
+        ],
+      ),
     );
   }
 }

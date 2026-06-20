@@ -205,6 +205,11 @@ class AppStrings {
       : 'This will delete all progress for this child.';
   String get recentSessions => isArabic ? 'الجلسات الأخيرة' : 'Recent Sessions';
   String get noSessionsYet => isArabic ? 'لا توجد جلسات بعد.' : 'No sessions yet.';
+  String sessionCompletions(int n) => isArabic
+      ? '$n ${n == 1 ? "تحدٍّ مكتمل" : "تحديات مكتملة"}'
+      : '$n ${n == 1 ? "challenge" : "challenges"} completed';
+  String get noCompletionsThisSession =>
+      isArabic ? 'لا تحديات مكتملة' : 'No challenges completed';
   String get noChildrenAddedYet =>
       isArabic ? 'لم تتم إضافة أطفال بعد' : 'No children added yet';
   String get tapAddChildHint => isArabic

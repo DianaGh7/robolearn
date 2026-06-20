@@ -9,7 +9,6 @@ import '../l10n/app_strings.dart';
 import '../services/language_notifier.dart';
 import 'adventure_map_screen.dart';
 import 'parent_dashboard_screen.dart';
-import 'login_screen.dart';
 import '../services/child_firestore_service.dart';
 
 class ChooseChildScreen extends StatefulWidget {
@@ -125,7 +124,6 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
 
   Future<void> _showSettingsMenu() async {
     final lang = LangScope.of(context);
-    final s = AppStrings(lang.isArabic);
     final selected = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -235,20 +233,6 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
                   ),
                 ),
               ),
-              const Divider(height: 1, indent: 16, endIndent: 16),
-              ListTile(
-                leading: const Icon(Icons.logout_rounded,
-                    color: Color(0xFFD84E4E)),
-                title: Text(
-                  s.logout,
-                  style: GoogleFonts.nunito(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFFD84E4E),
-                  ),
-                ),
-                onTap: () => Navigator.pop(ctx, 'logout'),
-              ),
             ],
           ),
         );
@@ -260,18 +244,6 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
       await lang.setLanguage(true);
     } else if (selected == 'en') {
       await lang.setLanguage(false);
-    } else if (selected == 'logout') {
-      await FirebaseAuth.instance.signOut();
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        PageRouteBuilder(
-          pageBuilder: (_, _, _) => const LoginScreen(),
-          transitionsBuilder: (_, anim, _, child) =>
-              FadeTransition(opacity: anim, child: child),
-          transitionDuration: const Duration(milliseconds: 350),
-        ),
-        (route) => false,
-      );
     }
   }
 
@@ -659,7 +631,7 @@ class _ChildCardState extends State<_ChildCard>
                         ),
                         padding: const EdgeInsets.all(5),
                         child: ClipOval(
-                          child: AvatarFace(seed: widget.data.avatarSeed, gender: widget.data.gender),
+                          child: AvatarFace(seed: widget.data.avatarSeed, gender: widget.data.gender, imageUrl: widget.data.imageUrl),
                         ),
                       ),
                     ),

@@ -29,5 +29,12 @@ class FirebaseRefs {
   ]) {
     return childrenCol(uid).doc(childId);
   }
+
+  static CollectionReference<Map<String, dynamic>> sessionsCol(
+    String uid,
+    String childId,
+  ) {
+    return childDoc(childId, uid).collection('sessions');
+  }
 }
 

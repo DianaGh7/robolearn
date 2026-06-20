@@ -11,6 +11,7 @@ import '../services/child_progress_service.dart';
 import '../services/robolearn_ble_service.dart';
 import '../services/connection_state.dart' as robot_conn;
 import '../l10n/app_strings.dart';
+import '../services/session_service.dart';
 import 'level_one_intro_screen.dart';
 
 enum RobotConnectionStatus { disconnected, connecting, connected, executing }
@@ -104,6 +105,16 @@ class _LevelOneScreenState extends State<LevelOneScreen>
         if (mounted) setState(() => _showDisconnectedToast = false);
       });
     });
+
+    final cid = widget.child.childId;
+    if (cid != null) {
+      SessionService().startSession(
+        childId: cid,
+        childName: widget.child.name,
+        levelNumber: widget.challenge.levelNumber,
+        challengeNumber: widget.challenge.number,
+      );
+    }
   }
 
   ChildModel _markChallengeCompleted() {
@@ -887,7 +898,7 @@ class _HeaderBar extends StatelessWidget {
                 ],
               ),
               padding: const EdgeInsets.all(2.5),
-              child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender)),
+              child: ClipOval(child: AvatarFace(seed: child.avatarSeed, gender: child.gender, imageUrl: child.imageUrl)),
             ),
           ),
         ],
