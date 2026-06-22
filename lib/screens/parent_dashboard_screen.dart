@@ -10,6 +10,7 @@ import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../l10n/app_strings.dart';
+import 'welcome_screen.dart';
 
 // ── Derived-stats helpers ─────────────────────────────────────────────────────
 // completedLevels / progress / level are stale in Firestore (set at creation,
@@ -101,7 +102,10 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
     if (selected == 'sign_out') {
       await FirebaseAuth.instance.signOut();
       if (mounted) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+          (_) => false,
+        );
       }
     }
   }
