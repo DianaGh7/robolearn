@@ -196,160 +196,177 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (_) => StatefulBuilder(builder: (ctx, setDialogState) {
-        return AlertDialog(
+        final keyboardOpen = MediaQuery.of(ctx).viewInsets.bottom > 0;
+        return Dialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Text(AppStrings.of(context).addNewChild,
-              style: GoogleFonts.nunito(
-                  fontWeight: FontWeight.w800, color: AppTheme.tealDark)),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            GestureDetector(
-              onTap: () async {
-                final b64 = await _pickImageAsBase64();
-                if (b64 != null) setDialogState(() => pickedImageB64 = b64);
-              },
-              child: Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  Container(
-                    width: 80, height: 80,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xFFE0F7F5),
+          insetPadding: EdgeInsets.symmetric(
+              horizontal: 24, vertical: keyboardOpen ? 8 : 24),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(AppStrings.of(context).addNewChild,
+                    style: GoogleFonts.nunito(
+                        fontWeight: FontWeight.w800, color: AppTheme.tealDark)),
+                const SizedBox(height: 16),
+                Center(
+                  child: GestureDetector(
+                    onTap: () async {
+                      final b64 = await _pickImageAsBase64();
+                      if (b64 != null) setDialogState(() => pickedImageB64 = b64);
+                    },
+                    child: Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        Container(
+                          width: 80, height: 80,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xFFE0F7F5),
+                          ),
+                          child: ClipOval(
+                            child: pickedImageB64 != null
+                                ? Image.memory(
+                                    base64Decode(pickedImageB64!.split(',').last),
+                                    fit: BoxFit.cover,
+                                  )
+                                : AvatarFace(seed: _children.length % 9, gender: gender),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: const BoxDecoration(
+                            color: AppTheme.tealPrimary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                        ),
+                      ],
                     ),
-                    child: ClipOval(
-                      child: pickedImageB64 != null
-                          ? Image.memory(
-                              base64Decode(pickedImageB64!.split(',').last),
-                              fit: BoxFit.cover,
-                            )
-                          : AvatarFace(seed: _children.length % 9, gender: gender),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: const BoxDecoration(
-                      color: AppTheme.tealPrimary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: nameCtrl,
-              style: GoogleFonts.nunito(),
-              decoration: InputDecoration(
-                labelText: AppStrings.of(context).childName,
-                labelStyle: GoogleFonts.nunito(color: AppTheme.tealMid),
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide:
-                      const BorderSide(color: AppTheme.tealPrimary, width: 2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(children: [
-              Text('${AppStrings.of(context).ageLabel}:',
-                  style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
-              const SizedBox(width: 12),
-              DropdownButton<int>(
-                value: age,
-                items: List.generate(
-                  13,
-                  (i) => DropdownMenuItem(
-                    value: i + 4,
-                    child: Text('${i + 4}', style: GoogleFonts.nunito()),
                   ),
                 ),
-                onChanged: (v) => setDialogState(() => age = v!),
-                style: GoogleFonts.nunito(
-                    color: AppTheme.tealDark, fontWeight: FontWeight.w600),
-              ),
-            ]),
-            const SizedBox(height: 12),
-            Row(children: [
-              Text('${AppStrings.of(context).genderLabel}:',
-                  style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
-              const SizedBox(width: 8),
-              _GenderChip(
-                label: AppStrings.of(context).girl,
-                icon: Icons.face_3_rounded,
-                selected: gender == 'girl',
-                color: AppTheme.pink,
-                onTap: () => setDialogState(() => gender = 'girl'),
-              ),
-              const SizedBox(width: 8),
-              _GenderChip(
-                label: AppStrings.of(context).boy,
-                icon: Icons.face_rounded,
-                selected: gender == 'boy',
-                color: AppTheme.skyBlue,
-                onTap: () => setDialogState(() => gender = 'boy'),
-              ),
-            ]),
-          ]),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(AppStrings.of(context).cancel,
-                  style: GoogleFonts.nunito(color: Colors.grey)),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: nameCtrl,
+                  style: GoogleFonts.nunito(),
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).childName,
+                    labelStyle: GoogleFonts.nunito(color: AppTheme.tealMid),
+                    border:
+                        OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide:
+                          const BorderSide(color: AppTheme.tealPrimary, width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(children: [
+                  Text('${AppStrings.of(context).ageLabel}:',
+                      style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 12),
+                  DropdownButton<int>(
+                    value: age,
+                    items: List.generate(
+                      13,
+                      (i) => DropdownMenuItem(
+                        value: i + 4,
+                        child: Text('${i + 4}', style: GoogleFonts.nunito()),
+                      ),
+                    ),
+                    onChanged: (v) => setDialogState(() => age = v!),
+                    style: GoogleFonts.nunito(
+                        color: AppTheme.tealDark, fontWeight: FontWeight.w600),
+                  ),
+                ]),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Text('${AppStrings.of(context).genderLabel}:',
+                      style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 8),
+                  _GenderChip(
+                    label: AppStrings.of(context).girl,
+                    icon: Icons.face_3_rounded,
+                    selected: gender == 'girl',
+                    color: AppTheme.pink,
+                    onTap: () => setDialogState(() => gender = 'girl'),
+                  ),
+                  const SizedBox(width: 8),
+                  _GenderChip(
+                    label: AppStrings.of(context).boy,
+                    icon: Icons.face_rounded,
+                    selected: gender == 'boy',
+                    color: AppTheme.skyBlue,
+                    onTap: () => setDialogState(() => gender = 'boy'),
+                  ),
+                ]),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text(AppStrings.of(context).cancel,
+                          style: GoogleFonts.nunito(color: Colors.grey)),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.tealPrimary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () async {
+                        final name = nameCtrl.text.trim();
+                        if (name.isEmpty) return;
+
+                        Navigator.pop(ctx); // close dialog immediately for snappy UX
+
+                        // Build the model (no childId yet — Firestore will assign one)
+                        final now = DateTime.now();
+                        final joinDate =
+                            '${_monthName(now.month)} ${now.day}, ${now.year}';
+
+                        final newChild = ChildModel(
+                          name: name,
+                          level: 1,
+                          avatarSeed: _children.length % 9,
+                          completedLevels: 0,
+                          totalLevels: 4,
+                          attempts: 0,
+                          streak: 0,
+                          progress: 0.0,
+                          age: age,
+                          gender: gender,
+                          joinDate: joinDate,
+                          recentSessions: const [],
+                          imageUrl: pickedImageB64,
+                        );
+
+                        try {
+                          // Save to Firestore → returns child with real childId
+                          final saved = await _childService.createChild(
+                            uid: _uid,
+                            child: newChild,
+                          );
+                          setState(() => _children.add(saved));
+                        } catch (e) {
+                          _showError('Could not add child: $e');
+                        }
+                      },
+                      child: Text(AppStrings.of(context).addChild,
+                          style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.tealPrimary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-              ),
-              onPressed: () async {
-                final name = nameCtrl.text.trim();
-                if (name.isEmpty) return;
-
-                Navigator.pop(ctx); // close dialog immediately for snappy UX
-
-                // Build the model (no childId yet — Firestore will assign one)
-                final now = DateTime.now();
-                final joinDate =
-                    '${_monthName(now.month)} ${now.day}, ${now.year}';
-
-                final newChild = ChildModel(
-                  name: name,
-                  level: 1,
-                  avatarSeed: _children.length % 9,
-                  completedLevels: 0,
-                  totalLevels: 4,
-                  attempts: 0,
-                  streak: 0,
-                  progress: 0.0,
-                  age: age,
-                  gender: gender,
-                  joinDate: joinDate,
-                  recentSessions: const [],
-                  imageUrl: pickedImageB64,
-                );
-
-                try {
-                  // Save to Firestore → returns child with real childId
-                  final saved = await _childService.createChild(
-                    uid: _uid,
-                    child: newChild,
-                  );
-                  setState(() => _children.add(saved));
-                } catch (e) {
-                  _showError('Could not add child: $e');
-                }
-              },
-              child: Text(AppStrings.of(context).addChild,
-                  style:
-                      GoogleFonts.nunito(fontWeight: FontWeight.w700)),
-            ),
-          ],
+          ),
         );
       }),
     );
@@ -368,151 +385,167 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen>
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (_) => StatefulBuilder(builder: (ctx, setDialogState) {
-        return AlertDialog(
+        return Dialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Text(AppStrings.of(context).editChildTitle(child.name),
-              style: GoogleFonts.nunito(
-                  fontWeight: FontWeight.w800, color: AppTheme.tealDark)),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            GestureDetector(
-              onTap: () async {
-                final b64 = await _pickImageAsBase64();
-                if (b64 != null) setDialogState(() => pickedImageB64 = b64);
-              },
-              child: Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  Container(
-                    width: 80, height: 80,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xFFE0F7F5),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(AppStrings.of(context).editChildTitle(child.name),
+                    style: GoogleFonts.nunito(
+                        fontWeight: FontWeight.w800, color: AppTheme.tealDark)),
+                const SizedBox(height: 16),
+                Center(
+                  child: GestureDetector(
+                    onTap: () async {
+                      final b64 = await _pickImageAsBase64();
+                      if (b64 != null) setDialogState(() => pickedImageB64 = b64);
+                    },
+                    child: Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        Container(
+                          width: 80, height: 80,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xFFE0F7F5),
+                          ),
+                          child: ClipOval(
+                            child: pickedImageB64 != null
+                                ? Image.memory(
+                                    base64Decode(pickedImageB64!.split(',').last),
+                                    fit: BoxFit.cover,
+                                  )
+                                : AvatarFace(seed: child.avatarSeed, gender: child.gender, imageUrl: child.imageUrl),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: const BoxDecoration(
+                            color: AppTheme.tealPrimary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                        ),
+                      ],
                     ),
-                    child: ClipOval(
-                      child: pickedImageB64 != null
-                          ? Image.memory(
-                              base64Decode(pickedImageB64!.split(',').last),
-                              fit: BoxFit.cover,
-                            )
-                          : AvatarFace(seed: child.avatarSeed, gender: child.gender, imageUrl: child.imageUrl),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: const BoxDecoration(
-                      color: AppTheme.tealPrimary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: nameCtrl,
-              style: GoogleFonts.nunito(),
-              decoration: InputDecoration(
-                labelText: AppStrings.of(context).childName,
-                labelStyle: GoogleFonts.nunito(color: AppTheme.tealMid),
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide:
-                      const BorderSide(color: AppTheme.tealPrimary, width: 2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(children: [
-              Text('${AppStrings.of(context).ageLabel}:',
-                  style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
-              const SizedBox(width: 12),
-              DropdownButton<int>(
-                value: age,
-                items: List.generate(
-                  13,
-                  (i) => DropdownMenuItem(
-                    value: i + 4,
-                    child: Text('${i + 4}', style: GoogleFonts.nunito()),
                   ),
                 ),
-                onChanged: (v) => setDialogState(() => age = v!),
-                style: GoogleFonts.nunito(
-                    color: AppTheme.tealDark, fontWeight: FontWeight.w600),
-              ),
-            ]),
-            const SizedBox(height: 12),
-            Row(children: [
-              Text('${AppStrings.of(context).genderLabel}:',
-                  style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
-              const SizedBox(width: 8),
-              _GenderChip(
-                label: AppStrings.of(context).girl,
-                icon: Icons.face_3_rounded,
-                selected: gender == 'girl',
-                color: AppTheme.pink,
-                onTap: () => setDialogState(() => gender = 'girl'),
-              ),
-              const SizedBox(width: 8),
-              _GenderChip(
-                label: AppStrings.of(context).boy,
-                icon: Icons.face_rounded,
-                selected: gender == 'boy',
-                color: AppTheme.skyBlue,
-                onTap: () => setDialogState(() => gender = 'boy'),
-              ),
-            ]),
-          ]),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(AppStrings.of(context).cancel,
-                  style: GoogleFonts.nunito(color: Colors.grey)),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: nameCtrl,
+                  style: GoogleFonts.nunito(),
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).childName,
+                    labelStyle: GoogleFonts.nunito(color: AppTheme.tealMid),
+                    border:
+                        OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide:
+                          const BorderSide(color: AppTheme.tealPrimary, width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(children: [
+                  Text('${AppStrings.of(context).ageLabel}:',
+                      style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 12),
+                  DropdownButton<int>(
+                    value: age,
+                    items: List.generate(
+                      13,
+                      (i) => DropdownMenuItem(
+                        value: i + 4,
+                        child: Text('${i + 4}', style: GoogleFonts.nunito()),
+                      ),
+                    ),
+                    onChanged: (v) => setDialogState(() => age = v!),
+                    style: GoogleFonts.nunito(
+                        color: AppTheme.tealDark, fontWeight: FontWeight.w600),
+                  ),
+                ]),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Text('${AppStrings.of(context).genderLabel}:',
+                      style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 8),
+                  _GenderChip(
+                    label: AppStrings.of(context).girl,
+                    icon: Icons.face_3_rounded,
+                    selected: gender == 'girl',
+                    color: AppTheme.pink,
+                    onTap: () => setDialogState(() => gender = 'girl'),
+                  ),
+                  const SizedBox(width: 8),
+                  _GenderChip(
+                    label: AppStrings.of(context).boy,
+                    icon: Icons.face_rounded,
+                    selected: gender == 'boy',
+                    color: AppTheme.skyBlue,
+                    onTap: () => setDialogState(() => gender = 'boy'),
+                  ),
+                ]),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text(AppStrings.of(context).cancel,
+                          style: GoogleFonts.nunito(color: Colors.grey)),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.tealPrimary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () async {
+                        final name = nameCtrl.text.trim();
+                        if (name.isEmpty) return;
+
+                        Navigator.pop(ctx);
+
+                        // Only update if the child already has a Firestore id.
+                        // (If childId is null it was a demo child — skip Firestore.)
+                        final updated = child.copyWith(
+                          name: name,
+                          age: age,
+                          gender: gender,
+                          imageUrl: pickedImageB64 ?? child.imageUrl,
+                        );
+
+                        if (child.childId != null) {
+                          try {
+                            await _childService.saveChild(
+                              childId: child.childId!,
+                              uid: _uid,
+                              child: updated,
+                            );
+                          } catch (e) {
+                            _showError('Could not update child: $e');
+                            return;
+                          }
+                        }
+
+                        setState(() => _children[index] = updated);
+                      },
+                      child: Text(AppStrings.of(context).save,
+                          style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.tealPrimary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-              ),
-              onPressed: () async {
-                final name = nameCtrl.text.trim();
-                if (name.isEmpty) return;
-
-                Navigator.pop(ctx);
-
-                // Only update if the child already has a Firestore id.
-                // (If childId is null it was a demo child — skip Firestore.)
-                final updated = child.copyWith(
-                  name: name,
-                  age: age,
-                  gender: gender,
-                  imageUrl: pickedImageB64 ?? child.imageUrl,
-                );
-
-                if (child.childId != null) {
-                  try {
-                    await _childService.saveChild(
-                      childId: child.childId!,
-                      uid: _uid,
-                      child: updated,
-                    );
-                  } catch (e) {
-                    _showError('Could not update child: $e');
-                    return;
-                  }
-                }
-
-                setState(() => _children[index] = updated);
-              },
-              child: Text(AppStrings.of(context).save,
-                  style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
-            ),
-          ],
+          ),
         );
       }),
     );

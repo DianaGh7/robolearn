@@ -127,9 +127,11 @@ class _ChooseChildScreenState extends State<ChooseChildScreen>
     final selected = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (ctx) {
+        final navBarPadding = MediaQuery.of(ctx).viewPadding.bottom;
         return Container(
-          margin: const EdgeInsets.all(12),
+          margin: EdgeInsets.fromLTRB(12, 12, 12, 12 + navBarPadding),
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white,
